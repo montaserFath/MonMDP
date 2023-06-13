@@ -1,0 +1,7 @@
+gymnasium[mujoco,atari,accept-rom-license,box2d]
+miniworld
+minigrid
+pprintpp
+opencv-python
+box2d-py
+wandb
