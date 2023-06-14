@@ -60,7 +60,9 @@ if __name__ == '__main__':
     env.close()
 
     env = RandomMonitor(env)
+    env = minigrid_wrappers.ReseedWrapper(env, seeds=(0,))
     obs, info = env.reset()
     obs, reward, term, trunc, info = env.step([1, 1])
+    obs, reward, term, trunc, info = env.step([1, 0])
 
     print(obs, reward, info)

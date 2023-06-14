@@ -35,6 +35,8 @@ class RandomMonitor(gymnasium.Wrapper):
 
     def reset(self, seed=None, **kwargs):
         mdp_obs, mdp_info = self.env.reset(seed=seed, **kwargs)
+        self.monitor_observation_space.seed(seed)
+        self.monitor_action_space.seed(seed)
         self.monitor_state = 0
         return (mdp_obs, self.monitor_state), mdp_info
 
@@ -47,6 +49,8 @@ class RandomMonitor(gymnasium.Wrapper):
         if monitor_action == 1: # ask for monitor
             self.monitor_state = 1 # activate monitor
             monitor_reward = -0.1 # pay cost
+        else:
+            monitor_reward = 0.
 
         if self.monitor_state == 1: # if monitor is active
             proxy_reward = mdp_reward # get proxy reward
