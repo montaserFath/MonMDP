@@ -43,6 +43,10 @@ class BaseAgent(ABC):
         """
         pass
 
+    @abstractmethod
+    def reset(self):
+        pass
+
 
 class QLearningAgent(BaseAgent):
     """
@@ -61,5 +65,9 @@ class QLearningAgent(BaseAgent):
         return np.argmax(self._q_table[state, :])
 
     def update_policy(self, state, action, reward, done, next_state):
-        td_error = reward + self._gamma * np.max(self._q_table[next_state, :]) * (1 - done) - self._q_table[state, action]
+        td_error = reward + self._gamma * np.max(self._q_table[next_state, :]) * (1 - done) - self._q_table[
+            state, action]
         self._q_table[state, action] += self._lr * td_error
+
+    def reset(self):
+        self._q_table = np.ones((self._n_states, self._n_actions)) * self._init_q_values

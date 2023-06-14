@@ -21,6 +21,8 @@ class Experiment:
         run_logs = []
         for run in range(self._n_runs):
             set_rng_seed(self._rng_seed + run)
+            self._agent.reset()
+            self._strategy.rest()
             episode_logs = []
             for episode in range(self._n_episodes):
                 obs, _ = self._env.reset(seed=self._rng_seed + run)

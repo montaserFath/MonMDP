@@ -27,7 +27,7 @@ if __name__ == "__main__":
     lower_bound = mean_return - 2 * std_return / math.sqrt(configs["experiment"]["n_runs"])
     upper_bound = mean_return + 2 * std_return / math.sqrt(configs["experiment"]["n_runs"])
 
-    plt.fill_between(np.arange(float(configs["experiment"]["n_episodes"])), lower_bound, upper_bound, alpha=0.5)
+    plt.fill_between(np.arange(float(configs["experiment"]["n_episodes"])), lower_bound, upper_bound, alpha=0.25)
     plt.plot(np.arange(float(configs["experiment"]["n_episodes"])), mean_return, alpha=1, color="k")
     plt.xlabel("episodes")
     plt.ylabel("return")

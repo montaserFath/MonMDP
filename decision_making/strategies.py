@@ -17,6 +17,10 @@ class BaseStrategy(ABC):
     def update(self):
         pass
 
+    @abstractmethod
+    def rest(self):
+        pass
+
 
 class EpsilonGreedy(BaseStrategy):
     def __init__(self, agent: BaseAgent, **params):
@@ -38,3 +42,6 @@ class EpsilonGreedy(BaseStrategy):
     def update(self):
         if self._params["decay_type"] == "linear":
             self.linear_decay()
+
+    def rest(self):
+        self._eps = self._params["eps"]
