@@ -1,6 +1,8 @@
 import gymnasium
 from minigrid import wrappers as minigrid_wrappers
 
+from src.monitor_wrappers import RandomMonitor
+
 
 class NoEdgesWrapper(gymnasium.ObservationWrapper):
     """
@@ -10,6 +12,7 @@ class NoEdgesWrapper(gymnasium.ObservationWrapper):
     Args:
         env (gymnasium.Env): the MiniGrid environment.
     """
+
     def __init__(self, env):
         gymnasium.ObservationWrapper.__init__(self, env)
 
@@ -32,7 +35,7 @@ class NoEdgesWrapper(gymnasium.ObservationWrapper):
 if __name__ == '__main__':
     env_name = 'MiniGrid-DoorKey-5x5-v0'
 
-    env = gymnasium.make(env_name, render_mode='human') # (default) 7x7x3 partial obs
+    env = gymnasium.make(env_name) # (default) 7x7x3 partial obs
     # to visualize, pass render_mode='human'
 
 
@@ -53,3 +56,11 @@ if __name__ == '__main__':
 
     # since the env is fixed thanks to the seed, this obs can be uniquely associated with a state
     # and we can have tabular value functions and policies
+
+    env.close()
+
+    env = RandomMonitor(env)
+    obs, info = env.reset()
+    obs, reward, term, trunc, info = env.step([1, 1])
+
+    print(obs, reward, info)
