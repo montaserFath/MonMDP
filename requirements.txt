@@ -1,7 +1,8 @@
-gymnasium[mujoco,atari,accept-rom-license,box2d]
+gymnasium[mujoco,atari,accept-rom-license,box2d]~=0.28.1
 miniworld
-minigrid
+minigrid~=2.1.1
 pprintpp
 opencv-python
 box2d-py
 wandb
+numpy

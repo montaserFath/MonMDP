@@ -1,7 +1,7 @@
 import gymnasium
 from minigrid import wrappers as minigrid_wrappers
 
-from src.monitor_wrappers import RandomMonitor
+from wrappers.monitor_wrappers import RandomMonitor
 
 
 class NoEdgesWrapper(gymnasium.ObservationWrapper):
@@ -21,30 +21,28 @@ class NoEdgesWrapper(gymnasium.ObservationWrapper):
             f'observations must be images (received shape {obs_space.shape})'
 
         self.observation_space = gymnasium.spaces.Box(
-            low=obs_space.low[1:-1,1:-1],
-            high=obs_space.high[1:-1,1:-1],
+            low=obs_space.low[1:-1, 1:-1],
+            high=obs_space.high[1:-1, 1:-1],
             shape=(obs_space.shape[0] - 2, obs_space.shape[1] - 2, obs_space.shape[2]),
             dtype=obs_space.dtype,
         )
 
     def observation(self, observation):
-        return observation[1:-1,1:-1]
-
+        return observation[1:-1, 1:-1]
 
 
 if __name__ == '__main__':
     env_name = 'MiniGrid-DoorKey-5x5-v0'
 
-    env = gymnasium.make(env_name) # (default) 7x7x3 partial obs
+    env = gymnasium.make(env_name)  # (default) 7x7x3 partial obs
     # to visualize, pass render_mode='human'
 
-
-
-    env = minigrid_wrappers.FullyObsWrapper(env) # WxHx3 full obs, size depends on the grid
+    env = minigrid_wrappers.FullyObsWrapper(env)  # WxHx3 full obs, size depends on the grid
     # env = minigrid_wrappers.RGBImgObsWrapper(env) # if we want RGB-like full obs
-    env = minigrid_wrappers.ImgObsWrapper(env) # (mandatory) removes the 'mission' field
+    env = minigrid_wrappers.ImgObsWrapper(env)  # (mandatory) removes the 'mission' field
     env = NoEdgesWrapper(env)
-    env = minigrid_wrappers.ReseedWrapper(env, seeds=(0,)) # this way we don't have to manually fix the seed and we'll have the same env at every reset
+    env = minigrid_wrappers.ReseedWrapper(env, seeds=(
+    0,))  # this way we don't have to manually fix the seed and we'll have the same env at every reset
 
     obs, info = env.reset()
 
