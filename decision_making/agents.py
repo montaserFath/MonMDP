@@ -7,9 +7,9 @@ class BaseAgent(ABC):
     The base class that all og the agents are going to be an instance of this class
     """
 
-    def __init__(self, **configs):
-        self._n_states = configs["n_states"]
-        self._n_actions = configs["n_actions"]
+    def __init__(self, **params):
+        self._n_states = params["n_states"]
+        self._n_actions = params["n_actions"]
 
     @property
     def n_states(self):
@@ -17,7 +17,7 @@ class BaseAgent(ABC):
 
     @property
     def n_actions(self):
-        return self.n_actions
+        return self._n_actions
 
     @abstractmethod
     def policy(self, *args, **kwargs):
@@ -49,17 +49,17 @@ class QLearningAgent(BaseAgent):
     The Q-Learning agent
     """
 
-    def __init__(self, **configs):
-        super().__init__(**configs)
-        self._configs = configs
-        self._init_q_values = self._configs["init_q_values"]
+    def __init__(self, **params):
+        super().__init__(**params)
+        self._params = params
+        self._init_q_values = self._params["init_q_values"]
         self._q_table = np.ones((self._n_states, self._n_actions)) * self._init_q_values
-        self._lr = self._configs["lr"]
-        self._gamma = self._configs["gamma"]
+        self._lr = self._params["lr"]
+        self._gamma = self._params["gamma"]
 
     def policy(self, state):
         return np.argmax(self._q_table[state, :])
 
     def update_policy(self, state, action, reward, done, next_state):
-        td_error = reward + self._gamma * np.max(self._q_table[next_state, :]) * (~done) - self._q_table[state, action]
+        td_error = reward + self._gamma * np.max(self._q_table[next_state, :]) * (1 - done) - self._q_table[state, action]
         self._q_table[state, action] += self._lr * td_error
