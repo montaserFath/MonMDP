@@ -18,7 +18,11 @@ class BaseStrategy(ABC):
         pass
 
     @abstractmethod
-    def rest(self):
+    def reset(self):
+        pass
+
+    @abstractmethod
+    def report(self):
         pass
 
 
@@ -43,5 +47,8 @@ class EpsilonGreedy(BaseStrategy):
         if self._params["decay_type"] == "linear":
             self.linear_decay()
 
-    def rest(self):
+    def reset(self):
         self._eps = self._params["eps"]
+
+    def report(self):
+        return self._eps
