@@ -11,7 +11,6 @@ if __name__ == "__main__":
     configs = config_parser(args.config)
 
     env = gym.make(**configs["environment"])
-
     critic = QTable(env.observation_space, env.action_space, **configs["critic"])
     actor = EpsilonGreedy(critic, **configs["actor"])
     experiment = Experiment(env, actor, critic, **configs["experiment"])
