@@ -1,6 +1,7 @@
 import gymnasium as gym
 import numpy as np
 import wandb
+from tqdm import tqdm
 
 from src.actor import Actor
 from src.critic import Critic
@@ -28,7 +29,7 @@ class Experiment():
         self._actor.reset()
         self._critic.reset()
 
-        for ep in range(self._training_episodes):
+        for ep in tqdm(range(self._training_episodes)):
             if ep % self._testing_frequency == 0:
                 episode_return = self.test()
                 wandb.log({'test/return': episode_return.mean()}, step=ep, commit=False)

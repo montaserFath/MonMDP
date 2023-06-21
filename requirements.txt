@@ -6,3 +6,4 @@ opencv-python
 box2d-py
 wandb
 numpy
+tqdm

@@ -1,11 +1,3 @@
-# TODO:
-#  1. Testing experiment -> done ish
-#  2. Rendering -> done-ish
-#  3. Docstring
-#  4. logger class
-#  5. Mon-MDP
-
-
 import gymnasium as gym
 
 from src.utils import config_parser, arg_parser
@@ -13,11 +5,13 @@ from src.actor import EpsilonGreedy
 from src.critic import QTable
 from src.experiment import Experiment
 
+
 if __name__ == "__main__":
     args = arg_parser()
     configs = config_parser(args.config)
 
-    env = gym.make(configs["environment"])
+    env = gym.make(**configs["environment"])
+
     critic = QTable(env.observation_space, env.action_space, **configs["critic"])
     actor = EpsilonGreedy(critic, **configs["actor"])
     experiment = Experiment(env, actor, critic, **configs["experiment"])
