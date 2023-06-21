@@ -7,8 +7,8 @@ critic:
 
 actor:
    init_eps: 1.
-   min_eps: 0.01
-   eps_decay: 0.01
+   min_eps: 0.1
+   eps_decay: 0.001
 
 experiment:
    training_episodes: 10000

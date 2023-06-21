@@ -31,7 +31,7 @@ class Experiment():
         for ep in range(self._training_episodes):
             if ep % self._testing_frequency == 0:
                 episode_return = self.test()
-                wandb.log({'test/return': episode_return}, step=ep, commit=False)
+                wandb.log({'test/return': episode_return.mean()}, step=ep, commit=False)
 
             ep_seed = cantor_pairing(self._rng_seed, ep)
             obs, _ = self._env.reset()
