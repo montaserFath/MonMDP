@@ -1,0 +1,50 @@
+{
+    "os": "Windows-10-10.0.22621-SP0",
+    "python": "3.10.9",
+    "heartbeatAt": "2023-06-21T21:50:45.768147",
+    "startedAt": "2023-06-21T21:50:41.174574",
+    "docker": null,
+    "cuda": null,
+    "args": [],
+    "state": "running",
+    "program": "C:\\Users\\Simone\\Documents\\GitHub\\MonMDP\\main.py",
+    "codePath": "main.py",
+    "git": {
+        "remote": "https://github.com/IRLL/MonMDP.git",
+        "commit": "5ca511f0ecdb5ce68ef665132e11a03c10eabb0e"
+    },
+    "email": "sparisi@users.noreply.github.com",
+    "root": "C:/Users/Simone/Documents/GitHub/MonMDP",
+    "host": "DESKTOP-FI0TO01",
+    "username": "Simone",
+    "executable": "C:\\Users\\Simone\\anaconda3\\envs\\gpu\\python.exe",
+    "cpu_count": 14,
+    "cpu_count_logical": 20,
+    "cpu_freq": {
+        "current": 1545.0,
+        "min": 0.0,
+        "max": 2000.0
+    },
+    "cpu_freq_per_core": [
+        {
+            "current": 1545.0,
+            "min": 0.0,
+            "max": 2000.0
+        }
+    ],
+    "disk": {
+        "total": 952.9951133728027,
+        "used": 436.73403549194336
+    },
+    "gpu": "NVIDIA GeForce GTX 1650 with Max-Q Design",
+    "gpu_count": 1,
+    "gpu_devices": [
+        {
+            "name": "NVIDIA GeForce GTX 1650 with Max-Q Design",
+            "memory_total": 4294967296
+        }
+    ],
+    "memory": {
+        "total": 15.707653045654297
+    }
+}

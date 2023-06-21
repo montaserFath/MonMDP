@@ -1,0 +1,17 @@
+environment: "Taxi-v3"
+
+critic:
+   init_q_values: 0
+   gamma: 0.99
+   lr: 0.01
+
+actor:
+   init_eps: 1.
+   min_eps: 0.01
+   eps_decay: 0.01
+
+experiment:
+   training_episodes: 10000
+   testing_episodes: 50
+   testing_frequency: 10
+   rng_seed: 1
