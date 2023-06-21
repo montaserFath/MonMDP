@@ -31,7 +31,9 @@ class Experiment():
 
         for ep in tqdm(range(self._training_episodes)):
             if ep % self._testing_frequency == 0:
+                self._actor.eval()
                 episode_return = self.test()
+                self._actor.train()
                 wandb.log({'test/return': episode_return.mean()}, step=ep, commit=False)
 
             ep_seed = cantor_pairing(self._rng_seed, ep)

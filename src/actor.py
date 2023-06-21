@@ -30,10 +30,11 @@ class EpsilonGreedy(Actor):
         self._decay = eps_decay
         self._init_eps = init_eps
         self._min_eps = min_eps
+        self._train = True
         self.reset()
 
     def __call__(self, state):
-        if np.random.random() < self._eps:
+        if np.random.random() < self._eps and self._train:
             return np.random.randint(0, self._critic.n_actions)
         else:
             q = self._critic(state)
@@ -45,6 +46,12 @@ class EpsilonGreedy(Actor):
 
     def reset(self):
         self._eps = self._init_eps
+
+    def eval(self):
+        self._train = False
+
+    def train(self):
+        self._train = True
 
     def report(self):
         return self._eps
