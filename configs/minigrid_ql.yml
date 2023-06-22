@@ -4,7 +4,7 @@ environment:
 critic:
   init_q_values: 0
   gamma: 0.99
-  lr: 0.1
+  lr: 0.01
 
 actor:
   init_eps: 1.
@@ -12,7 +12,7 @@ actor:
   eps_decay: 0.0005
 
 experiment:
-  training_episodes: 10000
+  training_episodes: 1000
   testing_episodes: 50
   testing_frequency: 10
   rng_seed: 1

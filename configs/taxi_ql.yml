@@ -7,7 +7,7 @@ critic:
   lr: 0.1
 
 actor:
-  init_eps: 1.
+  init_eps: 0.8
   min_eps: 0.2
   eps_decay: 0.0005
 

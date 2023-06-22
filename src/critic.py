@@ -24,10 +24,6 @@ class Critic(ABC):
         pass
 
     @property
-    def n_states(self):
-        return self._n_states
-
-    @property
     def n_actions(self):
         return self._n_actions
 
@@ -50,6 +46,7 @@ class QTable(Critic):
         target = reward + self._gamma * (1. - terminated) * self._q_table[next_state].max()
         prediction = self._q_table[state][action]
         self._q_table[state][action] = (1. - self._lr) * prediction + self._lr * target
+        return 0.5 * (target - prediction) ** 2
 
     def reset(self):
         self._q_table = np.ones((self._n_states, self._n_actions)) * self._init_q_values
@@ -80,6 +77,7 @@ class QDict(Critic):
         target = reward + self._gamma * (1. - terminated) * q_next.max()
         prediction = self._q_dict[action].get(tuple(state), self._init_q_values)
         self._q_dict[action][tuple(state)] = (1. - self._lr) * prediction + self._lr * target
+        return 0.5 * (target - prediction) ** 2
 
     def reset(self):
         self._q_dict = [dict() for _ in range(self._n_actions)]

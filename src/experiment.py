@@ -34,20 +34,32 @@ class Experiment():
                 self._actor.eval()
                 episode_return = self.test()
                 self._actor.train()
-                wandb.log({'test/return': episode_return.mean()}, step=ep, commit=False)
+                wandb.log(
+                    {'test/return': episode_return.mean()},
+                    step=ep,
+                    commit=False
+                )
 
             ep_seed = cantor_pairing(self._rng_seed, ep)
-            obs, _ = self._env.reset()
-            episode_return = 0
+            obs, _ = self._env.reset(seed=ep_seed)
+            episode_return = 0.
+            episode_loss = 0.
+            steps = 0
             while True:
+                steps += 1
                 action = self._actor(obs)
-                next_obs, reward, term, trunc, info = self._env.step(action)
-                self._critic.update(obs, action, reward, term, next_obs)
+                next_obs, reward, term, trunc, _ = self._env.step(action)
                 episode_return += reward
+                episode_loss += self._critic.update(obs, action, reward, term, next_obs)
                 if term or trunc:
                     break
                 obs = next_obs
-            wandb.log({'train/return': episode_return}, step=ep, commit=True)
+
+            wandb.log(
+                {'train/return': episode_return, 'train/loss': episode_loss},
+                step=ep,
+                commit=True
+            )
             self._actor.update()
 
         wandb.finish()
@@ -60,7 +72,7 @@ class Experiment():
             obs, _ = self._env.reset(seed=ep_seed)
             while True:
                 action = self._actor(obs)
-                next_obs, reward, term, trunc, info = self._env.step(action)
+                next_obs, reward, term, trunc, _ = self._env.step(action)
                 episode_returns[ep] += reward
                 if term or trunc:
                     break
