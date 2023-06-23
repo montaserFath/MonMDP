@@ -3,3 +3,5 @@
 *.pth
 *.tar
 wandb/
+configs/api_key.wandb
+.idea

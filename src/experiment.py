@@ -10,7 +10,7 @@ from src.utils import set_rng_seed, cantor_pairing
 
 class Experiment():
     def __init__(self, env: gym.Env, actor: Actor, critic: Critic,
-                        training_episodes, testing_episodes, testing_frequency, rng_seed):
+                 training_episodes, testing_episodes, testing_frequency, rng_seed):
         self._env = env
         self._actor = actor
         self._critic = critic
@@ -29,7 +29,7 @@ class Experiment():
         self._actor.reset()
         self._critic.reset()
 
-        for ep in tqdm(range(self._training_episodes)):
+        for ep in tqdm(range(1, 1 + self._training_episodes)):
             if ep % self._testing_frequency == 0:
                 self._actor.eval()
                 episode_return = self.test()
@@ -48,10 +48,11 @@ class Experiment():
             while True:
                 steps += 1
                 action = self._actor(obs)
-                next_obs, reward, term, trunc, _ = self._env.step(action)
-                episode_return += reward
-                episode_loss += self._critic.update(obs, action, reward, term, next_obs)
-                if term or trunc:
+                next_obs, reward, term, trunc, info = self._env.step(action)
+                if obs[1] == 1:
+                    self._critic.update(obs[0], action, reward[0] + reward[1], term[0], next_obs[0]) # what's the use of term[1]
+                episode_return += reward[0] if reward[0] is not np.NAN else 0
+                if term[0] or trunc[0]:
                     break
                 obs = next_obs
 
@@ -72,9 +73,9 @@ class Experiment():
             obs, _ = self._env.reset(seed=ep_seed)
             while True:
                 action = self._actor(obs)
-                next_obs, reward, term, trunc, _ = self._env.step(action)
-                episode_returns[ep] += reward
-                if term or trunc:
+                next_obs, reward, term, trunc, info = self._env.step(action)
+                episode_returns[ep] += reward[0] if reward[0] is not np.NAN else 0
+                if term[0] or trunc[0]:
                     break
                 obs = next_obs
         return episode_returns
