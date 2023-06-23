@@ -40,14 +40,14 @@ class EpsilonGreedy(Actor):
         else:
             q = self._critic(state)
             encoded_action = q.argmax()
-            if encoded_action > self._critic.n_actions:
-                decoded_action, mon_action = encoded_action % self._critic.n_actions, 1
+            if encoded_action % 2 == 0:
+                decoded_action, mon_action = encoded_action % self._critic.n_actions, 0
             else:
-                decoded_action, mon_action = encoded_action, 0
+                decoded_action, mon_action = encoded_action, 1
             return [decoded_action, mon_action]
 
     def update(self):
-        # TODO: _eps should be an object of its own with its decay type, and we just call sefl._eps.step()
+        # TODO: _eps should be an object of its own with its decay type, and we just call self._eps.step()
         self._eps = max(self._eps - self._decay, self._min_eps)
 
     def reset(self):
