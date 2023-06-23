@@ -12,7 +12,7 @@ actor:
   eps_decay: 0.0005
 
 experiment:
-  training_episodes: 1000
+  training_episodes: 2000
   testing_episodes: 50
   testing_frequency: 10
   rng_seed: 1

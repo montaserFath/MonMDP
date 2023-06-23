@@ -37,7 +37,7 @@ class Experiment():
                 wandb.log({'test/return': episode_return.mean()}, step=ep, commit=False)
 
             ep_seed = cantor_pairing(self._rng_seed, ep)
-            obs, _ = self._env.reset()
+            obs, _ = self._env.reset(seed=ep_seed)
             episode_return = 0
             while True:
                 action = self._actor(obs)
@@ -58,7 +58,7 @@ class Experiment():
         episode_returns = np.zeros(self._testing_episodes)
         for ep in range(self._testing_episodes):
             ep_seed = cantor_pairing(self._rng_seed, ep)
-            obs, _ = self._env.reset()
+            obs, _ = self._env.reset(seed=ep_seed)
             while True:
                 action = self._actor(obs)
                 next_obs, reward, term, trunc, info = self._env.step(action)
