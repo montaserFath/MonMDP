@@ -10,7 +10,7 @@ from src.utils import set_rng_seed, cantor_pairing
 
 class Experiment():
     def __init__(self, env: gym.Env, actor: Actor, critic: Critic,
-                        training_episodes, testing_episodes, testing_frequency, rng_seed):
+                 training_episodes, testing_episodes, testing_frequency, rng_seed):
         self._env = env
         self._actor = actor
         self._critic = critic
@@ -43,7 +43,7 @@ class Experiment():
                 action = self._actor(obs)
                 next_obs, reward, term, trunc, info = self._env.step(action)
                 if obs[1] == 1:
-                    self._critic.update(obs[0], action, reward[0] + reward[1], term[0], next_obs[0]) # what's the use of term[1
+                    self._critic.update(obs[0], action, reward[0] + reward[1], term[0], next_obs[0]) # what's the use of term[1]
                 episode_return += reward[0] if reward[0] is not np.NAN else 0
                 if term[0] or trunc[0]:
                     break

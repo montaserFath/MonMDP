@@ -41,9 +41,10 @@ class EpsilonGreedy(Actor):
             q = self._critic(state)
             encoded_action = q.argmax()
             if encoded_action % 2 == 0:
-                decoded_action, mon_action = encoded_action % self._critic.n_actions, 0
+                mon_action = 1
             else:
-                decoded_action, mon_action = encoded_action, 1
+                mon_action = 1
+            decoded_action = encoded_action // self._critic.n_mon_actions
             return [decoded_action, mon_action]
 
     def update(self):
