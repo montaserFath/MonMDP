@@ -34,11 +34,17 @@ class EpsilonGreedy(Actor):
         self.reset()
 
     def __call__(self, state):
+        state = state[0]
         if np.random.random() < self._eps and self._train:
-            return np.random.randint(0, self._critic.n_actions)
+            return [np.random.randint(0, self._critic.n_actions), np.random.randint(0, self._critic.n_mon_actions)]
         else:
             q = self._critic(state)
-            return q.argmax()
+            encoded_action = q.argmax()
+            if encoded_action > self._critic.n_actions:
+                decoded_action, mon_action = encoded_action % self._critic.n_actions, 1
+            else:
+                decoded_action, mon_action = encoded_action, 0
+            return [decoded_action, mon_action]
 
     def update(self):
         # TODO: _eps should be an object of its own with its decay type, and we just call sefl._eps.step()

@@ -29,7 +29,7 @@ class Experiment():
         self._actor.reset()
         self._critic.reset()
 
-        for ep in tqdm(range(self._training_episodes)):
+        for ep in tqdm(range(1, 1 + self._training_episodes)):
             if ep % self._testing_frequency == 0:
                 self._actor.eval()
                 episode_return = self.test()
@@ -42,9 +42,10 @@ class Experiment():
             while True:
                 action = self._actor(obs)
                 next_obs, reward, term, trunc, info = self._env.step(action)
-                self._critic.update(obs, action, reward, term, next_obs)
-                episode_return += reward
-                if term or trunc:
+                if obs[1] == 1:
+                    self._critic.update(obs[0], action, reward[0] + reward[1], term[0], next_obs[0]) # what's the use of term[1
+                episode_return += reward[0] if reward[0] is not np.NAN else 0
+                if term[0] or trunc[0]:
                     break
                 obs = next_obs
             wandb.log({'train/return': episode_return}, step=ep, commit=True)
@@ -57,12 +58,12 @@ class Experiment():
         episode_returns = np.zeros(self._testing_episodes)
         for ep in range(self._testing_episodes):
             ep_seed = cantor_pairing(self._rng_seed, ep)
-            obs, _ = self._env.reset(seed=ep_seed)
+            obs, _ = self._env.reset()
             while True:
                 action = self._actor(obs)
                 next_obs, reward, term, trunc, info = self._env.step(action)
-                episode_returns[ep] += reward
-                if term or trunc:
+                episode_returns[ep] += reward[0] if reward[0] is not np.NAN else 0
+                if term[0] or trunc[0]:
                     break
                 obs = next_obs
         return episode_returns
