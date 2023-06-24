@@ -43,8 +43,10 @@ class RandomMonitor(gymnasium.Wrapper):
         if monitor_action == 1: # ask for monitor
             self.monitor_state = 1 # activate monitor
             monitor_reward = -0.1 # pay cost
-        else:
+        elif monitor_action == 0:
             monitor_reward = 0.
+        else:
+            raise ValueError('illegal monitor action')
 
         if self.monitor_state == 1: # if monitor is active
             proxy_reward = mdp_reward # get proxy reward
