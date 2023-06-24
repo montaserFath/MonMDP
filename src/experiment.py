@@ -111,7 +111,8 @@ class MonExperiment(Experiment):
                 next_obs, reward, term, trunc, _ = self._env.step(action)
                 if reward['mdp'] is not np.nan:
                     episode_return[0] += reward['mdp']
-                    episode_return[1] += reward['mdp'] + reward['monitor']
+                    episode_return[1] += reward['mdp']
+                episode_return[1] += reward['monitor']
 
                 step_loss = self._critic.update(obs, action, reward, term, next_obs)
                 if step_loss[0] is not np.nan:
