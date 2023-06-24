@@ -107,7 +107,7 @@ class MonQDict(Critic):
 
         if action is None:
             return np.array([
-                [q_mdp.get(tuple(state), self._init_q_values) for q_mdp in q_mon] for q_mon in self._mon_q_dict
+                [q_mon.get(tuple(state), self._init_q_values) for q_mon in q_mdp] for q_mdp in self._mon_q_dict
             ])
         else:
             mdp_action = action['mdp']
@@ -137,20 +137,19 @@ class MonQDict(Critic):
         else:
             mdp_error = np.nan
 
+        next_state = np.concatenate((mdp_next_state, [mon_next_state]))
+        state = np.concatenate((mdp_state, [mon_state]))
+        reward = mon_reward
         if mdp_reward is not np.nan:
-            next_state = np.concatenate((mdp_next_state, [mon_next_state]))
-            state = np.concatenate((mdp_state, [mon_state]))
-            reward = mdp_reward + mon_reward
+            reward += mdp_reward
 
-            mon_q_next = np.array([
-                [q_mdp.get(tuple(next_state), self._init_q_values) for q_mdp in q_mon] for q_mon in self._mon_q_dict
-            ])
-            mon_target = reward + self._gamma * (1. - mdp_terminated) * mon_q_next.max()
-            mon_prediction = self._mon_q_dict[mdp_action][mon_action].get(tuple(state), self._init_q_values)
-            self._mon_q_dict[mdp_action][mon_action][tuple(state)] = (1. - self._lr) * mon_prediction + self._lr * mon_target
-            mon_error = 0.5 * (mon_target - mon_prediction) ** 2
-        else:
-            mon_error = np.nan
+        mon_q_next = np.array([
+            [q_mon.get(tuple(next_state), self._init_q_values) for q_mon in q_mdp] for q_mdp in self._mon_q_dict
+        ])
+        mon_target = reward + self._gamma * (1. - mdp_terminated) * mon_q_next.max()
+        mon_prediction = self._mon_q_dict[mdp_action][mon_action].get(tuple(state), self._init_q_values)
+        self._mon_q_dict[mdp_action][mon_action][tuple(state)] = (1. - self._lr) * mon_prediction + self._lr * mon_target
+        mon_error = 0.5 * (mon_target - mon_prediction) ** 2
 
         return mdp_error, mon_error
 
