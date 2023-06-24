@@ -34,21 +34,13 @@ class EpsilonGreedy(Actor):
         self.reset()
 
     def __call__(self, state):
-        state = state[0]
         if np.random.random() < self._eps and self._train:
-            return [np.random.randint(0, self._critic.n_actions), np.random.randint(0, self._critic.n_mon_actions)]
+            return np.random.randint(0, self._critic.n_actions)
         else:
-            q = self._critic(state)
-            encoded_action = q.argmax()
-            if encoded_action % 2 == 0:
-                mon_action = 0
-            else:
-                mon_action = 1
-            decoded_action = encoded_action // self._critic.n_mon_actions
-            return [decoded_action, mon_action]
+            return self._critic(state).argmax()
 
     def update(self):
-        # TODO: _eps should be an object of its own with its decay type, and we just call self._eps.step()
+        # TODO: _eps should be an object of its own with its decay type, and we just call sefl._eps.step()
         self._eps = max(self._eps - self._decay, self._min_eps)
 
     def reset(self):
@@ -62,3 +54,14 @@ class EpsilonGreedy(Actor):
 
     def report(self):
         return self._eps
+
+
+class MonEpsilonGreedy(EpsilonGreedy):
+    def __call__(self, state):
+        if np.random.random() < self._eps and self._train:
+            return {'mdp': np.random.randint(0, self._critic.n_actions),
+                    'monitor': np.random.randint(0, self._critic.n_mon_actions)}
+        else:
+            q = self._critic(state)
+            action = np.unravel_index(np.argmax(q), q.shape)
+            return {'mdp': action[0], 'monitor': action[1]}

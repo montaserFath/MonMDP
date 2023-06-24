@@ -1,14 +1,3 @@
-"""Define handy-dandy general utilities to be reachable across the whole project.
-
-Routine Listings
----------------
-set_rng_seed
-
-get_configs
-
-get_prompts
-"""
-
 import numpy as np
 import random
 from typing import Dict
@@ -20,42 +9,56 @@ import wandb
 
 # https://en.wikipedia.org/wiki/Pairing_function
 def cantor_pairing(x, y):
+    """Cantor pairing function to uniquely encode two natural numbers into a single natural number.
+    Used for seeding.
+
+    Parameters
+    ----------
+    x : int
+    y : int
+
+    Returns
+    -------
+    int
+        Unique integer computed from x and y.
+
+    """
     return int(0.5 * (x + y) * (x + y + 1) + y)
 
 
 def set_rng_seed(seed):
     """Set random number generator seed across modules that possess random/stochastic computations.
 
-     Parameters
-     ----------
-     seed : int
-         Value of the seed.
+    Parameters
+    ----------
+    seed : int
+        Value of the seed.
 
-     Returns
-     -------
-     None
+    Returns
+    -------
+    None
 
-     Notes
-     -----
-     Be careful that the environments rng seed should be fixed in `reset()` method.
+    Notes
+    -----
+    Be careful that the environments seed should be fixed when calling `reset()`.
 
-     """
+    """
     np.random.seed(seed)
     random.seed(seed)
 
 
 def config_parser(path: str) -> Dict:
-    """Read general configurations to execute the runs.
+    """Parse experiment configuration from file.
 
     Parameters
     ----------
     path : str
-        Path to read the configurations from it.
+        Path to the configuration file.
 
     Returns
     -------
     dict
-       Configurations
+       Dictionary with hyperparameters.
 
     """
     with open(path) as f:
@@ -64,29 +67,20 @@ def config_parser(path: str) -> Dict:
 
 
 def arg_parser():
-    """Receive the inputs needed from the user via command prompt.
+    """Parse inputs received via command prompt.
 
     Returns
     -------
     argparse.Namespace
-        parser parameters defined by the user.
+        Parsed parameters defined by the user.
 
     """
     parser = argparse.ArgumentParser(description="Enter your inputs")
     parser.add_argument("--config", default="configs/minigrid_ql.yml", type=str, help="Name of the configs file.")
-    parser.add_argument("--online_wandb", action="store_true", help="Run wandb in online mode.")
+    parser.add_argument("--wandb_mode", type=str, default="online", choices=["online", "offline", "disabled"], help='WandB mode.')
     args = parser.parse_args()
     return args
 
 
-def init_wandb(online_mode=False):
-    if os.path.exists("configs/api_key.wandb"):
-        with open("configs/api_key.wandb", 'r') as f:
-            os.environ["WANDB_API_KEY"] = f.read()
-            if not online_mode:
-                os.environ["WANDB_MODE"] = "offline"
-    else:
-        if not online_mode:
-            os.environ["WANDB_MODE"] = "offline"
-        key = input("Please enter your wandb api key then press enter:")
-        wandb.login(key=key)
+def init_wandb(mode='offline'):
+    os.environ["WANDB_MODE"] = mode

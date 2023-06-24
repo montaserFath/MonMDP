@@ -12,7 +12,6 @@ actor:
   eps_decay: 0.0005
 
 experiment:
-
   training_episodes: 2000
   testing_episodes: 50
   testing_frequency: 10

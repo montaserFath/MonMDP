@@ -22,14 +22,13 @@ class Experiment():
     def train(self):
         wandb.init(
             project='QL demo',
-            mode='online',
         )
 
         set_rng_seed(self._rng_seed)
         self._actor.reset()
         self._critic.reset()
 
-        for ep in tqdm(range(1, 1 + self._training_episodes)):
+        for ep in tqdm(range(self._training_episodes)):
             if ep % self._testing_frequency == 0:
                 self._actor.eval()
                 episode_return = self.test()
@@ -48,11 +47,10 @@ class Experiment():
             while True:
                 steps += 1
                 action = self._actor(obs)
-                next_obs, reward, term, trunc, info = self._env.step(action)
-                if obs[1] == 1:
-                    self._critic.update(obs[0], action, reward[0] + reward[1], term[0], next_obs[0]) # what's the use of term[1]
-                episode_return += reward[0] if reward[0] is not np.NAN else 0
-                if term[0] or trunc[0]:
+                next_obs, reward, term, trunc, _ = self._env.step(action)
+                episode_return += reward
+                episode_loss += self._critic.update(obs, action, reward, term, next_obs)
+                if term or trunc:
                     break
                 obs = next_obs
 
@@ -73,9 +71,79 @@ class Experiment():
             obs, _ = self._env.reset(seed=ep_seed)
             while True:
                 action = self._actor(obs)
+                next_obs, reward, term, trunc, _ = self._env.step(action)
+                episode_returns[ep] += reward
+                if term or trunc:
+                    break
+                obs = next_obs
+        return episode_returns
+
+
+class MonExperiment(Experiment):
+    def train(self):
+        wandb.init(
+            project='QL demo',
+        )
+
+        set_rng_seed(self._rng_seed)
+        self._actor.reset()
+        self._critic.reset()
+
+        for ep in tqdm(range(self._training_episodes)):
+            if ep % self._testing_frequency == 0:
+                self._actor.eval()
+                episode_return = self.test()
+                self._actor.train()
+                wandb.log(
+                    {'test/return': episode_return.mean()},
+                    step=ep,
+                    commit=False
+                )
+
+            ep_seed = cantor_pairing(self._rng_seed, ep)
+            obs, _ = self._env.reset(seed=ep_seed)
+            episode_return = [0., 0.]
+            episode_loss = [0., 0.]
+            steps = 0
+            while True:
+                steps += 1
+                action = self._actor(obs)
+                next_obs, reward, term, trunc, _ = self._env.step(action)
+                if reward['mdp'] is not np.nan:
+                    episode_return[0] += reward['mdp']
+                    episode_return[1] += reward['mdp'] + reward['monitor']
+
+                step_loss = self._critic.update(obs, action, reward, term, next_obs)
+                if step_loss[0] is not np.nan:
+                    episode_loss[0] += step_loss[0]
+                if step_loss[1] is not np.nan:
+                    episode_loss[1] += step_loss[1]
+
+                if term['mdp'] or trunc['mdp']:
+                    break
+                obs = next_obs
+
+            wandb.log(
+                {'train/return': episode_return[0], 'train/loss': episode_loss[0],
+                'train/return_mon': episode_return[1], 'train/loss_mon': episode_loss[1]},
+                step=ep,
+                commit=True
+            )
+            self._actor.update()
+
+        wandb.finish()
+        self._env.close()
+
+    def test(self):
+        episode_returns = np.zeros(self._testing_episodes)
+        for ep in range(self._testing_episodes):
+            ep_seed = cantor_pairing(self._rng_seed, ep)
+            obs, _ = self._env.reset(seed=ep_seed)
+            while True:
+                action = self._actor(obs)
                 next_obs, reward, term, trunc, info = self._env.step(action)
-                episode_returns[ep] += reward[0] if reward[0] is not np.NAN else 0
-                if term[0] or trunc[0]:
+                episode_returns[ep] += info['mdp_reward']
+                if term['mdp'] or trunc['mdp']:
                     break
                 obs = next_obs
         return episode_returns
