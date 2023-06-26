@@ -45,12 +45,12 @@ class Actor(ABC):
 class EpsilonGreedy(Actor):
     def __init__(self, critic, init_eps=1., min_eps=0.1, eps_decay=0.0001):
         self._critic = critic
-        self._eps = LinearEpsilonDecay(init_eps=init_eps, min_eps=min_eps, eps_decay=eps_decay)
+        self._eps = LinearEpsilonDecay(init_eps, min_eps, eps_decay)
         self._train = True
         self.reset()
 
     def __call__(self, state):
-        if np.random.random() < self._eps and self._train:
+        if np.random.random() < self._eps.value and self._train:
             return np.random.randint(0, self._critic.n_actions)
         else:
             return self._critic(state).argmax()
