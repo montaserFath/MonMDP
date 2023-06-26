@@ -29,7 +29,7 @@ class RandomMonitor(gymnasium.Wrapper):
     def reset(self, seed=None, **kwargs):
         self.action_space.seed(seed)
         self.observation_space.seed(seed)
-        mdp_obs, mdp_info = self.env.reset(**kwargs)
+        mdp_obs, mdp_info = self.env.reset(seed=seed, **kwargs)
         self.monitor_state = 0
         return {'mdp': mdp_obs, 'monitor': self.monitor_state}, mdp_info
 
