@@ -3,7 +3,7 @@ import wandb
 
 from src.utils import config_parser, arg_parser
 from src.actor import MonEpsilonGreedy
-from src.critic import MonQDict
+from src.critic import MonQDict, MonQTable
 from src.experiment import MonExperiment
 from src.wrappers import env_wrappers, monitor_wrappers
 
@@ -25,7 +25,7 @@ if __name__ == "__main__":
         critic = MonQDict(env.observation_space, env.action_space, **configs["critic"])
     else:
         env = monitor_wrappers.RandomMonitor(env)
-        raise NotImplementedError
+        critic = MonQTable(env.observation_space, env.action_space, **configs["critic"])
     actor = MonEpsilonGreedy(critic, **configs["actor"])
     experiment = MonExperiment(env, actor, critic, **configs["experiment"])
 

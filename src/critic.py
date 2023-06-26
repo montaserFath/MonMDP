@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 
 class Critic(ABC):
     @abstractmethod
-    def __init__(self, observation_space, action_space, **kwargs):
+    def __init__(self, **kwargs):
         pass
 
     @abstractmethod
@@ -12,7 +12,7 @@ class Critic(ABC):
         pass
 
     @abstractmethod
-    def update(self, *args, **kwargs):
+    def update(self, **kwargs):
         pass
 
     @abstractmethod
@@ -23,18 +23,26 @@ class Critic(ABC):
     def report(self):
         pass
 
+
+
+# Classic MDP
+# ------------------------------------------------------------------------------
+
+class QCritic(Critic):
+    def update(self, state, action, reward, terminated, next_state):
+        q_next = self(next_state)
+        target = reward + self._gamma * (1. - terminated) * q_next.max()
+        prediction = self(state, action)
+        new_value = (1. - self._lr) * prediction + self._lr * target
+        self._update(state, action, new_value)
+        return 0.5 * (target - prediction) ** 2
+
     @property
     def n_actions(self):
         return self._n_actions
 
-    @property
-    def n_mon_actions(self):
-        return self._n_mon_actions
 
-
-### ------- Classic MDP
-
-class QTable(Critic):
+class QTable(QCritic):
     def __init__(self, observation_space, action_space, q0=0., gamma=0.99, lr=0.01):
         self._n_states = observation_space.n
         self._n_actions = action_space.n
@@ -52,14 +60,6 @@ class QTable(Critic):
     def _update(self, state, action, new_value):
         self._q_table[state][action] = new_value
 
-    def update(self, state, action, reward, terminated, next_state):
-        q_next = self(next_state)
-        target = reward + self._gamma * (1. - terminated) * q_next.max()
-        prediction = self(state, action)
-        new_value = (1. - self._lr) * prediction + self._lr * target
-        self._update(state, action, new_value)
-        return 0.5 * (target - prediction) ** 2
-
     def reset(self):
         self._q_table = np.ones((self._n_states, self._n_actions)) * self._q0
 
@@ -67,7 +67,7 @@ class QTable(Critic):
         return self._q_table
 
 
-class QDict(Critic):
+class QDict(QCritic):
     def __init__(self, observation_space, action_space, q0=0., gamma=0.99, lr=0.01):
         self._n_actions = action_space.n
         self._q0 = q0
@@ -86,14 +86,6 @@ class QDict(Critic):
     def _update(self, state, action, new_value):
         self._q_dict[action][tuple(state)] = new_value
 
-    def update(self, state, action, reward, terminated, next_state):
-        q_next = self(next_state)
-        target = reward + self._gamma * (1. - terminated) * q_next.max()
-        prediction = self(state, action)
-        new_value = (1. - self._lr) * prediction + self._lr * target
-        self._update(state, action, new_value)
-        return 0.5 * (target - prediction) ** 2
-
     def reset(self):
         self._q_dict = [dict() for _ in range(self._n_actions)]
 
@@ -102,12 +94,49 @@ class QDict(Critic):
 
 
 
-### ------- Monitored MDP
 
-class MonQTable(Critic):
+
+# Monitored MDP
+# ------------------------------------------------------------------------------
+
+class MonQCritic(Critic):
+    def update(self, state, action, reward, terminated, next_state):
+        if reward['mdp'] is not np.nan:
+            mdp_error = self._mdp_critic.update(
+                state['mdp'], action['mdp'], reward['mdp'], terminated['mdp'], next_state['mdp'])
+        else:
+            mdp_error = np.nan
+
+        if reward['mdp'] is not np.nan:
+            reward = reward['monitor'] + reward['mdp']
+        else:
+            reward = reward['monitor']
+
+        q_next = self(next_state)
+        target = reward + self._gamma * (1. - terminated['mdp']) * q_next.max()
+        prediction = self(state, action)
+        new_value = (1. - self._lr) * prediction + self._lr * target
+        self._update(state, action, new_value)
+        mon_error = 0.5 * (target - prediction) ** 2
+
+        return mdp_error, mon_error
+
+    @property
+    def n_actions(self):
+        return self._n_actions
+
+    @property
+    def n_mon_actions(self):
+        return self._n_mon_actions
+
+
+class MonQTable(MonQCritic):
     def __init__(self, observation_space, action_space, q0=0., gamma=0.99, lr=0.01):
-        self._n_states = observation_space.n
-        self._n_actions = action_space.n
+        self._mdp_critic = QTable(observation_space['mdp'], action_space['mdp'], q0, gamma, lr)
+        self._n_states = observation_space['mdp'].n
+        self._n_actions = action_space['mdp'].n
+        self._n_mon_states = observation_space['monitor'].n
+        self._n_mon_actions = action_space['monitor'].n
         self._q0 = q0
         self._gamma = gamma
         self._lr = lr
@@ -115,29 +144,22 @@ class MonQTable(Critic):
 
     def __call__(self, state, action=None):
         if action is None:
-            return self._q_table[state]
+            return self._q_table[state['mdp']][state['monitor']]
         else:
-            return self._q_table[state][action]
+            return self._q_table[state['mdp']][state['monitor']][action['mdp']][action['monitor']]
 
     def _update(self, state, action, new_value):
-        self._q_table[state][action] = new_value
-
-    def update(self, state, action, reward, terminated, next_state):
-        q_next = self(next_state)
-        target = reward + self._gamma * (1. - terminated) * q_next.max()
-        prediction = self(state, action)
-        new_value = (1. - self._lr) * prediction + self._lr * target
-        self._update(state, action, new_value)
-        return 0.5 * (target - prediction) ** 2
+        self._q_table[state['mdp']][state['monitor']][action['mdp']][action['monitor']] = new_value
 
     def reset(self):
-        self._q_table = np.ones((self._n_states, self._n_actions)) * self._q0
+        self._q_table = np.ones((self._n_states, self._n_mon_states, self._n_actions, self._n_mon_actions)) * self._q0
+        self._mdp_critic.reset()
 
     def report(self):
-        return self._q_table
+        return self._q_table, self._mdp_critic.report()
 
 
-class MonQDict(Critic):
+class MonQDict(MonQCritic):
     def __init__(self, observation_space, action_space, q0=0., gamma=0.99, lr=0.01):
         self._mdp_critic = QDict(observation_space['mdp'], action_space['mdp'], q0, gamma, lr)
         self._n_actions = action_space['mdp'].n
@@ -160,27 +182,6 @@ class MonQDict(Critic):
     def _update(self, state, action, new_value):
         state = np.concatenate((state['mdp'], [state['monitor']]))
         self._q_dict[action['mdp']][action['monitor']][tuple(state)] = new_value
-
-    def update(self, state, action, reward, terminated, next_state):
-        if reward['mdp'] is not np.nan:
-            mdp_error = self._mdp_critic.update(
-                state['mdp'], action['mdp'], reward['mdp'], terminated['mdp'], next_state['mdp'])
-        else:
-            mdp_error = np.nan
-
-        if reward['mdp'] is not np.nan:
-            reward = reward['monitor'] + reward['mdp']
-        else:
-            reward = reward['monitor']
-
-        q_next = self(next_state)
-        target = reward + self._gamma * (1. - terminated['mdp']) * q_next.max()
-        prediction = self(state, action)
-        new_value = (1. - self._lr) * prediction + self._lr * target
-        self._update(state, action, new_value)
-        mon_error = 0.5 * (target - prediction) ** 2
-
-        return mdp_error, mon_error
 
     def reset(self):
         self._q_dict = [[dict() for _ in range(self._n_mon_actions)] for _ in range(self._n_actions)]
