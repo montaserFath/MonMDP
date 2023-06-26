@@ -2,7 +2,7 @@ environment:
   id: "MiniGrid-DoorKey-5x5-v0"
 
 critic:
-  init_q_values: 0
+  q0: 0
   gamma: 0.99
   lr: 0.01
 
