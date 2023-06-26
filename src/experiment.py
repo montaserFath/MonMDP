@@ -20,10 +20,6 @@ class Experiment():
         self._rng_seed = rng_seed
 
     def train(self):
-        wandb.init(
-            project='QL demo',
-        )
-
         set_rng_seed(self._rng_seed)
         self._actor.reset()
         self._critic.reset()
@@ -81,10 +77,6 @@ class Experiment():
 
 class MonExperiment(Experiment):
     def train(self):
-        wandb.init(
-            project='QL demo',
-        )
-
         set_rng_seed(self._rng_seed)
         self._actor.reset()
         self._critic.reset()

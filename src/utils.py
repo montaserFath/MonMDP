@@ -4,7 +4,6 @@ from typing import Dict
 import yaml
 import argparse
 import os
-import wandb
 
 
 # https://en.wikipedia.org/wiki/Pairing_function
@@ -76,11 +75,17 @@ def arg_parser():
 
     """
     parser = argparse.ArgumentParser(description="Enter your inputs")
-    parser.add_argument("--config", default="configs/minigrid_ql.yml", type=str, help="Name of the configs file.")
-    parser.add_argument("--wandb_mode", type=str, default="online", choices=["online", "offline", "disabled"], help='WandB mode.')
+
+    parser.add_argument("--config", default="configs/minigrid_ql.yml",
+        type=str,
+        help="Name of the configs file.")
+
+    parser.add_argument("--wandb_mode",
+        type=str,
+        default=None,
+        choices=["online", "offline", "disabled"],
+        help='WandB mode. If None, WandB will run in whatever mode is currently set.')
+
     args = parser.parse_args()
+
     return args
-
-
-def init_wandb(mode='offline'):
-    os.environ["WANDB_MODE"] = mode
