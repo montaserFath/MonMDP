@@ -24,12 +24,12 @@ class RandomMonitor(gymnasium.Wrapper):
             'mdp': env.observation_space,
             'monitor': spaces.Discrete(2),
         })
-        self.monitor_state = 0 # deactivated
+        self.monitor_state = 0  # deactivated
 
     def reset(self, seed=None, **kwargs):
         self.action_space.seed(seed)
         self.observation_space.seed(seed)
-        mdp_obs, mdp_info = self.env.reset(seed=seed, **kwargs)
+        mdp_obs, mdp_info = self.env.reset(**kwargs)
         self.monitor_state = 0
         return {'mdp': mdp_obs, 'monitor': self.monitor_state}, mdp_info
 
@@ -40,22 +40,23 @@ class RandomMonitor(gymnasium.Wrapper):
         mdp_obs, mdp_reward, mdp_terminated, mdp_truncated, mdp_info = \
             self.env.step(mdp_action)
 
-        if monitor_action == 1: # ask for monitor
-            self.monitor_state = 1 # activate monitor
-            monitor_reward = -0.01 # pay cost
+        if monitor_action == 1:  # ask for monitor
+            self.monitor_state = 1  # activate monitor
+            monitor_reward = -0.01  # pay cost
         elif monitor_action == 0:
             monitor_reward = 0.
         else:
             raise ValueError('illegal monitor action')
 
-        if self.monitor_state == 1: # if monitor is active
-            proxy_reward = mdp_reward # get proxy reward
-        else: # otherwise get undefined
+        if self.monitor_state == 1:  # if monitor is active
+            proxy_reward = mdp_reward  # get proxy reward
+        else:  # otherwise get undefined
             proxy_reward = np.nan
 
         # if monitor is active, there is a 50% chance it turns off
         if self.monitor_state == 1:
-            self.monitor_state = self.observation_space['monitor'].sample() # use obs_space sampling because its seed is already set
+            self.monitor_state = self.observation_space[
+                'monitor'].sample()  # use obs_space sampling because its seed is already set
 
         monitor_obs = self.monitor_state
 
