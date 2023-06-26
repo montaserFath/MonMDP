@@ -2,6 +2,24 @@ import numpy as np
 from abc import ABC, abstractmethod
 
 
+class LinearEpsilonDecay:
+    def __init__(self, init_eps=1., min_eps=0.1, eps_decay=1e-4):
+        self._init_value = init_eps
+        self._min_value = min_eps
+        self._decay = eps_decay
+        self._value = init_eps
+
+    def step(self):
+        self._value = max(self._value - self._decay, self._min_value)
+
+    def reset(self):
+        self._value = self._init_value
+
+    @property
+    def value(self):
+        return self._value
+
+
 class Actor(ABC):
     @abstractmethod
     def __init__(self, critic, **kwargs):
@@ -27,9 +45,7 @@ class Actor(ABC):
 class EpsilonGreedy(Actor):
     def __init__(self, critic, init_eps=1., min_eps=0.1, eps_decay=0.0001):
         self._critic = critic
-        self._decay = eps_decay
-        self._init_eps = init_eps
-        self._min_eps = min_eps
+        self._eps = LinearEpsilonDecay(init_eps=init_eps, min_eps=min_eps, eps_decay=eps_decay)
         self._train = True
         self.reset()
 
@@ -40,11 +56,10 @@ class EpsilonGreedy(Actor):
             return self._critic(state).argmax()
 
     def update(self):
-        # TODO: _eps should be an object of its own with its decay type, and we just call sefl._eps.step()
-        self._eps = max(self._eps - self._decay, self._min_eps)
+        self._eps.step()
 
     def reset(self):
-        self._eps = self._init_eps
+        self._eps.reset()
 
     def eval(self):
         self._train = False
@@ -53,12 +68,12 @@ class EpsilonGreedy(Actor):
         self._train = True
 
     def report(self):
-        return self._eps
+        return self._eps.value
 
 
 class MonEpsilonGreedy(EpsilonGreedy):
     def __call__(self, state):
-        if np.random.random() < self._eps and self._train:
+        if np.random.random() < self._eps.value and self._train:
             return {'mdp': np.random.randint(0, self._critic.n_actions),
                     'monitor': np.random.randint(0, self._critic.n_mon_actions)}
         else:
