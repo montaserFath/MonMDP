@@ -1,6 +1,10 @@
 environment:
   id: "MiniGrid-DoorKey-5x5-v0"
 
+monitor:
+  monitor_reset_prob: 0.5
+  monitor_cost: 0.01
+
 critic:
   q0: 0
   gamma: 0.99

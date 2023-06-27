@@ -22,10 +22,10 @@ if __name__ == "__main__":
     env = gym.make(**configs["environment"])
     if 'MiniGrid' in configs["environment"]["id"]:
         env = env_wrappers.wrap_minigrid(env)
-        env = monitor_wrappers.BinaryMonitor(env)
+        env = monitor_wrappers.BinaryMonitor(env, **configs["monitor"])
         critic = MonQDict(env.observation_space, env.action_space, **configs["critic"])
     else:
-        env = monitor_wrappers.BinaryMonitor(env)
+        env = monitor_wrappers.BinaryMonitor(env, **configs["monitor"])
         critic = MonQTable(env.observation_space, env.action_space, **configs["critic"])
     actor = MonEpsilonGreedy(critic, **configs["actor"])
     experiment = MonExperiment(env, actor, critic, **configs["experiment"])
