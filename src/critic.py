@@ -147,11 +147,7 @@ class MonQTable(MonQCritic):
         if action is None:
             return self._q_table[state['mdp']][state['monitor']]
         else:
-            return max(
-                self._q_table[state['mdp']][state['monitor']][action['mdp']][action['monitor']],
-                self._mdp_critic(state['mdp'], action['mdp'])
-            )
-            # return self._q_table[state['mdp']][state['monitor']][action['mdp']][action['monitor']]
+            return self._q_table[state['mdp']][state['monitor']][action['mdp']][action['monitor']]
 
     def _update(self, state, action, new_value):
         self._q_table[state['mdp']][state['monitor']][action['mdp']][action['monitor']] = new_value
@@ -182,19 +178,10 @@ class MonQDict(MonQCritic):
                 for q_mdp in self._q_dict
             ])
         else:
-            # return self._q_dict[action['mdp']][action['monitor']].get(
-            #     tuple(state_full),
-            #     self._mdp_critic(state['mdp'], action['mdp'])
-            # )
-            return max(
-                self._q_dict[action['mdp']][action['monitor']].get(
-                    tuple(state_full), self._q0),
-                self._mdp_critic(state['mdp'], action['mdp'])
+            return self._q_dict[action['mdp']][action['monitor']].get(
+                tuple(state),
+                self._q0
             )
-            # return self._q_dict[action['mdp']][action['monitor']].get(
-            #     tuple(state),
-            #     self._q0
-            # )
 
     def _update(self, state, action, new_value):
         state = np.concatenate((state['mdp'], [state['monitor']]))
