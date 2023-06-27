@@ -13,7 +13,8 @@ if __name__ == "__main__":
     configs = config_parser(args.config)
 
     wandb.init(
-        project='QL demo',
+        entity="ualberta-bowling",
+        project="QL demo",
         mode=args.wandb_mode,
         config=configs,
     )
