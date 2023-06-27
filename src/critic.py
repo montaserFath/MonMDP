@@ -25,6 +25,7 @@ class Critic(ABC):
 
 
 
+# ------------------------------------------------------------------------------
 # Classic MDP
 # ------------------------------------------------------------------------------
 
@@ -95,7 +96,7 @@ class QDict(QCritic):
 
 
 
-
+# ------------------------------------------------------------------------------
 # Monitored MDP
 # ------------------------------------------------------------------------------
 
@@ -181,18 +182,29 @@ class MonQDict(MonQCritic):
                 for q_mdp in self._q_dict
             ])
         else:
-            return self._q_dict[action['mdp']][action['monitor']].get(
-                tuple(state_full),
+            # return self._q_dict[action['mdp']][action['monitor']].get(
+            #     tuple(state_full),
+            #     self._mdp_critic(state['mdp'], action['mdp'])
+            # )
+            return max(
+                self._q_dict[action['mdp']][action['monitor']].get(
+                    tuple(state_full), self._q0),
                 self._mdp_critic(state['mdp'], action['mdp'])
             )
-            # return self._q_dict[action['mdp']][action['monitor']].get(tuple(state), self._q0)
+            # return self._q_dict[action['mdp']][action['monitor']].get(
+            #     tuple(state),
+            #     self._q0
+            # )
 
     def _update(self, state, action, new_value):
         state = np.concatenate((state['mdp'], [state['monitor']]))
         self._q_dict[action['mdp']][action['monitor']][tuple(state)] = new_value
 
     def reset(self):
-        self._q_dict = [[dict() for _ in range(self._n_mon_actions)] for _ in range(self._n_actions)]
+        self._q_dict = [
+            [dict() for _ in range(self._n_mon_actions)]
+            for _ in range(self._n_actions)
+        ]
         self._mdp_critic.reset()
 
     def report(self):
