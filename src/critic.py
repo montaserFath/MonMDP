@@ -108,6 +108,8 @@ class MonQCritic(Critic):
         if not np.isnan(reward['mdp']):
             if self._r_model is not None:
                 self._r_model.update(state['mdp'], action['mdp'], reward['mdp'])
+        else:
+            if self._r_model is not None:
                 reward['mdp'] = self._r_model(state['mdp'], action['mdp'])
 
         if not np.isnan(reward['mdp']):
