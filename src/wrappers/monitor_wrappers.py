@@ -1,20 +1,57 @@
 import gymnasium
 from gymnasium import spaces
 import numpy as np
+from abc import abstractmethod
 
 
-class RandomMonitor(gymnasium.Wrapper):
+
+class Monitor(gymnasium.Wrapper):
     """
-    Simple monitor where the action is "ask for monitor or not".
-    The monitor state is also binary ("monitor is available or not").
-    The monitor state transition is random.
-    Monitor cost is constant.
+    Generic monitor class.
 
     Args:
         env (gymnasium.Env): the Gymnasium environment.
     """
 
-    def __init__(self, env):
+    @abstractmethod
+    def _monitor_step(self, action, mdp_reward):
+        pass
+
+    def step(self, action):
+        mdp_obs, mdp_reward, mdp_terminated, mdp_truncated, mdp_info = \
+            self.env.step(action['mdp'])
+
+        monitor_obs, proxy_reward, monitor_cost = \
+            self._monitor_step(action, mdp_reward)
+
+        obs = {'mdp': mdp_obs, 'monitor': monitor_obs}
+        reward = {'mdp': proxy_reward, 'monitor': monitor_cost}
+        terminated = mdp_terminated
+        truncated = mdp_truncated
+        info = mdp_info | {'mdp_reward': mdp_reward}
+
+        return obs, reward, terminated, truncated, info
+
+
+
+
+
+class BinaryMonitor(Monitor):
+    """
+    Simple monitor where the action is "ask for monitor or not".
+    The monitor state is also binary ("monitor is available or not").
+    Monitor cost is constant.
+
+    If the agent asks for monitor then it gets to see the true reward at a cost.
+    The monitor can then deactive itself randomly.
+    If the monitor is not active, the true reward cannot be seen.
+
+    Args:
+        env (gymnasium.Env): the Gymnasium environment,
+        monitor_reset_prob (float): probability of the monitor resetting itself.
+    """
+
+    def __init__(self, env, monitor_cost=0.01, monitor_reset_prob=.5):
         gymnasium.Wrapper.__init__(self, env)
         self.action_space = spaces.Dict({
             'mdp': env.action_space,
@@ -25,6 +62,8 @@ class RandomMonitor(gymnasium.Wrapper):
             'monitor': spaces.Discrete(2),
         })
         self.monitor_state = 0  # deactivated
+        self.monitor_reset_prob = monitor_reset_prob
+        self.monitor_cost = monitor_cost
 
     def reset(self, seed=None, **kwargs):
         self.action_space.seed(seed)
@@ -33,37 +72,24 @@ class RandomMonitor(gymnasium.Wrapper):
         self.monitor_state = 0
         return {'mdp': mdp_obs, 'monitor': self.monitor_state}, mdp_info
 
-    def step(self, action):
-        mdp_action = action['mdp']
-        monitor_action = action['monitor']
-
-        mdp_obs, mdp_reward, mdp_terminated, mdp_truncated, mdp_info = \
-            self.env.step(mdp_action)
-
-        if monitor_action == 1:  # ask for monitor
-            self.monitor_state = 1  # activate monitor
-            monitor_reward = -0.01  # pay cost
-        elif monitor_action == 0:
-            monitor_reward = 0.
+    def _monitor_step(self, action, mdp_reward):
+        if action['monitor'] == 1:
+            self.monitor_state = 1
+            monitor_cost = - self.monitor_cost
+        elif action['monitor'] == 0:
+            self.monitor_state = 0.
+            monitor_cost = 0.
         else:
             raise ValueError('illegal monitor action')
 
-        if self.monitor_state == 1:  # if monitor is active
-            proxy_reward = mdp_reward  # get proxy reward
-        else:  # otherwise get undefined
+        if self.monitor_state == 1:
+            proxy_reward = mdp_reward
+        else:
             proxy_reward = np.nan
 
-        # if monitor is active, there is a 50% chance it turns off
         if self.monitor_state == 1:
-            self.monitor_state = self.observation_space[
-                'monitor'].sample()  # use obs_space sampling because its seed is already set
-
+            if np.random.rand() < self.monitor_reset_prob:
+                self.monitor_state = 0
         monitor_obs = self.monitor_state
 
-        obs = {'mdp': mdp_obs, 'monitor': monitor_obs}
-        reward = {'mdp': proxy_reward, 'monitor': monitor_reward}
-        terminated = mdp_terminated
-        truncated = mdp_truncated
-        info = mdp_info | {'mdp_reward': mdp_reward}
-
-        return obs, reward, terminated, truncated, info
+        return monitor_obs, proxy_reward, monitor_cost
