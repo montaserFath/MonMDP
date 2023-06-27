@@ -46,7 +46,7 @@ class QCritic(Critic):
 
 class QTable(QCritic):
     def __init__(self, observation_space, action_space,
-                 q0=0., gamma=0.99, lr=0.01):
+                 q0=0., gamma=0.99, lr=0.01, **kwargs):
         self._n_states = observation_space.n
         self._n_actions = action_space.n
         self._q0 = q0
@@ -72,7 +72,7 @@ class QTable(QCritic):
 
 class QDict(QCritic):
     def __init__(self, observation_space, action_space,
-                 q0=0., gamma=0.99, lr=0.01):
+                 q0=0., gamma=0.99, lr=0.01, **kwargs):
         self._n_actions = action_space.n
         self._q0 = q0
         self._gamma = gamma
@@ -141,7 +141,7 @@ class MonQCritic(Critic):
 
 class MonQTable(MonQCritic):
     def __init__(self, observation_space, action_space,
-                 q0=0., gamma=0.99, lr=0.01, use_reward_model=True):
+                 q0=0., gamma=0.99, lr=0.01, use_reward_model=True, **kwargs):
         self._mdp_critic = QTable(observation_space['mdp'], action_space['mdp'], q0, gamma, lr)
         self._n_states = observation_space['mdp'].n
         self._n_actions = action_space['mdp'].n
@@ -175,7 +175,7 @@ class MonQTable(MonQCritic):
 
 class MonQDict(MonQCritic):
     def __init__(self, observation_space, action_space,
-                 q0=0., gamma=0.99, lr=0.01, use_reward_model=True):
+                 q0=0., gamma=0.99, lr=0.01, use_reward_model=True, **kwargs):
         self._mdp_critic = QDict(observation_space['mdp'], action_space['mdp'], q0, gamma, lr)
         self._n_actions = action_space['mdp'].n
         self._n_mon_actions = action_space['monitor'].n
