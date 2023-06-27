@@ -1,5 +1,6 @@
 import numpy as np
 from abc import ABC, abstractmethod
+from src.reward import RTable, RDict
 
 
 class Critic(ABC):
@@ -44,7 +45,8 @@ class QCritic(Critic):
 
 
 class QTable(QCritic):
-    def __init__(self, observation_space, action_space, q0=0., gamma=0.99, lr=0.01):
+    def __init__(self, observation_space, action_space,
+                 q0=0., gamma=0.99, lr=0.01):
         self._n_states = observation_space.n
         self._n_actions = action_space.n
         self._q0 = q0
@@ -69,7 +71,8 @@ class QTable(QCritic):
 
 
 class QDict(QCritic):
-    def __init__(self, observation_space, action_space, q0=0., gamma=0.99, lr=0.01):
+    def __init__(self, observation_space, action_space,
+                 q0=0., gamma=0.99, lr=0.01):
         self._n_actions = action_space.n
         self._q0 = q0
         self._gamma = gamma
@@ -103,6 +106,11 @@ class QDict(QCritic):
 class MonQCritic(Critic):
     def update(self, state, action, reward, terminated, next_state):
         if not np.isnan(reward['mdp']):
+            if self._r_model is not None:
+                self._r_model.update(state['mdp'], action['mdp'], reward['mdp'])
+                reward['mdp'] = self._r_model(state['mdp'], action['mdp'])
+
+        if not np.isnan(reward['mdp']):
             mdp_error = self._mdp_critic.update(
                 state['mdp'], action['mdp'], reward['mdp'], terminated, next_state['mdp'])
         else:
@@ -132,7 +140,8 @@ class MonQCritic(Critic):
 
 
 class MonQTable(MonQCritic):
-    def __init__(self, observation_space, action_space, q0=0., gamma=0.99, lr=0.01):
+    def __init__(self, observation_space, action_space,
+                 q0=0., gamma=0.99, lr=0.01, use_reward_model=True):
         self._mdp_critic = QTable(observation_space['mdp'], action_space['mdp'], q0, gamma, lr)
         self._n_states = observation_space['mdp'].n
         self._n_actions = action_space['mdp'].n
@@ -141,6 +150,10 @@ class MonQTable(MonQCritic):
         self._q0 = q0
         self._gamma = gamma
         self._lr = lr
+        if use_reward_model:
+            self._r_model = RTable(observation_space['mdp'], action_space['mdp'], q0, lr)
+        else:
+            self._r_model = None
         self.reset()
 
     def __call__(self, state, action=None):
@@ -161,13 +174,19 @@ class MonQTable(MonQCritic):
 
 
 class MonQDict(MonQCritic):
-    def __init__(self, observation_space, action_space, q0=0., gamma=0.99, lr=0.01):
+    def __init__(self, observation_space, action_space,
+                 q0=0., gamma=0.99, lr=0.01, use_reward_model=True):
         self._mdp_critic = QDict(observation_space['mdp'], action_space['mdp'], q0, gamma, lr)
         self._n_actions = action_space['mdp'].n
         self._n_mon_actions = action_space['monitor'].n
         self._q0 = q0
         self._gamma = gamma
         self._lr = lr
+        if use_reward_model:
+            self._r_model = RDict(observation_space['mdp'], action_space['mdp'], q0, lr)
+        else:
+            self._r_model = None
+        self.reset()
 
     def __call__(self, state, action=None):
         state_full = np.concatenate((state['mdp'], [state['monitor']]))

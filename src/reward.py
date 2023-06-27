@@ -63,7 +63,7 @@ class RDict(Reward):
         self._lr = lr
         self.reset()
 
-    def __call__(self, state):
+    def __call__(self, state, action):
         return self._r_dict[action].get(tuple(state), self._r0)
 
     def _update(self, state, action, new_value):
