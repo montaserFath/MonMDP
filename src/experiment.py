@@ -30,7 +30,9 @@ class Experiment():
                 episode_return = self.test()
                 self._actor.train()
                 wandb.log(
-                    {'test/return': episode_return.mean()},
+                    {
+                        'test/return_true': np.nanmean(episode_return)
+                    },
                     step=ep,
                     commit=False
                 )
@@ -39,9 +41,7 @@ class Experiment():
             obs, _ = self._env.reset(seed=ep_seed)
             episode_return = 0.
             episode_loss = 0.
-            steps = 0
             while True:
-                steps += 1
                 action = self._actor(obs)
                 next_obs, reward, term, trunc, _ = self._env.step(action)
                 episode_return += reward
@@ -51,7 +51,10 @@ class Experiment():
                 obs = next_obs
 
             wandb.log(
-                {'train/return': episode_return, 'train/loss': episode_loss},
+                {
+                    'train/return_true': episode_return,
+                    'train/loss': episode_loss
+                },
                 step=ep,
                 commit=True
             )
@@ -75,6 +78,8 @@ class Experiment():
         return episode_returns
 
 
+
+
 class MonExperiment(Experiment):
     def train(self):
         set_rng_seed(self._rng_seed)
@@ -84,27 +89,33 @@ class MonExperiment(Experiment):
         for ep in tqdm(range(self._training_episodes)):
             if ep % self._testing_frequency == 0:
                 self._actor.eval()
-                episode_return = self.test()
+                episode_returns_true, episode_returns_proxy, episode_returns_cost = self.test()
                 self._actor.train()
                 wandb.log(
-                    {'test/return': episode_return.mean()},
+                    {
+                        'test/return_true': np.nanmean(episode_returns_true),
+                        'test/return_proxy': np.nanmean(episode_returns_proxy),
+                        'test/return_cost': np.nanmean(episode_returns_cost)
+                    },
                     step=ep,
                     commit=False
                 )
 
             ep_seed = cantor_pairing(self._rng_seed, ep)
             obs, _ = self._env.reset(seed=ep_seed)
-            episode_return = [0., 0.]
+            episode_return_true = 0.
+            episode_return_proxy = 0.
+            episode_return_cost = 0.
             episode_loss = [0., 0.]
-            steps = 0
+            reward_seen = False
             while True:
-                steps += 1
                 action = self._actor(obs)
-                next_obs, reward, term, trunc, _ = self._env.step(action)
+                next_obs, reward, term, trunc, info = self._env.step(action)
+                episode_return_true += info['mdp_reward']
+                episode_return_cost += reward['monitor']
                 if reward['mdp'] is not np.nan:
-                    episode_return[0] += reward['mdp']
-                    episode_return[1] += reward['mdp']
-                episode_return[1] += reward['monitor']
+                    reward_seen = True
+                    episode_return_proxy += reward['mdp']
 
                 step_loss = self._critic.update(obs, action, reward, term, next_obs)
                 if step_loss[0] is not np.nan:
@@ -112,13 +123,20 @@ class MonExperiment(Experiment):
                 if step_loss[1] is not np.nan:
                     episode_loss[1] += step_loss[1]
 
-                if term['mdp'] or trunc['mdp']:
+                if term or trunc:
+                    if not reward_seen:
+                        episode_return_proxy = []
                     break
                 obs = next_obs
 
             wandb.log(
-                {'train/return': episode_return[0], 'train/loss': episode_loss[0],
-                'train/return_mon': episode_return[1], 'train/loss_mon': episode_loss[1]},
+                {
+                    'train/return_true': episode_return_true,
+                    'train/return_proxy': episode_return_proxy,
+                    'train/return_cost': episode_return_cost,
+                    'train/loss': episode_loss[0],
+                    'train/loss_mon': episode_loss[1]
+                },
                 step=ep,
                 commit=True
             )
@@ -128,15 +146,25 @@ class MonExperiment(Experiment):
         self._env.close()
 
     def test(self):
-        episode_returns = np.zeros(self._testing_episodes)
+        episode_returns_true = np.zeros(self._testing_episodes)
+        episode_returns_proxy = np.zeros(self._testing_episodes)
+        episode_returns_cost = np.zeros(self._testing_episodes)
         for ep in range(self._testing_episodes):
+            reward_seen = False
             ep_seed = cantor_pairing(self._rng_seed, ep)
             obs, _ = self._env.reset(seed=ep_seed)
             while True:
                 action = self._actor(obs)
                 next_obs, reward, term, trunc, info = self._env.step(action)
-                episode_returns[ep] += info['mdp_reward']
-                if term['mdp'] or trunc['mdp']:
+                episode_returns_true[ep] += info['mdp_reward']
+                episode_returns_cost[ep] += reward['monitor']
+                if reward['mdp'] is not np.nan:
+                    reward_seen = True
+                    episode_returns_proxy[ep] += reward['mdp']
+                if term or trunc:
+                    if not reward_seen:
+                        episode_returns_proxy[ep] = np.nan
                     break
+
                 obs = next_obs
-        return episode_returns
+        return episode_returns_true, episode_returns_proxy, episode_returns_cost

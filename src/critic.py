@@ -104,7 +104,7 @@ class MonQCritic(Critic):
     def update(self, state, action, reward, terminated, next_state):
         if reward['mdp'] is not np.nan:
             mdp_error = self._mdp_critic.update(
-                state['mdp'], action['mdp'], reward['mdp'], terminated['mdp'], next_state['mdp'])
+                state['mdp'], action['mdp'], reward['mdp'], terminated, next_state['mdp'])
         else:
             mdp_error = np.nan
 
@@ -114,7 +114,7 @@ class MonQCritic(Critic):
             reward = reward['monitor']
 
         q_next = self(next_state)
-        target = reward + self._gamma * (1. - terminated['mdp']) * q_next.max()
+        target = reward + self._gamma * (1. - terminated) * q_next.max()
         prediction = self(state, action)
         new_value = (1. - self._lr) * prediction + self._lr * target
         self._update(state, action, new_value)

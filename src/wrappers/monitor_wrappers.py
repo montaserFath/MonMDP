@@ -60,13 +60,10 @@ class RandomMonitor(gymnasium.Wrapper):
 
         monitor_obs = self.monitor_state
 
-        monitor_terminated = False
-        monitor_truncated = False
-
         obs = {'mdp': mdp_obs, 'monitor': monitor_obs}
         reward = {'mdp': proxy_reward, 'monitor': monitor_reward}
-        terminated = {'mdp': mdp_terminated, 'monitor': monitor_terminated}
-        truncated = {'mdp': mdp_truncated, 'monitor': monitor_truncated}
+        terminated = mdp_terminated
+        truncated = mdp_truncated
         info = mdp_info | {'mdp_reward': mdp_reward}
 
         return obs, reward, terminated, truncated, info
