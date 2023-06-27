@@ -53,7 +53,7 @@ class Experiment():
             wandb.log(
                 {
                     'train/return_true': episode_return,
-                    'train/loss': episode_loss
+                    'train/loss_mdp': episode_loss
                 },
                 step=ep,
                 commit=True
@@ -109,7 +109,8 @@ class MonExperiment(Experiment):
             episode_return_true = 0.
             episode_return_proxy = 0.
             episode_return_cost = 0.
-            episode_loss = [0., 0.]
+            episode_loss_mdp = 0.
+            episode_loss_mon = 0.
             reward_seen = False
             while True:
                 action = self._actor(obs)
@@ -120,11 +121,12 @@ class MonExperiment(Experiment):
                     reward_seen = True
                     episode_return_proxy += reward['mdp']
 
-                step_loss = self._critic.update(obs, action, reward, term, next_obs)
-                if not np.isnan(step_loss[0]):
-                    episode_loss[0] += step_loss[0]
-                if not np.isnan(step_loss[1]):
-                    episode_loss[1] += step_loss[1]
+                step_loss_mdp, step_loss_mon = \
+                    self._critic.update(obs, action, reward, term, next_obs)
+                if not np.isnan(step_loss_mdp):
+                    episode_loss_mdp += step_loss_mdp
+                if not np.isnan(step_loss_mon):
+                    episode_loss_mon += step_loss_mon
 
                 if term or trunc:
                     if not reward_seen:
@@ -137,8 +139,8 @@ class MonExperiment(Experiment):
                     'train/return_true': episode_return_true,
                     'train/return_proxy': episode_return_proxy,
                     'train/return_cost': episode_return_cost,
-                    'train/loss': episode_loss[0],
-                    'train/loss_mon': episode_loss[1]
+                    'train/loss_mdp': episode_loss_mdp,
+                    'train/loss_mon': episode_loss_mon
                 },
                 step=ep,
                 commit=True
