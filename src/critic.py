@@ -102,13 +102,13 @@ class QDict(QCritic):
 
 class MonQCritic(Critic):
     def update(self, state, action, reward, terminated, next_state):
-        if reward['mdp'] is not np.nan:
+        if not np.isnan(reward['mdp']):
             mdp_error = self._mdp_critic.update(
                 state['mdp'], action['mdp'], reward['mdp'], terminated, next_state['mdp'])
         else:
             mdp_error = np.nan
 
-        if reward['mdp'] is not np.nan:
+        if not np.isnan(reward['mdp']):
             reward = reward['monitor'] + reward['mdp']
         else:
             reward = reward['monitor']
