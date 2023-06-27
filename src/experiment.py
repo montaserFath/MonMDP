@@ -64,18 +64,18 @@ class Experiment():
         self._env.close()
 
     def test(self):
-        episode_returns = np.zeros(self._testing_episodes)
+        episode_return = np.zeros(self._testing_episodes)
         for ep in range(self._testing_episodes):
             ep_seed = cantor_pairing(self._rng_seed, ep)
             obs, _ = self._env.reset(seed=ep_seed)
             while True:
                 action = self._actor(obs)
                 next_obs, reward, term, trunc, _ = self._env.step(action)
-                episode_returns[ep] += reward
+                episode_return[ep] += reward
                 if term or trunc:
                     break
                 obs = next_obs
-        return episode_returns
+        return episode_return
 
 
 
@@ -89,18 +89,16 @@ class MonExperiment(Experiment):
         for ep in tqdm(range(self._training_episodes)):
             if ep % self._testing_frequency == 0:
                 self._actor.eval()
-                episode_returns_true, episode_returns_proxy, episode_returns_cost = self.test()
-                episode_returns_true = episode_returns_true.mean()
-                episode_returns_proxy = np.nanmean(episode_returns_proxy)
-                episode_returns_cost = episode_returns_cost.mean()
-                if np.isnan(episode_returns_proxy):
-                    episode_returns_proxy = []
+                episode_return_true, episode_return_proxy, episode_return_cost = self.test()
+                episode_return_true = episode_return_true.mean()
+                episode_return_proxy = np.nanmean(episode_return_proxy)
+                episode_return_cost = episode_return_cost.mean()
                 self._actor.train()
                 wandb.log(
                     {
-                        'test/return_true': episode_returns_true,
-                        'test/return_proxy': episode_returns_proxy,
-                        'test/return_cost': episode_returns_cost
+                        'test/return_true': episode_return_true,
+                        'test/return_proxy': episode_return_proxy,
+                        'test/return_cost': episode_return_cost
                     },
                     step=ep,
                     commit=False
@@ -130,7 +128,7 @@ class MonExperiment(Experiment):
 
                 if term or trunc:
                     if not reward_seen:
-                        episode_return_proxy = []
+                        episode_return_proxy = np.nan
                     break
                 obs = next_obs
 
@@ -151,9 +149,9 @@ class MonExperiment(Experiment):
         self._env.close()
 
     def test(self):
-        episode_returns_true = np.zeros(self._testing_episodes)
-        episode_returns_proxy = np.zeros(self._testing_episodes)
-        episode_returns_cost = np.zeros(self._testing_episodes)
+        episode_return_true = np.zeros(self._testing_episodes)
+        episode_return_proxy = np.zeros(self._testing_episodes)
+        episode_return_cost = np.zeros(self._testing_episodes)
         for ep in range(self._testing_episodes):
             reward_seen = False
             ep_seed = cantor_pairing(self._rng_seed, ep)
@@ -161,15 +159,15 @@ class MonExperiment(Experiment):
             while True:
                 action = self._actor(obs)
                 next_obs, reward, term, trunc, info = self._env.step(action)
-                episode_returns_true[ep] += info['mdp_reward']
-                episode_returns_cost[ep] += reward['monitor']
+                episode_return_true[ep] += info['mdp_reward']
+                episode_return_cost[ep] += reward['monitor']
                 if not np.isnan(reward['mdp']):
                     reward_seen = True
-                    episode_returns_proxy[ep] += reward['mdp']
+                    episode_return_proxy[ep] += reward['mdp']
                 if term or trunc:
                     if not reward_seen:
-                        episode_returns_proxy[ep] = np.nan
+                        episode_return_proxy[ep] = np.nan
                     break
                 obs = next_obs
 
-        return episode_returns_true, episode_returns_proxy, episode_returns_cost
+        return episode_return_true, episode_return_proxy, episode_return_cost
