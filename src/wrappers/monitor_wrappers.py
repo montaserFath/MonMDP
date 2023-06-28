@@ -11,8 +11,8 @@ class Monitor(gymnasium.Wrapper):
 
     Args:
         env (gymnasium.Env): the Gymnasium environment.
-    """
 
+    """
     @abstractmethod
     def _monitor_step(self, action, mdp_reward):
         pass
@@ -43,6 +43,7 @@ class FullMonitor(Monitor):
     Args:
         env (gymnasium.Env): the Gymnasium environment,
         monitor_reset_prob (float): probability of the monitor resetting itself.
+
     """
     def __init__(self, env, **kwargs):
         gymnasium.Wrapper.__init__(self, env)
@@ -82,9 +83,10 @@ class BinaryMonitor(Monitor):
 
     Args:
         env (gymnasium.Env): the Gymnasium environment,
-        monitor_reset_prob (float): probability of the monitor resetting itself.
-    """
+        monitor_reset_prob (float): probability of the monitor resetting itself,
+        monitor_cost (float): cost for monitor request.
 
+    """
     def __init__(self, env, monitor_cost=0.01, monitor_reset_prob=.5, **kwargs):
         gymnasium.Wrapper.__init__(self, env)
         self.action_space = spaces.Dict({
