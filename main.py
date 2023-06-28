@@ -1,5 +1,7 @@
 import gymnasium as gym
 import wandb
+import hydra
+from omegaconf import DictConfig, OmegaConf
 
 from src.utils import config_parser, arg_parser
 from src.actor import EpsilonGreedy
@@ -8,25 +10,30 @@ from src.experiment import Experiment
 from src.wrappers import env_wrappers
 
 
+@hydra.main(version_base=None)
+def run(cfg : DictConfig) -> None:
+    env = gym.make(**cfg["environment"])
+    if 'MiniGrid' in cfg["environment"]["id"]:
+        env = env_wrappers.wrap_minigrid(env)
+        critic = QDict(env.observation_space, env.action_space, **cfg["critic"])
+    else:
+        critic = QTable(env.observation_space, env.action_space, **cfg["critic"])
+    actor = EpsilonGreedy(critic, **cfg["actor"])
+    experiment = Experiment(env, actor, critic, **cfg["experiment"])
+
+    experiment.train()
+
+
 if __name__ == "__main__":
     args = arg_parser()
-    configs = config_parser(args.config)
+    cfg = config_parser(args.config)
 
     wandb.init(
         entity="ualberta-bowling",
         project="QL demo",
         group=configs["environment"]["id"],
         mode=args.wandb_mode,
-        config=configs,
+        config=cfg,
     )
 
-    env = gym.make(**configs["environment"])
-    if 'MiniGrid' in configs["environment"]["id"]:
-        env = env_wrappers.wrap_minigrid(env)
-        critic = QDict(env.observation_space, env.action_space, **configs["critic"])
-    else:
-        critic = QTable(env.observation_space, env.action_space, **configs["critic"])
-    actor = EpsilonGreedy(critic, **configs["actor"])
-    experiment = Experiment(env, actor, critic, **configs["experiment"])
-
-    experiment.train()
+    run(cfg)
