@@ -21,16 +21,18 @@ def run(cfg : DictConfig) -> None:
 
     if 'MiniGrid' in cfg["exp"]["environment"]["id"]:
         env = env_wrappers.wrap_minigrid(env)
-        env = monitor_wrappers.BinaryMonitor(env, **configs["exp"]["monitor"])
-        critic = MonQDict(env.observation_space, env.action_space, **configs["exp"]["critic"])
+        env = monitor_wrappers.BinaryMonitor(env, **cfg["exp"]["monitor"])
+        print(env.monitor_reset_prob, env.monitor_cost)
+        return
+        critic = MonQDict(env.observation_space, env.action_space, **cfg["exp"]["critic"])
 
     else:
-        env = monitor_wrappers.BinaryMonitor(env, **configs["exp"]["monitor"])
-        critic = MonQTable(env.observation_space, env.action_space, **configs["exp"]["critic"])
+        env = monitor_wrappers.BinaryMonitor(env, **cfg["exp"]["monitor"])
+        critic = MonQTable(env.observation_space, env.action_space, **cfg["exp"]["critic"])
 
-    actor = MonEpsilonGreedy(critic, **configs["exp"]["actor"])
+    actor = MonEpsilonGreedy(critic, **cfg["exp"]["actor"])
 
-    experiment = MonExperiment(env, actor, critic, **configs["exp"]["experiment"])
+    experiment = MonExperiment(env, actor, critic, **cfg["exp"]["experiment"])
 
     experiment.train()
 
