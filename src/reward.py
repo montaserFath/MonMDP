@@ -36,7 +36,7 @@ class Reward(ABC):
 
 
 class RTable(Reward):
-    def __init__(self, observation_space, action_space, r0=0., lr=0.01):
+    def __init__(self, observation_space, action_space, r0=0., lr=0.01, **kwargs):
         self._n_states = observation_space.n
         self._n_actions = action_space.n
         self._r0 = r0
@@ -57,7 +57,7 @@ class RTable(Reward):
 
 
 class RDict(Reward):
-    def __init__(self, observation_space, action_space, r0=0., lr=0.01):
+    def __init__(self, observation_space, action_space, r0=0., lr=0.01, **kwargs):
         self._n_actions = action_space.n
         self._r0 = r0
         self._lr = lr

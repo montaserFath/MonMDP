@@ -10,6 +10,9 @@ critic:
   gamma: 0.99
   lr: 0.01
   use_reward_model: True
+  reward_model:
+    r0: 0
+    lr: 1.
 
 actor:
   init_eps: 1.

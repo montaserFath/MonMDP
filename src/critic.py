@@ -64,7 +64,8 @@ class QTable(QCritic):
         self._q_table[state][action] = new_value
 
     def reset(self):
-        self._q_table = np.ones((self._n_states, self._n_actions)) * self._q0
+        shp = (self._n_states, self._n_actions)
+        self._q_table = np.ones(shp) * self._q0
 
     def report(self):
         return self._q_table
@@ -114,7 +115,8 @@ class MonQCritic(Critic):
 
         if not np.isnan(reward['mdp']):
             mdp_error = self._mdp_critic.update(
-                state['mdp'], action['mdp'], reward['mdp'], terminated, next_state['mdp'])
+                state['mdp'], action['mdp'], reward['mdp'], terminated, next_state['mdp']
+            )
         else:
             mdp_error = np.nan
 
@@ -144,7 +146,11 @@ class MonQCritic(Critic):
 class MonQTable(MonQCritic):
     def __init__(self, observation_space, action_space,
                  q0=0., gamma=0.99, lr=0.01, use_reward_model=True, **kwargs):
-        self._mdp_critic = QTable(observation_space['mdp'], action_space['mdp'], q0, gamma, lr)
+        self._mdp_critic = QTable(
+            observation_space['mdp'],
+            action_space['mdp'],
+            q0, gamma, lr
+        )
         self._n_states = observation_space['mdp'].n
         self._n_actions = action_space['mdp'].n
         self._n_mon_states = observation_space['monitor'].n
@@ -153,7 +159,11 @@ class MonQTable(MonQCritic):
         self._gamma = gamma
         self._lr = lr
         if use_reward_model:
-            self._r_model = RTable(observation_space['mdp'], action_space['mdp'], q0, lr)
+            self._r_model = RTable(
+                observation_space['mdp'],
+                action_space['mdp'],
+                **kwargs['reward_model']
+            )
         else:
             self._r_model = None
         self.reset()
@@ -168,7 +178,8 @@ class MonQTable(MonQCritic):
         self._q_table[state['mdp']][state['monitor']][action['mdp']][action['monitor']] = new_value
 
     def reset(self):
-        self._q_table = np.ones((self._n_states, self._n_mon_states, self._n_actions, self._n_mon_actions)) * self._q0
+        shp = (self._n_states, self._n_mon_states, self._n_actions, self._n_mon_actions)
+        self._q_table = np.ones(shp) * self._q0
         self._mdp_critic.reset()
 
     def report(self):
@@ -178,14 +189,22 @@ class MonQTable(MonQCritic):
 class MonQDict(MonQCritic):
     def __init__(self, observation_space, action_space,
                  q0=0., gamma=0.99, lr=0.01, use_reward_model=True, **kwargs):
-        self._mdp_critic = QDict(observation_space['mdp'], action_space['mdp'], q0, gamma, lr)
+        self._mdp_critic = QDict(
+            observation_space['mdp'],
+            action_space['mdp'],
+            q0, gamma, lr
+        )
         self._n_actions = action_space['mdp'].n
         self._n_mon_actions = action_space['monitor'].n
         self._q0 = q0
         self._gamma = gamma
         self._lr = lr
         if use_reward_model:
-            self._r_model = RDict(observation_space['mdp'], action_space['mdp'], q0, lr)
+            self._r_model = RDict(
+                observation_space['mdp'],
+                action_space['mdp'],
+                **kwargs['reward_model']
+            )
         else:
             self._r_model = None
         self.reset()
