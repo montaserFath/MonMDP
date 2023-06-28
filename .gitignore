@@ -4,4 +4,4 @@
 *.tar
 outputs/
 wandb/
-configs/api_key.wandb
+multirun/
