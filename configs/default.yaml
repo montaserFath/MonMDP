@@ -1,16 +1,24 @@
 defaults:
-  - exp: taxi_ql
+  - environment: taxi
+  - agent: q_learning
+  - monitor: binary
   - _self_
 
 wandb:
-  mode: "offline"
+  mode: "disabled"
   entity: "ualberta-bowling"
   project: "mmdp simone"
+
+experiment:
+  training_episodes: 20000
+  testing_episodes: 50
+  testing_frequency: 10
+  rng_seed: 1
 
 hydra:
   sweeper:
     params:
-      exp.experiment.rng_seed: range(0, 5)
-      exp.critic.lr: 0.001, 0.01, 0.5, 1.
-      exp.critic.q0: 0., 1., 10., 50.
-      exp.actor.eps_decay: 0.01, 0.001, 0.0001, 0.00001
+      experiment.rng_seed: range(0, 5)
+      agent.critic.lr: 0.001, 0.01, 0.5, 1.
+      agent.critic.q0: 0., 1., 10., 50.
+      agent.actor.eps_decay: 0.01, 0.001, 0.0001, 0.00001

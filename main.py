@@ -12,23 +12,23 @@ from src.wrappers import env_wrappers
 @hydra.main(version_base=None, config_path="configs", config_name="default")
 def run(cfg : DictConfig) -> None:
     wandb.init(
-        group=cfg["exp"]["environment"]["id"],
-        config=cfg["exp"],
+        group=cfg["environment"]["id"],
+        config=cfg,
         **cfg["wandb"],
     )
 
-    env = gym.make(**cfg["exp"]["environment"])
+    env = gym.make(**cfg["environment"])
 
-    if 'MiniGrid' in cfg["exp"]["environment"]["id"]:
+    if 'MiniGrid' in cfg["environment"]["id"]:
         env = env_wrappers.wrap_minigrid(env)
-        critic = QDict(env.observation_space, env.action_space, **cfg["exp"]["critic"])
+        critic = QDict(env.observation_space, env.action_space, **cfg["agent"]["critic"])
 
     else:
-        critic = QTable(env.observation_space, env.action_space, **cfg["exp"]["critic"])
+        critic = QTable(env.observation_space, env.action_space, **cfg["agent"]["critic"])
 
-    actor = EpsilonGreedy(critic, **cfg["exp"]["actor"])
+    actor = EpsilonGreedy(critic, **cfg["agent"]["actor"])
 
-    experiment = Experiment(env, actor, critic, **cfg["exp"]["experiment"])
+    experiment = Experiment(env, actor, critic, **cfg["experiment"])
 
     experiment.train()
 

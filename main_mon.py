@@ -12,25 +12,25 @@ from src.wrappers import env_wrappers, monitor_wrappers
 @hydra.main(version_base=None, config_path="configs", config_name="default")
 def run(cfg : DictConfig) -> None:
     wandb.init(
-        group=cfg["exp"]["environment"]["id"],
-        config=cfg["exp"],
+        group=cfg["environment"]["id"],
+        config=cfg,
         **cfg["wandb"],
     )
 
-    env = gym.make(**cfg["exp"]["environment"])
+    env = gym.make(**cfg["environment"])
 
-    if 'MiniGrid' in cfg["exp"]["environment"]["id"]:
+    if 'MiniGrid' in cfg["environment"]["id"]:
         env = env_wrappers.wrap_minigrid(env)
-        env = monitor_wrappers.BinaryMonitor(env, **cfg["exp"]["monitor"])
-        critic = MonQDict(env.observation_space, env.action_space, **cfg["exp"]["critic"])
+        env = getattr(monitor_wrappers, cfg["monitor"]["id"])(env, **cfg["monitor"])
+        critic = MonQDict(env.observation_space, env.action_space, **cfg["agent"]["critic"])
 
     else:
-        env = monitor_wrappers.BinaryMonitor(env, **cfg["exp"]["monitor"])
-        critic = MonQTable(env.observation_space, env.action_space, **cfg["exp"]["critic"])
+        env = getattr(monitor_wrappers, cfg["monitor"]["id"])(env, **cfg["monitor"])
+        critic = MonQTable(env.observation_space, env.action_space, **cfg["agent"]["critic"])
 
-    actor = MonEpsilonGreedy(critic, **cfg["exp"]["actor"])
+    actor = MonEpsilonGreedy(critic, **cfg["agent"]["actor"])
 
-    experiment = MonExperiment(env, actor, critic, **cfg["exp"]["experiment"])
+    experiment = MonExperiment(env, actor, critic, **cfg["experiment"])
 
     experiment.train()
 
