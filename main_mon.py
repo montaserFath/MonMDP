@@ -14,8 +14,8 @@ if __name__ == "__main__":
 
     wandb.init(
         entity="ualberta-bowling",
-        project="QL demo",
         group=configs["environment"]["id"],
+        project="monitor parisi",
         mode=args.wandb_mode,
         config=configs,
     )

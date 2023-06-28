@@ -3,15 +3,25 @@ import wandb
 import hydra
 from omegaconf import DictConfig, OmegaConf
 
-from src.utils import config_parser, arg_parser
 from src.actor import EpsilonGreedy
 from src.critic import QTable, QDict
 from src.experiment import Experiment
 from src.wrappers import env_wrappers
 
 
-@hydra.main(version_base=None)
-def run(cfg : DictConfig) -> None:
+@hydra.main(version_base=None, config_path="configs", config_name="taxi_ql")
+def run(cfg : DictConfig, wandb_mode : str = None) -> None:
+    # wandb.init(
+    #     entity="ualberta-bowling",
+    #     group=cfg["environment"]["id"],
+    #     project="monitor parisi",
+    #     mode=args.wandb_mode,
+    #     config=cfg,
+    # )
+
+    print(wandb_mode)
+    return
+
     env = gym.make(**cfg["environment"])
     if 'MiniGrid' in cfg["environment"]["id"]:
         env = env_wrappers.wrap_minigrid(env)
@@ -25,15 +35,4 @@ def run(cfg : DictConfig) -> None:
 
 
 if __name__ == "__main__":
-    args = arg_parser()
-    cfg = config_parser(args.config)
-
-    wandb.init(
-        entity="ualberta-bowling",
-        project="QL demo",
-        group=configs["environment"]["id"],
-        mode=args.wandb_mode,
-        config=cfg,
-    )
-
-    run(cfg)
+    run()
