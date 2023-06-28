@@ -34,6 +34,40 @@ class Monitor(gymnasium.Wrapper):
 
 
 
+class FullMonitor(Monitor):
+    """
+    Monitor always shows the true reward without any cost, regardless of states
+    and actions.
+    This is equivalent to a classic MDP.
+
+    Args:
+        env (gymnasium.Env): the Gymnasium environment,
+        monitor_reset_prob (float): probability of the monitor resetting itself.
+    """
+    def __init__(self, env, **kwargs):
+        gymnasium.Wrapper.__init__(self, env)
+        self.action_space = spaces.Dict({
+            'mdp': env.action_space,
+            'monitor': spaces.Discrete(1),
+        })
+        self.observation_space = spaces.Dict({
+            'mdp': env.observation_space,
+            'monitor': spaces.Discrete(1),
+        })
+
+    def reset(self, seed=None, **kwargs):
+        self.action_space.seed(seed)
+        self.observation_space.seed(seed)
+        mdp_obs, mdp_info = self.env.reset(seed=seed, **kwargs)
+        monitor_obs = 0  # default monitor state, always active
+        return {'mdp': mdp_obs, 'monitor': monitor_obs}, mdp_info
+
+    def _monitor_step(self, action, mdp_reward):
+        monitor_cost = 0.
+        proxy_reward = mdp_reward
+        monitor_obs = 0
+        return monitor_obs, proxy_reward, monitor_cost
+
 
 
 class BinaryMonitor(Monitor):
@@ -51,7 +85,7 @@ class BinaryMonitor(Monitor):
         monitor_reset_prob (float): probability of the monitor resetting itself.
     """
 
-    def __init__(self, env, monitor_cost=0.01, monitor_reset_prob=.5):
+    def __init__(self, env, monitor_cost=0.01, monitor_reset_prob=.5, **kwargs):
         gymnasium.Wrapper.__init__(self, env)
         self.action_space = spaces.Dict({
             'mdp': env.action_space,
