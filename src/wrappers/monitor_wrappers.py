@@ -77,7 +77,7 @@ class BinaryMonitor(Monitor):
             self.monitor_state = 1
             monitor_cost = - self.monitor_cost
         elif action['monitor'] == 0:
-            self.monitor_state = 0.
+            self.monitor_state = 0
             monitor_cost = 0.
         else:
             raise ValueError('illegal monitor action')
