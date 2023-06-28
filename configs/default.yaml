@@ -1,8 +1,14 @@
 defaults:
-  - exp/taxi_ql
+  - exp: taxi_ql
+  - override hydra/launcher: joblib
   - _self_
 
 wandb:
-  mode: None
+  mode: "disabled"
   entity: "ualberta-bowling"
-  project: "mmdp"
+  project: "mmdp alireza"
+
+hydra:
+  sweeper:
+    params:
+      exp.experiment.rng_seed: range(0, 5)

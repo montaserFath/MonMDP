@@ -1,7 +1,7 @@
 import gymnasium as gym
 import wandb
 import hydra
-from omegaconf import DictConfig, OmegaConf
+from omegaconf import DictConfig
 
 from src.actor import EpsilonGreedy
 from src.critic import QTable, QDict
@@ -14,6 +14,7 @@ def run(cfg : DictConfig) -> None:
     wandb.init(
         group=cfg["exp"]["environment"]["id"],
         config=cfg["exp"],
+        name=f"seed: {cfg['exp']['experiment']['rng_seed']}",
         **cfg["wandb"],
     )
 
