@@ -22,8 +22,6 @@ def run(cfg : DictConfig) -> None:
     if 'MiniGrid' in cfg["exp"]["environment"]["id"]:
         env = env_wrappers.wrap_minigrid(env)
         env = monitor_wrappers.BinaryMonitor(env, **cfg["exp"]["monitor"])
-        print(env.monitor_reset_prob, env.monitor_cost)
-        return
         critic = MonQDict(env.observation_space, env.action_space, **cfg["exp"]["critic"])
 
     else:

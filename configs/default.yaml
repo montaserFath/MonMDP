@@ -6,7 +6,7 @@ defaults:
 wandb:
   mode: "disabled"
   entity: "ualberta-bowling"
-  project: "mmdp alireza"
+  project: "mmdp"
 
 hydra:
   sweeper:

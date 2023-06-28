@@ -14,7 +14,6 @@ def run(cfg : DictConfig) -> None:
     wandb.init(
         group=cfg["exp"]["environment"]["id"],
         config=cfg["exp"],
-        name=f"seed: {cfg['exp']['experiment']['rng_seed']}",
         **cfg["wandb"],
     )
 
