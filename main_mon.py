@@ -1,34 +1,39 @@
 import gymnasium as gym
 import wandb
+import hydra
+from omegaconf import DictConfig, OmegaConf
 
-from src.utils import config_parser, arg_parser
 from src.actor import MonEpsilonGreedy
 from src.critic import MonQDict, MonQTable
 from src.experiment import MonExperiment
 from src.wrappers import env_wrappers, monitor_wrappers
 
 
-if __name__ == "__main__":
-    args = arg_parser()
-    configs = config_parser(args.config)
-
+@hydra.main(version_base=None, config_path="configs", config_name="default")
+def run(cfg : DictConfig) -> None:
     wandb.init(
-        entity="ualberta-bowling",
-        group=configs["environment"]["id"],
-        project="monitor parisi",
-        mode=args.wandb_mode,
-        config=configs,
+        group=cfg["exp"]["environment"]["id"],
+        config=cfg["exp"],
+        **cfg["wandb"],
     )
 
-    env = gym.make(**configs["environment"])
-    if 'MiniGrid' in configs["environment"]["id"]:
+    env = gym.make(**cfg["exp"]["environment"])
+
+    if 'MiniGrid' in cfg["exp"]["environment"]["id"]:
         env = env_wrappers.wrap_minigrid(env)
-        env = monitor_wrappers.BinaryMonitor(env, **configs["monitor"])
-        critic = MonQDict(env.observation_space, env.action_space, **configs["critic"])
+        env = monitor_wrappers.BinaryMonitor(env, **configs["exp"]["monitor"])
+        critic = MonQDict(env.observation_space, env.action_space, **configs["exp"]["critic"])
+
     else:
-        env = monitor_wrappers.BinaryMonitor(env, **configs["monitor"])
-        critic = MonQTable(env.observation_space, env.action_space, **configs["critic"])
-    actor = MonEpsilonGreedy(critic, **configs["actor"])
-    experiment = MonExperiment(env, actor, critic, **configs["experiment"])
+        env = monitor_wrappers.BinaryMonitor(env, **configs["exp"]["monitor"])
+        critic = MonQTable(env.observation_space, env.action_space, **configs["exp"]["critic"])
+
+    actor = MonEpsilonGreedy(critic, **configs["exp"]["actor"])
+
+    experiment = MonExperiment(env, actor, critic, **configs["exp"]["experiment"])
 
     experiment.train()
+
+
+if __name__ == "__main__":
+    run()

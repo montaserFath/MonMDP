@@ -31,25 +31,3 @@ def set_rng_seed(seed : int = None) -> None:
     """
     np.random.seed(seed)
     random.seed(seed)
-
-
-# import argparse
-# def arg_parser() -> argparse.Namespace:
-#     """
-#     Parse inputs received via command prompt.
-#
-#     Returns
-#     -------
-#     argparse.Namespace
-#         Parsed parameters defined by the user.
-#
-#     """
-#     parser = argparse.ArgumentParser(description="Enter your inputs")
-#
-#     parser.add_argument("--wandb_mode",
-#         type=str,
-#         default=None,
-#         choices=["online", "offline", "disabled"],
-#         help='WandB mode. If None, WandB will run in whatever mode is currently set.')
-#
-#     return parser.parse_args()

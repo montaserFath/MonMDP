@@ -1,0 +1,8 @@
+defaults:
+  - exp/taxi_ql
+  - _self_
+
+wandb:
+  mode: None
+  entity: "ualberta-bowling"
+  project: "mmdp"
