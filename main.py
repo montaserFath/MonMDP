@@ -1,4 +1,5 @@
-import gymnasium as gym
+import gymnasium
+from gymnasium.spaces import Discrete
 import wandb
 import hydra
 from omegaconf import DictConfig, OmegaConf
@@ -17,16 +18,15 @@ def run(cfg : DictConfig) -> None:
         **cfg["wandb"],
     )
 
-    env = gym.make(**cfg["environment"])
-
+    env = gymnasium.make(**cfg["environment"])
     if 'MiniGrid' in cfg["environment"]["id"]:
         env = env_wrappers.wrap_minigrid(env)
-        env = getattr(monitor_wrappers, cfg["monitor"]["id"])(env, **cfg["monitor"])
-        critic = MonQDict(env.observation_space, env.action_space, **cfg["agent"]["critic"])
+    env = getattr(monitor_wrappers, cfg["monitor"]["id"])(env, **cfg["monitor"])
 
-    else:
-        env = getattr(monitor_wrappers, cfg["monitor"]["id"])(env, **cfg["monitor"])
+    if isinstance(env.env.observation_space, Discrete):
         critic = MonQTable(env.observation_space, env.action_space, **cfg["agent"]["critic"])
+    else:
+        critic = MonQDict(env.observation_space, env.action_space, **cfg["agent"]["critic"])
 
     actor = MonEpsilonGreedy(critic, **cfg["agent"]["actor"])
 
