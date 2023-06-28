@@ -1,0 +1,13 @@
+defaults:
+  - exp: taxi_ql
+  - _self_
+
+wandb:
+  mode: "disabled"
+  entity: "ualberta-bowling"
+  project: "mmdp"
+
+hydra:
+  sweeper:
+    params:
+      exp.experiment.rng_seed: range(0, 5)
