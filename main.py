@@ -14,7 +14,9 @@ from src.wrappers import env_wrappers, monitor_wrappers
 def run(cfg : DictConfig) -> None:
     wandb.init(
         group=cfg["environment"]["id"],
-        config=cfg,
+        config=OmegaConf.to_container(
+            cfg, resolve=True, throw_on_missing=True,
+        ),
         **cfg["wandb"],
     )
 
