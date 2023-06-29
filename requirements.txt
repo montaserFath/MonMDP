@@ -8,3 +8,5 @@ wandb
 numpy
 tqdm
 hydra-core
+hydra-joblib-launcher
+hydra-submitit-launcher
