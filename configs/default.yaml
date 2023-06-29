@@ -1,13 +1,30 @@
 defaults:
-  - exp: taxi_ql
+  - agent: q_learning
+  - monitor: binary
   - _self_
+
+environment:
+  id: "MiniGrid-DoorKey-5x5-v0"
 
 wandb:
   mode: "disabled"
   entity: "ualberta-bowling"
   project: "mmdp"
 
+experiment:
+  training_episodes: 20000
+  testing_episodes: 50
+  testing_frequency: 10
+  rng_seed: 1
+
 hydra:
   sweeper:
     params:
-      exp.experiment.rng_seed: range(0, 5)
+      # experiment.rng_seed: range(0, 5)
+      # environment.id: "MiniGrid-DoorKey-5x5-v0", "Taxi-v3"
+      # monitor.id: "BinaryMonitor"
+      monitor.monitor_reset_prob: 0., 0.1, 0.5, 1.
+      # monitor.monitor_cost: 0., 0.01, 0.1, 0.5
+      # agent.critic.lr: 0.001, 0.01, 0.5, 1.
+      # agent.critic.q0: 0., 1., 10.
+      # agent.actor.eps_decay: 0.01, 0.001, 0.0001
