@@ -7,7 +7,7 @@ environment:
   id: "MiniGrid-DoorKey-5x5-v0"
 
 wandb:
-  mode: "disabled"
+  mode: "offline"
   entity: "ualberta-bowling"
   project: "mmdp simone"
 
