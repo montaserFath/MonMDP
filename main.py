@@ -17,6 +17,9 @@ def run(cfg : DictConfig) -> None:
         config=OmegaConf.to_container(
             cfg, resolve=True, throw_on_missing=True,
         ),
+        settings=wandb.Settings(
+            start_method="thread"
+        ),
         **cfg["wandb"],
     )
 

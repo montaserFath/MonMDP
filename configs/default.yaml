@@ -1,12 +1,10 @@
 defaults:
   - agent: q_learning
+  - monitor: binary
   - _self_
 
 environment:
   id: "MiniGrid-DoorKey-5x5-v0"
-
-monitor:
-  id: "FullMonitor"
 
 wandb:
   mode: "disabled"

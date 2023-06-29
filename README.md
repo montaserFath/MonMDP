@@ -2,10 +2,13 @@
 
 `python main.py` for single run
 
-`python main.py -m` for sequantial sweep
+- `-m` for sequential sweep defined in config file
+- `-m hydra/launcher=joblib` for parallel sweep
+- `wandb.project=cool_name wandb.mode=offline` to define WandB args
+- `environment.id=FrozenLake` to manually define environment
+- `monitor.id=BinaryMonitor` to manually define the monitor
 
-`python main.py -m hydra/launcher=joblib` for parallel
-
-`python main.py wandb.project=cool_name` to pass WandB arguments
-
-`python main.py environment.id=FrozenLake monitor.id=BinaryMonitor` example
+Full example
+```
+python main -m hydra/launcher=joblib wandb.mode=offline wandb.project=test environment.id=FrozenLake monitor.id=BinaryMonitor
+```
