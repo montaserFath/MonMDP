@@ -9,7 +9,7 @@ environment:
 wandb:
   mode: "disabled"
   entity: "ualberta-bowling"
-  project: "mmdp simone"
+  project: "mmdp"
 
 experiment:
   training_episodes: 20000
