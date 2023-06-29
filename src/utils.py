@@ -31,3 +31,21 @@ def set_rng_seed(seed : int = None) -> None:
     """
     np.random.seed(seed)
     random.seed(seed)
+
+
+
+def dict_to_id(d : dict) -> str:
+    """
+    Parse a dictionary and generate a unique id.
+    The id will have the initials of every key followed by its value.
+    Entries are separated by underscore.
+
+    Example:
+        d = {first_key: 0, some_key: True} -> fk0_skTrue
+
+    """
+    def make_prefix(key : str) -> str:
+        return ''.join(w[0] for w in key.split('_'))
+
+    return '_'.join(
+        [f'{make_prefix(k)}{v}' for k, v in d.items()])

@@ -4,6 +4,7 @@ import wandb
 import hydra
 from omegaconf import DictConfig, OmegaConf
 
+from src.utils import dict_to_id
 from src.actor import MonEpsilonGreedy
 from src.critic import MonQDict, MonQTable
 from src.experiment import MonExperiment
@@ -12,8 +13,9 @@ from src.wrappers import env_wrappers, monitor_wrappers
 
 @hydra.main(version_base=None, config_path="configs", config_name="default")
 def run(cfg : DictConfig) -> None:
+    group = cfg["environment"]["id"] + '\\' + dict_to_id(cfg["monitor"])
     wandb.init(
-        group=cfg["environment"]["id"],
+        group=group,
         config=OmegaConf.to_container(
             cfg, resolve=True, throw_on_missing=True,
         ),
