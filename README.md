@@ -13,3 +13,7 @@ Full example
 ```
 python main -m hydra/launcher=joblib wandb.mode=offline wandb.project=test environment.id=FrozenLake monitor.id=BinaryMonitor
 ```
+
+To install the `custom_envs` package:
+- `pip install -e custom_envs`
+- Toy problem id: `gym.make('custom_envs/ToyWorld-v0')`

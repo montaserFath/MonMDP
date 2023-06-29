@@ -1,4 +1,5 @@
 import gymnasium
+import custom_envs
 from gymnasium.spaces import Discrete
 import wandb
 import hydra
