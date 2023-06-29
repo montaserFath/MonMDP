@@ -25,6 +25,6 @@ hydra:
       monitor.id: BinaryMonitor
       monitor.monitor_reset_prob: 0., 0.1, 0.5, 1.
       monitor.monitor_cost: 0., 0.01, 0.1, 0.5
-      agent.critic.lr: 0.001, 0.01, 0.5, 1.
+      agent.critic.lr: 0.01, 0.5, 1.
       agent.critic.q0: 0., 1., 10.
       agent.actor.eps_decay: 0.01, 0.001, 0.0001
