@@ -1,5 +1,5 @@
 critic:
-  on_policy: False
+  on_policy: True
   q0: 0
   gamma: 0.99
   lr: 0.5

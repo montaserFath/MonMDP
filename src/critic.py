@@ -31,9 +31,18 @@ class Critic(ABC):
 # ------------------------------------------------------------------------------
 
 class QCritic(Critic):
-    def update(self, state, action, reward, terminated, next_state):
-        q_next = self(next_state)
-        target = reward + self._gamma * (1. - terminated) * q_next.max()
+    def __init__(self, q0=0., gamma=0.99, lr=0.01, on_policy=False, **kwargs):
+        self._q0 = q0
+        self._gamma = gamma
+        self._lr = lr
+        self._on_policy = on_policy
+
+    def update(self, state, action, reward, terminated, next_state, next_action=None):
+        if self._on_policy:
+            q_next = self(next_state, next_action)
+        else:
+            q_next = self(next_state).max()
+        target = reward + self._gamma * (1. - terminated) * q_next
         prediction = self(state, action)
         new_value = (1. - self._lr) * prediction + self._lr * target
         self._update(state, action, new_value)
@@ -46,12 +55,10 @@ class QCritic(Critic):
 
 class QTable(QCritic):
     def __init__(self, observation_space, action_space,
-                 q0=0., gamma=0.99, lr=0.01, **kwargs):
+                 q0=0., gamma=0.99, lr=0.01, on_policy=False, **kwargs):
+        QCritic.__init__(self, q0, gamma, lr, on_policy)
         self._n_states = observation_space.n
         self._n_actions = action_space.n
-        self._q0 = q0
-        self._gamma = gamma
-        self._lr = lr
         self.reset()
 
     def __call__(self, state, action=None):
@@ -74,10 +81,8 @@ class QTable(QCritic):
 class QDict(QCritic):
     def __init__(self, observation_space, action_space,
                  q0=0., gamma=0.99, lr=0.01, **kwargs):
+        QCritic.__init__(self, q0, gamma, lr, on_policy)
         self._n_actions = action_space.n
-        self._q0 = q0
-        self._gamma = gamma
-        self._lr = lr
         self.reset()
 
     def __call__(self, state, action=None):
@@ -105,7 +110,13 @@ class QDict(QCritic):
 # ------------------------------------------------------------------------------
 
 class MonQCritic(Critic):
-    def update(self, state, action, reward, terminated, next_state):
+    def __init__(self, q0=0., gamma=0.99, lr=0.01, on_policy=False, **kwargs):
+        self._q0 = q0
+        self._gamma = gamma
+        self._lr = lr
+        self._on_policy = on_policy
+
+    def update(self, state, action, reward, terminated, next_state, next_action=None):
         if not np.isnan(reward['mdp']):
             if self._r_model is not None:
                 self._r_model.update(state['mdp'], action['mdp'], reward['mdp'])
@@ -125,8 +136,11 @@ class MonQCritic(Critic):
         else:
             reward = reward['monitor']
 
-        q_next = self(next_state)
-        target = reward + self._gamma * (1. - terminated) * q_next.max()
+        if self._on_policy:
+            q_next = self(next_state, next_action)
+        else:
+            q_next = self(next_state).max()
+        target = reward + self._gamma * (1. - terminated)
         prediction = self(state, action)
         new_value = (1. - self._lr) * prediction + self._lr * target
         self._update(state, action, new_value)
@@ -145,7 +159,9 @@ class MonQCritic(Critic):
 
 class MonQTable(MonQCritic):
     def __init__(self, observation_space, action_space,
-                 q0=0., gamma=0.99, lr=0.01, use_reward_model=True, **kwargs):
+                 q0=0., gamma=0.99, lr=0.01, on_policy=False, use_reward_model=True,
+                 **kwargs):
+        MonQCritic.__init__(self, q0, gamma, lr, on_policy)
         self._mdp_critic = QTable(
             observation_space['mdp'],
             action_space['mdp'],
@@ -155,9 +171,6 @@ class MonQTable(MonQCritic):
         self._n_actions = action_space['mdp'].n
         self._n_mon_states = observation_space['monitor'].n
         self._n_mon_actions = action_space['monitor'].n
-        self._q0 = q0
-        self._gamma = gamma
-        self._lr = lr
         if use_reward_model:
             self._r_model = RTable(
                 observation_space['mdp'],
@@ -188,7 +201,9 @@ class MonQTable(MonQCritic):
 
 class MonQDict(MonQCritic):
     def __init__(self, observation_space, action_space,
-                 q0=0., gamma=0.99, lr=0.01, use_reward_model=True, **kwargs):
+                 q0=0., gamma=0.99, lr=0.01, on_policy=False, use_reward_model=True,
+                 **kwargs):
+        MonQCritic.__init__(self, q0, gamma, lr, on_policy)
         self._mdp_critic = QDict(
             observation_space['mdp'],
             action_space['mdp'],

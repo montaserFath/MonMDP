@@ -44,8 +44,9 @@ class Experiment():
             while True:
                 action = self._actor(obs)
                 next_obs, reward, term, trunc, _ = self._env.step(action)
+                next_action = self._actor(next_obs)
+                episode_loss += self._critic.update(obs, action, reward, term, next_obs, next_action)
                 episode_return += reward
-                episode_loss += self._critic.update(obs, action, reward, term, next_obs)
                 if term or trunc:
                     break
                 obs = next_obs
@@ -115,14 +116,15 @@ class MonExperiment(Experiment):
             while True:
                 action = self._actor(obs)
                 next_obs, reward, term, trunc, info = self._env.step(action)
+                next_action = self._actor(next_obs)
+                step_loss_mdp, step_loss_mon = \
+                    self._critic.update(obs, action, reward, term, next_obs, next_action)
+
                 episode_return_true += info['mdp_reward']
                 episode_return_cost += reward['monitor']
                 if not np.isnan(reward['mdp']):
                     reward_seen = True
                     episode_return_proxy += reward['mdp']
-
-                step_loss_mdp, step_loss_mon = \
-                    self._critic.update(obs, action, reward, term, next_obs)
                 if not np.isnan(step_loss_mdp):
                     episode_loss_mdp += step_loss_mdp
                 if not np.isnan(step_loss_mon):
@@ -132,6 +134,7 @@ class MonExperiment(Experiment):
                     if not reward_seen:
                         episode_return_proxy = np.nan
                     break
+
                 obs = next_obs
 
             wandb.log(

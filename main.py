@@ -6,7 +6,7 @@ from omegaconf import DictConfig, OmegaConf
 
 from src.utils import dict_to_id
 from src.actor import MonEpsilonGreedy
-from src.critic import MonQDict, MonQTable
+from src.critic import MonQLDict, MonQLTable
 from src.experiment import MonExperiment
 from src.wrappers import env_wrappers, monitor_wrappers
 
@@ -31,9 +31,9 @@ def run(cfg : DictConfig) -> None:
     env = getattr(monitor_wrappers, cfg["monitor"]["id"])(env, **cfg["monitor"])
 
     if isinstance(env.env.observation_space, Discrete):
-        critic = MonQTable(env.observation_space, env.action_space, **cfg["agent"]["critic"])
+        critic = MonQLTable(env.observation_space, env.action_space, **cfg["agent"]["critic"])
     else:
-        critic = MonQDict(env.observation_space, env.action_space, **cfg["agent"]["critic"])
+        critic = MonQLDict(env.observation_space, env.action_space, **cfg["agent"]["critic"])
 
     actor = MonEpsilonGreedy(critic, **cfg["agent"]["actor"])
 
