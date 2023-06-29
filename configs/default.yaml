@@ -4,12 +4,12 @@ defaults:
   - _self_
 
 environment:
-  id: "MiniGrid-DoorKey-5x5-v0"
+  id: MiniGrid-DoorKey-5x5-v0
 
 wandb:
-  mode: "offline"
-  entity: "ualberta-bowling"
-  project: "mmdp simone"
+  mode: offline
+  entity: ualberta-bowling
+  project: mmdp simone
 
 experiment:
   training_episodes: 20000
@@ -21,8 +21,8 @@ hydra:
   sweeper:
     params:
       experiment.rng_seed: range(0, 5)
-      environment.id: "MiniGrid-DoorKey-5x5-v0", "Taxi-v3"
-      monitor.id: "BinaryMonitor"
+      environment.id: MiniGrid-DoorKey-5x5-v0, Taxi-v3
+      monitor.id: BinaryMonitor
       monitor.monitor_reset_prob: 0., 0.1, 0.5, 1.
       monitor.monitor_cost: 0., 0.01, 0.1, 0.5
       agent.critic.lr: 0.001, 0.01, 0.5, 1.
