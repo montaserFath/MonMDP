@@ -14,6 +14,6 @@ Full example
 python main -m hydra/launcher=joblib wandb.mode=offline wandb.project=test environment.id=FrozenLake monitor.id=BinaryMonitor
 ```
 
-To install the `custom_envs` package:
-- `pip install -e custom_envs`
-- Toy problem id: `gym.make('custom_envs/ToyWorld-v0')`
+To install the our environments:
+- `pip install -e envs`
+- Then `gymnasium.make('monitor/ToyWorld-v0')` or `gymnasium.make('monitor/MonitorGrid-v0')`

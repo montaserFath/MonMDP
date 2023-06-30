@@ -15,18 +15,18 @@ class ToyWorld(gym.Env):
         self.action_space = spaces.Discrete(2)
         self._state = None
 
-    def reset(self,
-              *,
-              seed: int | None = None,
-              options: dict[str, Any] | None = None,
-              ) -> tuple[ObsType, dict[str, Any]]:
-        super().reset(seed=seed)
+    def reset(
+        self, seed: int | None = None, **kwargs
+    ) -> tuple[ObsType, dict[str, Any]]:
+        super().reset(seed=seed, **kwargs)
         self._state = 0
         return self._state, {}
 
-    def step(self, action: ActType
-             ) -> tuple[ObsType, SupportsFloat, bool, bool, dict[str, Any]]:
+    def step(self,
+        action: ActType
+    ) -> tuple[ObsType, SupportsFloat, bool, bool, dict[str, Any]]:
         trunc = False
+
         if self._state == 0:
             term = False
             if action == 0:
@@ -35,6 +35,7 @@ class ToyWorld(gym.Env):
             else:
                 reward = 0
                 self._state = 1
+
         elif self._state == 1:
             term = True
             reward = 1
