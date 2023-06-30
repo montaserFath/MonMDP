@@ -1,0 +1,11 @@
+# @package hydra.launcher
+timeout_min: 60
+cpus_per_task: 8
+gpus_per_node: 1
+tasks_per_node: 1
+mem_gb: 1
+nodes: 1
+account: rrg-mbowling-ad
+partition: default
+max_num_timeout: 100
+array_parallelism: 256

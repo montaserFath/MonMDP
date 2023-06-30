@@ -80,7 +80,7 @@ class QTable(QCritic):
 
 class QDict(QCritic):
     def __init__(self, observation_space, action_space,
-                 q0=0., gamma=0.99, lr=0.01, **kwargs):
+                 q0=0., gamma=0.99, lr=0.01, on_policy=False, **kwargs):
         QCritic.__init__(self, q0, gamma, lr, on_policy)
         self._n_actions = action_space.n
         self.reset()

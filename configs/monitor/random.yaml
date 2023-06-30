@@ -1,0 +1,3 @@
+id: RandomMonitor
+n_monitors: 10
+monitor_cost: 0.01

@@ -83,11 +83,11 @@ class BinaryMonitor(Monitor):
 
     Args:
         env (gymnasium.Env): the Gymnasium environment,
-        monitor_reset_prob (float): probability of the monitor resetting itself,
         monitor_cost (float): cost for monitor request.
+        monitor_reset_prob (float): probability of the monitor resetting itself,
 
     """
-    def __init__(self, env, monitor_cost=0.01, monitor_reset_prob=.5, **kwargs):
+    def __init__(self, env, monitor_cost=0.01, monitor_reset_prob=0.5, **kwargs):
         gymnasium.Wrapper.__init__(self, env)
         self.action_space = spaces.Dict({
             'mdp': env.action_space,
@@ -126,6 +126,111 @@ class BinaryMonitor(Monitor):
         if self.monitor_state == 1:
             if np.random.rand() < self.monitor_reset_prob:
                 self.monitor_state = 0
+        monitor_obs = self.monitor_state
+
+        return monitor_obs, proxy_reward, monitor_cost
+
+
+
+class RandomMonitor(Monitor):
+    """
+    There are N monitors. At every time step, a random monitor is active (or none).
+    The agent gets to see the reward by asking the right monitor.
+    Monitor cost is constant for asking (even to the wrong monitor).
+
+    Args:
+        env (gymnasium.Env): the Gymnasium environment,
+        monitor_cost (float): cost for monitor request.
+
+    """
+    def __init__(self, env, n_monitors=1, monitor_cost=0.01, **kwargs):
+        gymnasium.Wrapper.__init__(self, env)
+        self.action_space = spaces.Dict({
+            'mdp': env.action_space,
+            'monitor': spaces.Discrete(n_monitors + 1),  # +1 because of the "no monitor active" state
+        })
+        self.observation_space = spaces.Dict({
+            'mdp': env.observation_space,
+            'monitor': spaces.Discrete(n_monitors + 1),  # +1 because of the "don't ask for monitor" action
+        })
+        self.monitor_state = self.action_space['monitor'].sample()
+        self.monitor_cost = monitor_cost
+
+    def reset(self, seed=None, **kwargs):
+        self.action_space.seed(seed)
+        self.observation_space.seed(seed)
+        mdp_obs, mdp_info = self.env.reset(seed=seed, **kwargs)
+        self.monitor_state = self.action_space['monitor'].sample()
+        return {'mdp': mdp_obs, 'monitor': self.monitor_state}, mdp_info
+
+    def _monitor_step(self, action, mdp_reward):
+        assert action['monitor'] < self.action_space['monitor'].n, \
+            'illegal monitor action'
+
+        monitor_cost = 0.
+        proxy_reward = np.nan
+        if action['monitor'] != 0:
+            monitor_cost = - self.monitor_cost
+            if action['monitor'] == self.monitor_state:
+                proxy_reward = mdp_reward
+
+        self.monitor_state = self.action_space['monitor'].sample()
+        monitor_obs = self.monitor_state
+
+        return monitor_obs, proxy_reward, monitor_cost
+
+
+
+
+class TimeLimitedMonitor(Monitor):
+    """
+    The monitor is on at the beginning of the episode and the agent can ask for it.
+    At every step, there is a small probability that the monitor goes off.
+    If it goes off, it stays off.
+    Asking for monitor has a constant cost (even if the monitor is off).
+
+    Args:
+        env (gymnasium.Env): the Gymnasium environment,
+        monitor_cost (float): cost for monitor request.
+        monitor_reset_prob (float): probability of the monitor resetting itself,
+
+    """
+    def __init__(self, env, monitor_cost=0.01, monitor_reset_prob=0.5, **kwargs):
+        gymnasium.Wrapper.__init__(self, env)
+        self.action_space = spaces.Dict({
+            'mdp': env.action_space,
+            'monitor': spaces.Discrete(2),
+        })
+        self.observation_space = spaces.Dict({
+            'mdp': env.observation_space,
+            'monitor': spaces.Discrete(2),
+        })
+        self.monitor_state = 1  # active
+        self.monitor_reset_prob = monitor_reset_prob
+        self.monitor_cost = monitor_cost
+
+    def reset(self, seed=None, **kwargs):
+        self.action_space.seed(seed)
+        self.observation_space.seed(seed)
+        mdp_obs, mdp_info = self.env.reset(seed=seed, **kwargs)
+        self.monitor_state = 1
+        return {'mdp': mdp_obs, 'monitor': self.monitor_state}, mdp_info
+
+    def _monitor_step(self, action, mdp_reward):
+        monitor_cost = 0.
+        proxy_reward = np.nan
+
+        if action['monitor'] == 1:
+            monitor_cost = - self.monitor_cost
+            if self.monitor_state == 1:
+                proxy_reward = mdp_reward
+        elif action['monitor'] == 0:
+            pass
+        else:
+            raise ValueError('illegal monitor action')
+
+        if np.random.rand() < self.monitor_reset_prob:
+            self.monitor_state = 0
         monitor_obs = self.monitor_state
 
         return monitor_obs, proxy_reward, monitor_cost
