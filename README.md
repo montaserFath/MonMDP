@@ -16,4 +16,4 @@ python main -m hydra/launcher=joblib wandb.mode=offline wandb.project=test envir
 
 To install and use our environments:
 - `pip install -e src/gym-monitor`
-- Then `env = gymnasium.make('Gym-Monitor/ToyWorld-v0')`
+- Then `env = gymnasium.make('Gym-Monitor/ToyChain-v0')`
