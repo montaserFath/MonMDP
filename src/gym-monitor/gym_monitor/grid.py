@@ -104,7 +104,7 @@ class ToyGrid(gym.Env):
     def reset(self, seed: int | None = None, **kwargs):
         super().reset(seed=seed, **kwargs)
         self._map = np.asarray(MAPS[self._map_key], dtype="c")
-        self._state = self.np_random.integers(self._n_rows)
+        self._state = self.np_random.integers(self._n_cols) # _n_cols because of np indexing
         self._last_action = None
 
         # if the agent spawns in a reward or penalty cell, we empty it
@@ -180,26 +180,33 @@ class ToyGrid(gym.Env):
 
         map = self._map.tolist()
         assert isinstance(map, list), f"map should be a list or an array, got {map}"
+
+        surf_reward = pygame.Surface(self.cell_size)
+        surf_reward.fill((0, 255, 0))
+        surf_penalty = pygame.Surface(self.cell_size)
+        surf_penalty.fill((255, 0, 0))
+        surf_empty = pygame.Surface(self.cell_size)
+        surf_empty.fill((0, 0, 0))
+        surf_agent = pygame.Surface(self.cell_size)
+        surf_agent.fill((0, 0, 255))
+
         for y in range(self._n_rows):
             for x in range(self._n_cols):
                 pos = (x * self.cell_size[0], y * self.cell_size[1])
                 rect = (*pos, *self.cell_size)
 
                 if map[y][x] == REWARD:
-                    pygame.draw.rect(self.window_surface, (0, 255, 0), rect, 1)
-                    # self.window_surface.blit(self.hole_img, pos)
+                    self.window_surface.blit(surf_reward, pos)
                 elif map[y][x] == PENALTY:
-                    pygame.draw.rect(self.window_surface, (255, 0, 0), rect, 1)
-                    # self.window_surface.blit(self.goal_img, pos)
+                    self.window_surface.blit(surf_penalty, pos)
                 elif map[y][x] == EMPTY:
-                    pygame.draw.rect(self.window_surface, (0, 0, 0), rect, 1)
+                    self.window_surface.blit(surf_empty, pos)
                 else:
                     raise ValueError('unknown cell type')
 
-        # paint the agent
-        bot_row, bot_col = self._state // self._n_cols, self._state % self._n_cols
-        cell_rect = (bot_col * self.cell_size[0], bot_row * self.cell_size[1])
-        pygame.draw.rect(self.window_surface, (0, 0, 255), (*cell_rect, *self.cell_size), 1)
+        agent_row, agent_col = self._state // self._n_cols, self._state % self._n_cols
+        agent_pos = (agent_col * self.cell_size[0], agent_row * self.cell_size[1])
+        self.window_surface.blit(surf_agent, agent_pos)
 
         if mode == "human":
             pygame.event.pump()
@@ -209,6 +216,8 @@ class ToyGrid(gym.Env):
             return np.transpose(
                 np.array(pygame.surfarray.pixels3d(self.window_surface)), axes=(1, 0, 2)
             )
+        else:
+            raise NotImplementedError
 
 
     def _render_text(self):
