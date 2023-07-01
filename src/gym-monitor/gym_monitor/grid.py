@@ -44,7 +44,7 @@ def _move(row, col, a, nrow, ncol):
 
 class ToyGrid(gym.Env):
     """
-    Gridworld where the agent has to rewards while avoiding penalties.
+    Gridworld where the agent has to find rewards while avoiding penalties.
     The position of rewards and penalties is defined by a map passed as text.
 
     ## Action Space
@@ -57,7 +57,7 @@ class ToyGrid(gym.Env):
     - 3: Move up
 
     ## Observation Space
-    The action shape is `(1,)` in the range `{0, rows*cols}` indicating the
+    The action shape is `(1,)` in the range `{0, rows * cols}` indicating the
     cell where the agent is at.
 
     ## Starting State
@@ -74,7 +74,7 @@ class ToyGrid(gym.Env):
     - Termination:
         1. All rewards have been collected.
 
-    - Truncation (when using the time_limit wrapper):
+    - Truncation:
         1. The length of the episode is 100 for the 4x8 grid.
 
     """
