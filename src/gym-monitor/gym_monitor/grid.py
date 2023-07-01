@@ -14,15 +14,15 @@ DOWN = 1
 RIGHT = 2
 UP = 3
 
-# E: empty
-# S: square (+1)
-# T: triangle (-1)
-# E: empty
+EMPTY = b'E'
+REWARD = b'R'
+PENALTY = b'P'
+
 MAPS = {
     "4x8": [
         "EEEEEEEE",
-        "ETSTETEE",
-        "ETEEETSE",
+        "EPRPEREE",
+        "EPEEEPRE",
         "EEEEEEEE",
     ],
 }
@@ -61,7 +61,7 @@ class ToyGrid(gym.Env):
     cell where the agent is at.
 
     ## Starting State
-    The game starts with the agent at location [0, any].
+    The game starts with the agent at any of the top cells.
 
     ## Rewards
     - Walk over reward: +1
@@ -75,21 +75,7 @@ class ToyGrid(gym.Env):
         1. All rewards have been collected.
 
     - Truncation (when using the time_limit wrapper):
-        1. The length of the episode is 200 for the 4x8 environment.
-
-    ## Arguments
-
-    ```python
-    import gymnasium as gym
-    gym.make('ToyGrid-v1', map="4x8")
-    ```
-
-    `map="4x8"`: Uses the pre-defined 4x8 map.
-
-    Specify a custom map.
-    ```
-        map=["SEEE", "ETET", "EEET", "TEES"].
-    ```
+        1. The length of the episode is 100 for the 4x8 grid.
 
     """
     metadata = {
@@ -98,7 +84,8 @@ class ToyGrid(gym.Env):
     }
 
     def __init__(self, render_mode: Optional[str] = None, map="4x8", **kwargs):
-        self._map = np.asarray(MAPS[map], dtype="c")
+        self._map_key = map
+        self._map = np.asarray(MAPS[self._map_key], dtype="c")
         self._n_rows, self._n_cols = self._map.shape
         self.observation_space = spaces.Discrete(self._n_rows * self._n_cols)
         self.action_space = spaces.Discrete(4)
@@ -109,7 +96,6 @@ class ToyGrid(gym.Env):
         self.window_surface = None
         self.clock = None
         self.window_size = (min(64 * self._n_cols, 512), min(64 * self._n_rows, 512))
-        print(self.window_size)
         self.cell_size = (
             self.window_size[0] // self._n_cols,
             self.window_size[1] // self._n_rows,
@@ -117,13 +103,14 @@ class ToyGrid(gym.Env):
 
     def reset(self, seed: int | None = None, **kwargs):
         super().reset(seed=seed, **kwargs)
+        self._map = np.asarray(MAPS[self._map_key], dtype="c")
         self._state = self.np_random.integers(self._n_rows)
         self._last_action = None
 
         # if the agent spawns in a reward or penalty cell, we empty it
         shape = (self._n_rows, self._n_cols)
         row, col = np.unravel_index(self._state, shape)
-        self._map[row, col] = b'E'
+        self._map[row, col] = EMPTY
 
         return self._state, {}
 
@@ -133,16 +120,16 @@ class ToyGrid(gym.Env):
         next_row, next_col = _move(row, col, action, self._n_rows, self._n_cols)
         self._state = np.ravel_multi_index((next_row, next_col), shape)
 
-        if self._map[next_row, next_col] == b'S':
-            self._map[next_row, next_col] = b'E'
+        if self._map[next_row, next_col] == REWARD:
+            self._map[next_row, next_col] = EMPTY
             reward = 1
-        elif self._map[next_row, next_col] == b'T':
-            self._map[next_row, next_col] = b'E'
+        elif self._map[next_row, next_col] == PENALTY:
+            self._map[next_row, next_col] = EMPTY
             reward = -1
         else:
             reward = 0
 
-        if (self._map == b'E').all():
+        if (self._map == EMPTY).all():
             terminated = True
         else:
             terminated = False
@@ -198,13 +185,13 @@ class ToyGrid(gym.Env):
                 pos = (x * self.cell_size[0], y * self.cell_size[1])
                 rect = (*pos, *self.cell_size)
 
-                if map[y][x] == b"S":
+                if map[y][x] == REWARD:
                     pygame.draw.rect(self.window_surface, (0, 255, 0), rect, 1)
                     # self.window_surface.blit(self.hole_img, pos)
-                elif map[y][x] == b"T":
+                elif map[y][x] == PENALTY:
                     pygame.draw.rect(self.window_surface, (255, 0, 0), rect, 1)
                     # self.window_surface.blit(self.goal_img, pos)
-                elif map[y][x] == b"E":
+                elif map[y][x] == EMPTY:
                     pygame.draw.rect(self.window_surface, (0, 0, 0), rect, 1)
                 else:
                     raise ValueError('unknown cell type')

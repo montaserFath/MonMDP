@@ -7,7 +7,8 @@ def register_envs():
         max_episode_steps=100,
     )
     register(
-        id="ToyGrid-v0",
+        id="ToyGrid-4x8-v0",
         entry_point="gym_monitor.grid:ToyGrid",
-        max_episode_steps=200,
+        max_episode_steps=100,
+        kwargs={"map": "4x8"},
     )
