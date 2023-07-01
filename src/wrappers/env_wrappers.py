@@ -9,6 +9,8 @@ def wrap_minigrid(env):
     env = minigrid_wrappers.ImgObsWrapper(env)
     env = NoEdgesWrapper(env)
     env = gymnasium.wrappers.FlattenObservation(env)
+    if 'Lava' in env.unwrapped.spec.id:
+        env = LavaNoDeath(env)
     env = minigrid_wrappers.ReseedWrapper(env, seeds=(0,))
     return env
 
@@ -21,8 +23,7 @@ class LavaNoDeath(Wrapper):
     def step(self, action):
         obs, reward, terminated, truncated, info = self.env.step(action)
 
-        current_pos = self.front_pos
-        current_cell = self.grid.get(*current_pos)
+        current_cell = self.grid.get(*self.agent_pos)
         if current_cell is not None and current_cell.type == "lava":
             terminated = False
             reward = -10
