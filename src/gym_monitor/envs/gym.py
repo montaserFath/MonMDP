@@ -6,40 +6,27 @@ ObsType = TypeVar("ObsType")
 ActType = TypeVar("ActType")
 RenderFrame = TypeVar("RenderFrame")
 
-# E: empty
-# S: square
-# T: triangle
-# E: empty
-MAPS = {
-    "4x8": [
-        "EEEEEEEE",
-        "ETSTETEE",
-        "ETEEETSE",
-        "EEEEEEEE",
-    ],
-}
 
-
-class MonitorGrid(gym.Env):
+class ToyWorld(gym.Env):
     metadata = {}
 
-    def __init__(self, map="4x8", render_mode=None):
-        self._map = MAPS[map]
-        n_rows, n_cols = self._map.shape
-        self.observation_space = spaces.Discrete(n_rows * n_cols)
-        self.action_space = spaces.Discrete(4)
+    def __init__(self, render_mode=None):
+        self.observation_space = spaces.Discrete(3)
+        self.action_space = spaces.Discrete(2)
+        self._state = None
 
-    def reset(
-        self, seed: int | None = None, **kwargs
-    ) -> tuple[ObsType, dict[str, Any]]:
-        super().reset(seed=seed, **kwargs)
-        return 0, {}
+    def reset(self,
+              *,
+              seed: int | None = None,
+              options: dict[str, Any] | None = None,
+              ) -> tuple[ObsType, dict[str, Any]]:
+        super().reset(seed=seed)
+        self._state = 0
+        return self._state, {}
 
-    def step(self,
-        action: ActType
-    ) -> tuple[ObsType, SupportsFloat, bool, bool, dict[str, Any]]:
+    def step(self, action: ActType
+             ) -> tuple[ObsType, SupportsFloat, bool, bool, dict[str, Any]]:
         trunc = False
-
         if self._state == 0:
             term = False
             if action == 0:
@@ -48,7 +35,6 @@ class MonitorGrid(gym.Env):
             else:
                 reward = 0
                 self._state = 1
-
         elif self._state == 1:
             term = True
             reward = 1
@@ -64,3 +50,13 @@ class MonitorGrid(gym.Env):
 
     def close(self):
         pass
+
+
+
+
+from gymnasium.envs.registration import register
+
+register(
+    id='gym_monitor/ToyWorld-v0',
+    entry_point='gym-monitor.envs.ToyWorld',
+)

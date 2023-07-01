@@ -15,16 +15,12 @@ class ToyWorld(gym.Env):
         self.action_space = spaces.Discrete(2)
         self._state = None
 
-    def reset(
-        self, seed: int | None = None, **kwargs
-    ) -> tuple[ObsType, dict[str, Any]]:
-        super().reset(seed=seed, **kwargs)
+    def reset(self, seed: int | None = None, **kwargs):
+        super().reset(seed=seed)
         self._state = 0
         return self._state, {}
 
-    def step(self,
-        action: ActType
-    ) -> tuple[ObsType, SupportsFloat, bool, bool, dict[str, Any]]:
+    def step(self, action: ActType):
         trunc = False
 
         if self._state == 0:
@@ -51,3 +47,13 @@ class ToyWorld(gym.Env):
 
     def close(self):
         pass
+
+
+
+from gymnasium.envs.registration import register
+
+def register_envs():
+    register(
+        id="ToyWorld-v0",
+        entry_point="gym_monitor.gym:ToyWorld",
+    )
