@@ -1,6 +1,6 @@
 import gymnasium as gym
 from gymnasium import spaces
-from typing import Any, TypeVar, SupportsFloat
+from typing import Any, TypeVar, SupportsFloat, Optional
 
 ObsType = TypeVar("ObsType")
 ActType = TypeVar("ActType")
@@ -25,9 +25,13 @@ class ToyChain(gym.Env):
            ---> C ---> A
 
     """
-    metadata = {}
+    metadata = {
+        "render_modes" : [],
+        "render_fps": 4,
+    }
 
-    def __init__(self, render_mode=None):
+    def __init__(self, render_mode: Optional[str] = None, **kwargs):
+        self.render_mode = render_mode
         self.observation_space = spaces.Discrete(3)
         self.action_space = spaces.Discrete(2)
         self._state = None
@@ -62,13 +66,3 @@ class ToyChain(gym.Env):
 
     def close(self):
         pass
-
-
-
-from gymnasium.envs.registration import register
-
-def register_envs():
-    register(
-        id="ToyChain-v0",
-        entry_point="gym_monitor.chain:ToyChain",
-    )
