@@ -93,12 +93,11 @@ class ToyGrid(gym.Env):
 
     """
     metadata = {
-        "render_modes": ["ansi"],
+        "render_modes": ["human", "rgb_array", "ansi"],
         "render_fps": 4,
     }
 
     def __init__(self, render_mode: Optional[str] = None, map="4x8", **kwargs):
-        self.render_mode = render_mode
         self._map = np.asarray(MAPS[map], dtype="c")
         self._n_rows, self._n_cols = self._map.shape
         self.observation_space = spaces.Discrete(self._n_rows * self._n_cols)
@@ -106,10 +105,26 @@ class ToyGrid(gym.Env):
         self._state = 0
         self._last_action = None
 
+        self.render_mode = render_mode
+        self.window_surface = None
+        self.clock = None
+        self.window_size = (min(64 * self._n_cols, 512), min(64 * self._n_rows, 512))
+        print(self.window_size)
+        self.cell_size = (
+            self.window_size[0] // self._n_cols,
+            self.window_size[1] // self._n_rows,
+        )
+
     def reset(self, seed: int | None = None, **kwargs):
         super().reset(seed=seed, **kwargs)
         self._state = self.np_random.integers(self._n_rows)
         self._last_action = None
+
+        # if the agent spawns in a reward or penalty cell, we empty it
+        shape = (self._n_rows, self._n_cols)
+        row, col = np.unravel_index(self._state, shape)
+        self._map[row, col] = b'E'
+
         return self._state, {}
 
     def step(self, action: ActType):
@@ -119,10 +134,10 @@ class ToyGrid(gym.Env):
         self._state = np.ravel_multi_index((next_row, next_col), shape)
 
         if self._map[next_row, next_col] == b'S':
-            self._map[next_row, next_col] == b'E'
+            self._map[next_row, next_col] = b'E'
             reward = 1
         elif self._map[next_row, next_col] == b'T':
-            self._map[next_row, next_col] == b'E'
+            self._map[next_row, next_col] = b'E'
             reward = -1
         else:
             reward = 0
@@ -147,6 +162,67 @@ class ToyGrid(gym.Env):
             return
         if self.render_mode == "ansi":
             return self._render_text()
+        else:  # self.render_mode in {"human", "rgb_array"}:
+            return self._render_gui(self.render_mode)
+
+
+    def _render_gui(self, mode):
+        try:
+            import pygame
+        except ImportError as e:
+            raise DependencyNotInstalled(
+                "pygame is not installed, run `pip install gymnasium[toy-text]`"
+            ) from e
+
+        if self.window_surface is None:
+            pygame.init()
+
+            if mode == "human":
+                pygame.display.init()
+                pygame.display.set_caption("Toy Grid")
+                self.window_surface = pygame.display.set_mode(self.window_size)
+            elif mode == "rgb_array":
+                self.window_surface = pygame.Surface(self.window_size)
+
+        assert (
+            self.window_surface is not None
+        ), "Something went wrong with pygame. This should never happen."
+
+        if self.clock is None:
+            self.clock = pygame.time.Clock()
+
+        map = self._map.tolist()
+        assert isinstance(map, list), f"map should be a list or an array, got {map}"
+        for y in range(self._n_rows):
+            for x in range(self._n_cols):
+                pos = (x * self.cell_size[0], y * self.cell_size[1])
+                rect = (*pos, *self.cell_size)
+
+                if map[y][x] == b"S":
+                    pygame.draw.rect(self.window_surface, (0, 255, 0), rect, 1)
+                    # self.window_surface.blit(self.hole_img, pos)
+                elif map[y][x] == b"T":
+                    pygame.draw.rect(self.window_surface, (255, 0, 0), rect, 1)
+                    # self.window_surface.blit(self.goal_img, pos)
+                elif map[y][x] == b"E":
+                    pygame.draw.rect(self.window_surface, (0, 0, 0), rect, 1)
+                else:
+                    raise ValueError('unknown cell type')
+
+        # paint the agent
+        bot_row, bot_col = self._state // self._n_cols, self._state % self._n_cols
+        cell_rect = (bot_col * self.cell_size[0], bot_row * self.cell_size[1])
+        pygame.draw.rect(self.window_surface, (0, 0, 255), (*cell_rect, *self.cell_size), 1)
+
+        if mode == "human":
+            pygame.event.pump()
+            pygame.display.update()
+            self.clock.tick(self.metadata["render_fps"])
+        elif mode == "rgb_array":
+            return np.transpose(
+                np.array(pygame.surfarray.pixels3d(self.window_surface)), axes=(1, 0, 2)
+            )
+
 
     def _render_text(self):
         map = self._map.tolist()
@@ -165,4 +241,8 @@ class ToyGrid(gym.Env):
             return outfile.getvalue()
 
     def close(self):
-        pass
+        if self.window_surface is not None:
+            import pygame
+
+            pygame.display.quit()
+            pygame.quit()

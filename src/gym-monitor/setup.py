@@ -3,6 +3,7 @@ from setuptools import setup
 packages = ['gym_monitor']
 install_requires = [
     'gymnasium',
+    'pygame'
 ]
 
 entry_points = {
