@@ -6,4 +6,5 @@
 outputs/
 wandb/
 multirun/
+build/
 .idea

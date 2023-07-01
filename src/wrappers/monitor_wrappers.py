@@ -124,7 +124,7 @@ class BinaryMonitor(Monitor):
             proxy_reward = np.nan
 
         if self.monitor_state == 1:
-            if np.random.rand() < self.monitor_reset_prob:
+            if self.observation_space._np_random.random() < self.monitor_reset_prob:
                 self.monitor_state = 0
         monitor_obs = self.monitor_state
 
@@ -229,7 +229,7 @@ class TimeLimitedMonitor(Monitor):
         else:
             raise ValueError('illegal monitor action')
 
-        if np.random.rand() < self.monitor_reset_prob:
+        if self.observation_space._np_random.random() < self.monitor_reset_prob:
             self.monitor_state = 0
         monitor_obs = self.monitor_state
 
