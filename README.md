@@ -13,3 +13,7 @@ Full example
 ```
 python main -m hydra/launcher=joblib wandb.mode=offline wandb.project=test environment.id=FrozenLake monitor.id=BinaryMonitor
 ```
+
+To install and use our environments:
+- `pip install -e src/gym-monitor`
+- Then `env = gymnasium.make('Gym-Monitor/ToyChain-v0')`

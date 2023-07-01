@@ -1,6 +1,7 @@
 import gymnasium
 from gymnasium import spaces
 from minigrid import wrappers as minigrid_wrappers
+from gymnasium.core import Wrapper
 
 
 def wrap_minigrid(env):
@@ -10,6 +11,23 @@ def wrap_minigrid(env):
     env = gymnasium.wrappers.FlattenObservation(env)
     env = minigrid_wrappers.ReseedWrapper(env, seeds=(0,))
     return env
+
+
+class LavaNoDeath(Wrapper):
+    """
+    Lava cells do not kill the agent. Instead, they yield a penalty of -10.
+
+    """
+    def step(self, action):
+        obs, reward, terminated, truncated, info = self.env.step(action)
+
+        current_pos = self.front_pos
+        current_cell = self.grid.get(*current_pos)
+        if current_cell is not None and current_cell.type == "lava":
+            terminated = False
+            reward = -10
+
+        return obs, reward, terminated, truncated, info
 
 
 class NoEdgesWrapper(gymnasium.ObservationWrapper):
