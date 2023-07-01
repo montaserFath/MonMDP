@@ -77,6 +77,10 @@ class ToyGrid(gym.Env):
     - Truncation:
         1. The length of the episode is 100 for the 4x8 grid.
 
+    ## Information
+    `step()` and `reset()` return a dict with the following keys:
+    - 'grid': current state of the grid (showing current rewards and penalties).
+
     """
     metadata = {
         "render_modes": ["human", "rgb_array", "ansi"],
@@ -112,7 +116,7 @@ class ToyGrid(gym.Env):
         row, col = np.unravel_index(self._state, shape)
         self._map[row, col] = EMPTY
 
-        return self._state, {}
+        return self._state, {'grid': self._map}
 
     def step(self, action: ActType):
         shape = (self._n_rows, self._n_cols)
@@ -136,7 +140,7 @@ class ToyGrid(gym.Env):
 
         self._last_action = action
 
-        return self._state, reward, terminated, False, {}
+        return self._state, reward, terminated, False, {'grid': self._map}
 
     def render(self):
         if self.render_mode is None:
