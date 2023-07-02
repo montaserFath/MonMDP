@@ -140,7 +140,7 @@ class MonQCritic(Critic):
             q_next = self(next_state, next_action)
         else:
             q_next = self(next_state).max()
-        target = reward + self._gamma * (1. - terminated)
+        target = reward + self._gamma * (1. - terminated) * q_next
         prediction = self(state, action)
         new_value = (1. - self._lr) * prediction + self._lr * target
         self._update(state, action, new_value)
