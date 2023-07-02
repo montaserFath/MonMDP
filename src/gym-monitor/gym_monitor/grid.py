@@ -14,16 +14,24 @@ DOWN = 1
 RIGHT = 2
 UP = 3
 
-EMPTY = b'E'
-REWARD = b'R'
-PENALTY = b'P'
+EMPTY = 0
+REWARD = 1
+PENALTY = -1
+AGENT = 2
+
+INT_TO_ANSI = {
+    0: b'E',
+    -1: b'P',
+    1: b'R',
+    2: b'A',
+}
 
 MAPS = {
     "4x8": [
-        "EEEEEEEE",
-        "EPRPEREE",
-        "EPEEEPRE",
-        "EEEEEEEE",
+        [0, 0, 0, 0, 0, 0, 0, 0],
+        [0, -1, 1, -1, 0, 1, 0, 0],
+        [0, -1, 0, 0, 0, -1, 1, 0],
+        [0, 0, 0, 0, 0, 0, 0, 0],
     ],
 }
 
@@ -57,11 +65,14 @@ class ToyGrid(gym.Env):
     - 3: Move up
 
     ## Observation Space
-    The action shape is `(1,)` in the range `{0, rows * cols}` indicating the
-    cell where the agent is at.
+    The action shape is `(rows * cols, )` in the range `{-1, 2}`:
+    - -1 for penalties,
+    - 0 for empty cells,
+    - 1 for rewards,
+    - 2 for agent.
 
     ## Starting State
-    The game starts with the agent at any of the top cells.
+    The game starts with the agent at any of the leftmost cells.
 
     ## Rewards
     - Walk over reward: +1
@@ -77,10 +88,6 @@ class ToyGrid(gym.Env):
     - Truncation:
         1. The length of the episode is 100 for the 4x8 grid.
 
-    ## Information
-    `step()` and `reset()` return a dict with the following keys:
-    - 'grid': current state of the grid (showing current rewards and penalties).
-
     """
     metadata = {
         "render_modes": ["human", "rgb_array", "ansi"],
@@ -89,11 +96,14 @@ class ToyGrid(gym.Env):
 
     def __init__(self, render_mode: Optional[str] = None, map="4x8", **kwargs):
         self._map_key = map
-        self._map = np.asarray(MAPS[self._map_key], dtype="c")
+        self._map = np.asarray(MAPS[self._map_key])
         self._n_rows, self._n_cols = self._map.shape
-        self.observation_space = spaces.Discrete(self._n_rows * self._n_cols)
+        self.observation_space = spaces.Box(low=-1, high=2,
+            shape=(self._n_rows * self._n_cols, ),
+            dtype=int
+        )
         self.action_space = spaces.Discrete(4)
-        self._state = 0
+        self._agent_pos = None
         self._last_action = None
 
         self.render_mode = render_mode
@@ -107,40 +117,44 @@ class ToyGrid(gym.Env):
 
     def reset(self, seed: int | None = None, **kwargs):
         super().reset(seed=seed, **kwargs)
-        self._map = np.asarray(MAPS[self._map_key], dtype="c")
-        self._state = self.np_random.integers(self._n_cols) # _n_cols because of np indexing
+        self._map = np.asarray(MAPS[self._map_key])
+        self._agent_pos = (self.np_random.integers(self._n_rows), 0)
+        self._map[self._agent_pos] = AGENT
         self._last_action = None
 
-        # if the agent spawns in a reward or penalty cell, we empty it
-        shape = (self._n_rows, self._n_cols)
-        row, col = np.unravel_index(self._state, shape)
-        self._map[row, col] = EMPTY
-
-        return self._state, {'grid': self._map}
+        return self._map.flatten(), {}
 
     def step(self, action: ActType):
-        shape = (self._n_rows, self._n_cols)
-        row, col = np.unravel_index(self._state, shape)
-        next_row, next_col = _move(row, col, action, self._n_rows, self._n_cols)
-        self._state = np.ravel_multi_index((next_row, next_col), shape)
+        self._map[self._agent_pos] = EMPTY
 
-        if self._map[next_row, next_col] == REWARD:
-            self._map[next_row, next_col] = EMPTY
+        self._agent_pos = _move(
+            self._agent_pos[0],
+            self._agent_pos[1],
+            action,
+            self._n_rows,
+            self._n_cols
+        )
+
+        if self._map[self._agent_pos] == REWARD:
             reward = 1
-        elif self._map[next_row, next_col] == PENALTY:
-            self._map[next_row, next_col] = EMPTY
+        elif self._map[self._agent_pos] == PENALTY:
             reward = -1
         else:
             reward = 0
 
-        if (self._map == EMPTY).all():
+        self._map[self._agent_pos] = AGENT
+
+        is_empty = self._map == EMPTY
+        is_empty[self._agent_pos] = True
+
+        if is_empty.all():
             terminated = True
         else:
             terminated = False
 
         self._last_action = action
 
-        return self._state, reward, terminated, False, {'grid': self._map}
+        return self._map.flatten(), reward, terminated, False, {}
 
     def render(self):
         if self.render_mode is None:
@@ -205,12 +219,10 @@ class ToyGrid(gym.Env):
                     self.window_surface.blit(surf_penalty, pos)
                 elif map[y][x] == EMPTY:
                     self.window_surface.blit(surf_empty, pos)
+                elif map[y][x] == AGENT:
+                    self.window_surface.blit(surf_agent, pos)
                 else:
                     raise ValueError('unknown cell type')
-
-        agent_row, agent_col = self._state // self._n_cols, self._state % self._n_cols
-        agent_pos = (agent_col * self.cell_size[0], agent_row * self.cell_size[1])
-        self.window_surface.blit(surf_agent, agent_pos)
 
         if mode == "human":
             pygame.event.pump()
@@ -228,9 +240,12 @@ class ToyGrid(gym.Env):
         map = self._map.tolist()
         outfile = StringIO()
 
-        row, col = self._state // self._n_cols, self._state % self._n_cols
-        map = [[c.decode("utf-8") for c in line] for line in map]
-        map[row][col] = utils.colorize(map[row][col], "red", highlight=True)
+        map = [[INT_TO_ANSI[c].decode("utf-8") for c in line] for line in map]
+        map[self._agent_pos[0]][self._agent_pos[1]] = utils.colorize(
+            map[self._agent_pos[0]][self._agent_pos[1]],
+            "red",
+            highlight=True
+        )
         if self._last_action is not None:
             outfile.write(f"  ({['Left', 'Down', 'Right', 'Up'][self._last_action]})\n")
         else:
