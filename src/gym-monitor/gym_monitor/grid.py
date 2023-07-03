@@ -1,13 +1,8 @@
 from contextlib import closing
 import numpy as np
 import gymnasium as gym
-from gymnasium import spaces, utils
-from typing import Any, TypeVar, SupportsFloat, Optional
+from typing import Optional
 from io import StringIO
-
-ObsType = TypeVar("ObsType")
-ActType = TypeVar("ActType")
-RenderFrame = TypeVar("RenderFrame")
 
 LEFT = 0
 DOWN = 1
@@ -53,7 +48,7 @@ def _move(row, col, a, nrow, ncol):
 class ToyGrid(gym.Env):
     """
     Gridworld where the agent has to find rewards while avoiding penalties.
-    The position of rewards and penalties is defined by a map passed as text.
+    The position of rewards and penalties is defined by a map of integers.
 
     ## Action Space
     The action shape is `(1,)` in the range `{0, 3}` indicating
@@ -65,11 +60,14 @@ class ToyGrid(gym.Env):
     - 3: Move up
 
     ## Observation Space
-    The action shape is `(rows * cols, )` in the range `{-1, 2}`:
-    - -1 for penalties,
-    - 0 for empty cells,
-    - 1 for rewards,
-    - 2 for agent.
+    The observation shape is `(rows * cols, )` denoting the flattened map.
+    Each element of the observation is in the range `{-1, 2}` denoting the
+    content of a cell.
+
+    - -1: Penalty
+    -  0: Empty
+    -  1: Reward
+    -  2: Agent
 
     ## Starting State
     The game starts with the agent at any of the leftmost cells.
@@ -77,7 +75,7 @@ class ToyGrid(gym.Env):
     ## Rewards
     - Walk over reward: +1
     - Walk over penalty: -1
-    - Else: 0
+    - Otherwise: 0
 
     ## Episode End
     The episode ends if the following happens:
@@ -94,15 +92,18 @@ class ToyGrid(gym.Env):
         "render_fps": 4,
     }
 
-    def __init__(self, render_mode: Optional[str] = None, map="4x8", **kwargs):
+    def __init__(self,
+                 render_mode: Optional[str] = None,
+                 map: Optional[str] = "4x8",
+                 **kwargs):
         self._map_key = map
         self._map = np.asarray(MAPS[self._map_key])
         self._n_rows, self._n_cols = self._map.shape
-        self.observation_space = spaces.Box(low=-1, high=2,
+        self.observation_space = gym.spaces.Box(low=-1, high=2,
             shape=(self._n_rows * self._n_cols, ),
             dtype=int
         )
-        self.action_space = spaces.Discrete(4)
+        self.action_space = gym.spaces.Discrete(4)
         self._agent_pos = None
         self._last_action = None
 
@@ -124,7 +125,7 @@ class ToyGrid(gym.Env):
 
         return self._map.flatten(), {}
 
-    def step(self, action: ActType):
+    def step(self, action: int):
         self._map[self._agent_pos] = EMPTY
 
         self._agent_pos = _move(
@@ -241,7 +242,7 @@ class ToyGrid(gym.Env):
         outfile = StringIO()
 
         map = [[INT_TO_ANSI[c].decode("utf-8") for c in line] for line in map]
-        map[self._agent_pos[0]][self._agent_pos[1]] = utils.colorize(
+        map[self._agent_pos[0]][self._agent_pos[1]] = gym.utils.colorize(
             map[self._agent_pos[0]][self._agent_pos[1]],
             "red",
             highlight=True
