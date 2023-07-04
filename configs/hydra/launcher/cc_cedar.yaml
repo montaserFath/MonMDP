@@ -1,4 +1,5 @@
 # @package hydra.launcher
+_target_: hydra_plugins.hydra_submitit_launcher.submitit_launcher.SlurmLauncher
 timeout_min: 60
 cpus_per_task: 32
 tasks_per_node: 1

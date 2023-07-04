@@ -4,8 +4,8 @@
 
 - `-m` for sequential sweep defined in config file
 - `-m hydra/launcher=joblib` for parallel sweep with Joblib
-- `-m hydra/launcher=submitit_slurm` for parallel sweep with SLURM
-- `-m hydra/launcher=_submitit_local` for custom (in this case local usage of submitit). You can choose any configs under the `hydra/launcher` directory.
+- `-m hydra/launcher=cc_beluga` for parallel sweep with SLURM on CC (Beluga)
+- `-m hydra/launcher=local` for parallel sweep with SLURM on your local machine.
 - `wandb.project=cool_name wandb.mode=offline` to define WandB args
 - `environment.id=FrozenLake` to manually define environment
 - `monitor.id=BinaryMonitor` to manually define the monitor
