@@ -10,6 +10,10 @@
 - `environment.id=FrozenLake` to manually define environment
 - `monitor.id=BinaryMonitor` to manually define the monitor
 
+Note that when we submit jobs the python code will hang and wait until all jobs are done.
+To detach the run from the current session do
+`nohup python main.py -m hydra/launcher=slurm_cc_beluga &`
+
 Full example
 ```
 python main -m hydra/launcher=joblib wandb.mode=offline wandb.project=test environment.id=FrozenLake monitor.id=BinaryMonitor
