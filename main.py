@@ -13,9 +13,6 @@ from src.wrappers import env_wrappers, monitor_wrappers
 
 @hydra.main(version_base=None, config_path="configs", config_name="default")
 def run(cfg : DictConfig) -> None:
-    print(cfg)
-    return
-
     group = cfg.environment.id + '\\' + dict_to_id(cfg.monitor)
     wandb.init(
         group=group,
