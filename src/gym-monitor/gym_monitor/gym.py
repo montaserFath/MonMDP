@@ -1,14 +1,36 @@
 from gymnasium.envs.registration import register
 
 def register_envs():
+
     register(
-        id="ToyChain-v0",
-        entry_point="gym_monitor.chain:ToyChain",
+        id="TreasureHunt-v0",
+        entry_point="gym_monitor.treasure_hunt:TreasureHunt",
         max_episode_steps=100,
+        kwargs={
+            "grid": "4x8",
+            "enable_map": False,
+            "enable_quicksand": False
+            },
     )
+
     register(
-        id="ToyGrid-4x8-v0",
-        entry_point="gym_monitor.grid:ToyGrid",
-        max_episode_steps=100,
-        kwargs={"map": "4x8"},
+        id="TreasureHunt-v1",
+        entry_point="gym_monitor.treasure_hunt:TreasureHunt",
+        max_episode_steps=200,
+        kwargs={
+            "grid": "4x8",
+            "enable_map": False,
+            "enable_quicksand": True
+            },
+    )
+
+    register(
+        id="TreasureHunt-v2",
+        entry_point="gym_monitor.treasure_hunt:TreasureHunt",
+        max_episode_steps=500,
+        kwargs={
+            "grid": "4x8",
+            "enable_map": True,
+            "enable_quicksand": True
+            },
     )

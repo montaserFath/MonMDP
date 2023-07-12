@@ -8,25 +8,31 @@ LEFT = 0
 DOWN = 1
 RIGHT = 2
 UP = 3
+COLLECT = 4
 
 EMPTY = 0
-REWARD = 1
-PENALTY = -1
-AGENT = 2
+AGENT = 1
+GLD_COIN = 2
+CRSD_COIN = 3
+QCKSND = 4
+MAP = 5
 
 INT_TO_ANSI = {
-    0: b'E',
-    -1: b'P',
-    1: b'R',
-    2: b'A',
+    EMPTY: b'E',
+    AGENT: b'A',
+    GLD_COIN: b'G',
+    CRSD_COIN: b'C',
+    QCKSND: b'Q',
+    MAP: b'M',
 }
 
-MAPS = {
-    "4x8": [
-        [0, 0, 0, 0, 0, 0, 0, 0],
-        [0, -1, 1, -1, 0, 1, 0, 0],
-        [0, -1, 0, 0, 0, -1, 1, 0],
-        [0, 0, 0, 0, 0, 0, 0, 0],
+GRIDS = {
+    "4x8":
+    [
+        [EMPTY,  EMPTY,     EMPTY,    EMPTY,     EMPTY,  EMPTY,     EMPTY,    EMPTY],
+        [EMPTY,  CRSD_COIN, GLD_COIN, CRSD_COIN, QCKSND, GLD_COIN,  EMPTY,    EMPTY],
+        [EMPTY,  CRSD_COIN, QCKSND,   EMPTY,     EMPTY,  CRSD_COIN, GLD_COIN, EMPTY],
+        [EMPTY,  EMPTY,     EMPTY,    EMPTY,     EMPTY,  EMPTY,     EMPTY,    EMPTY],
     ],
 }
 
@@ -40,51 +46,71 @@ def _move(row, col, a, nrow, ncol):
         col = min(col + 1, ncol - 1)
     elif a == UP:
         row = max(row - 1, 0)
+    elif a == COLLECT:
+        pass
     else:
         raise ValueError('illegal action')
     return (row, col)
 
 
-class ToyGrid(gym.Env):
+class TreasureHunt(gym.Env):
     """
-    Gridworld where the agent has to find rewards while avoiding penalties.
-    The position of rewards and penalties is defined by a map of integers.
+    Gridworld where the agent has to find golden coins while ignoring cursed coins.
+
+    ## Versions
+    - TreasureHunt-v0: coins are always visible to the agent.
+    - TreasureHunt-v1: some cells have quicksand, where the agent gets
+      stuck and has only 1% chance of escaping.
+    - TreasureHunt-v2: in addition to the presence of quicksand, the agent must
+      first find a map to see and collect coins.
+
+    ## Grid
+    The grid is defined by a 2D array of integers. It is possible to define
+    custom grids.
 
     ## Action Space
-    The action shape is `(1,)` in the range `{0, 3}` indicating
-    which direction to move the player.
+    The action shape is `(1,)` in the range `{0, 4}`.
 
     - 0: Move left
     - 1: Move down
     - 2: Move right
     - 3: Move up
+    - 4: Collect
+
+    If the agent is in a quicksand cell any action will fail with 99% probability.
+    In TreasureHunt-v2, if the agent hasn't collected the map it can't collect
+    coins.
 
     ## Observation Space
-    The observation shape is `(rows * cols, )` denoting the flattened map.
-    Each element of the observation is in the range `{-1, 2}` denoting the
+    The observation shape is `(rows * cols, )` denoting the flattened grid.
+    Each element of the observation is in the range `{0, 5}` denoting the
     content of a cell.
 
-    - -1: Penalty
-    -  0: Empty
-    -  1: Reward
-    -  2: Agent
+    - 0: Empty
+    - 1: Agent
+    - 2: Golden coin (reward)
+    - 3: Cursed coin (penalty)
+    - 4: Quicksand
+    - 5: Map
 
     ## Starting State
     The game starts with the agent at any of the leftmost cells.
 
     ## Rewards
-    - Walk over reward: +1
-    - Walk over penalty: -1
+    - Collect golden coin: +1
+    - Collect cursed coin: -1
     - Otherwise: 0
 
     ## Episode End
     The episode ends if the following happens:
 
     - Termination:
-        1. All rewards have been collected.
+        1. All golden coins have been collected.
 
     - Truncation:
-        1. The length of the episode is 100 for the 4x8 grid.
+        1. The length of the episode is 100 for TreasureHunt-v0.
+        2. The length of the episode is 200 for TreasureHunt-v1.
+        3. The length of the episode is 500 for TreasureHunt-v2.
 
     """
     metadata = {
@@ -94,16 +120,20 @@ class ToyGrid(gym.Env):
 
     def __init__(self,
                  render_mode: Optional[str] = None,
-                 map: Optional[str] = "4x8",
+                 grid: Optional[str] = "4x8",
+                 enable_QCKSND: Optional[bool] = False,
+                 enable_map: Optional[bool] = False,
                  **kwargs):
-        self._map_key = map
-        self._map = np.asarray(MAPS[self._map_key])
-        self._n_rows, self._n_cols = self._map.shape
-        self.observation_space = gym.spaces.Box(low=-1, high=2,
+        self._enable_QCKSND = enable_QCKSND
+        self._enable_map = enable_map
+        self._grid_key = grid
+        self._grid = np.asarray(MAPS[self._grid_key])
+        self._n_rows, self._n_cols = self._grid.shape
+        self.observation_space = gym.spaces.Box(low=0, high=5,
             shape=(self._n_rows * self._n_cols, ),
             dtype=int
         )
-        self.action_space = gym.spaces.Discrete(4)
+        self.action_space = gym.spaces.Discrete(5)
         self._agent_pos = None
         self._last_action = None
 
@@ -118,15 +148,15 @@ class ToyGrid(gym.Env):
 
     def reset(self, seed: int | None = None, **kwargs):
         super().reset(seed=seed, **kwargs)
-        self._map = np.asarray(MAPS[self._map_key])
+        self._grid = np.asarray(MAPS[self._grid_key])
         self._agent_pos = (self.np_random.integers(self._n_rows), 0)
-        self._map[self._agent_pos] = AGENT
+        self._grid[self._agent_pos] = AGENT
         self._last_action = None
 
-        return self._map.flatten(), {}
+        return self._grid.flatten(), {}
 
     def step(self, action: int):
-        self._map[self._agent_pos] = EMPTY
+        self._grid[self._agent_pos] = EMPTY
 
         self._agent_pos = _move(
             self._agent_pos[0],
@@ -136,16 +166,16 @@ class ToyGrid(gym.Env):
             self._n_cols
         )
 
-        if self._map[self._agent_pos] == REWARD:
+        if self._grid[self._agent_pos] == REWARD:
             reward = 1
-        elif self._map[self._agent_pos] == PENALTY:
+        elif self._grid[self._agent_pos] == PENALTY:
             reward = -1
         else:
             reward = 0
 
-        self._map[self._agent_pos] = AGENT
+        self._grid[self._agent_pos] = AGENT
 
-        is_empty = self._map == EMPTY
+        is_empty = self._grid == EMPTY
         is_empty[self._agent_pos] = True
 
         if is_empty.all():
@@ -155,7 +185,7 @@ class ToyGrid(gym.Env):
 
         self._last_action = action
 
-        return self._map.flatten(), reward, terminated, False, {}
+        return self._grid.flatten(), reward, terminated, False, {}
 
     def render(self):
         if self.render_mode is None:
@@ -197,7 +227,7 @@ class ToyGrid(gym.Env):
         if self.clock is None:
             self.clock = pygame.time.Clock()
 
-        map = self._map.tolist()
+        map = self._grid.tolist()
         assert isinstance(map, list), f"map should be a list or an array, got {map}"
 
         surf_reward = pygame.Surface(self.cell_size)
@@ -238,7 +268,7 @@ class ToyGrid(gym.Env):
 
 
     def _render_text(self):
-        map = self._map.tolist()
+        map = self._grid.tolist()
         outfile = StringIO()
 
         map = [[INT_TO_ANSI[c].decode("utf-8") for c in line] for line in map]
