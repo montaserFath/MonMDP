@@ -25,8 +25,7 @@ cd src/gym-monitor
 pip install .
 ```
 
-`env = gymnasium.make('Gym-Monitor/ToyChain-v0')`  
-`env = gymnasium.make('Gym-Monitor/ToyGrid-4x8-v0')`
+`env = gymnasium.make('Gym-Monitor/TreasureHunt-Easy-v0')`
 
 
 For the lava experiment: `environment.id=MiniGrid-LavaCrossingS9N1-v0`

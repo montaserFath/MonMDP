@@ -109,6 +109,17 @@ class TreasureHunt(gym.Env):
         2. The length of the episode is 200 for the Medium version.
         3. The length of the episode is 500 for the Hard version.
 
+    ## Rendering
+    Human mode renders the environment as a grid with colored cells.
+
+    - Black: empty cells
+    - Green: golden coins
+    - Red: cursed coins
+    - Orange: quicksand
+    - White: map
+
+    The agent is the blue circle.
+
     """
     metadata = {
         "render_modes": ["human", "rgb_array", "ansi"],
@@ -139,7 +150,10 @@ class TreasureHunt(gym.Env):
         self.render_mode = render_mode
         self.window_surface = None
         self.clock = None
-        self.window_size = (min(64 * self._n_cols, 512), min(64 * self._n_rows, 512))
+        self.window_size = (
+            min(64 * self._n_cols, 512),
+            min(64 * self._n_rows, 512)
+        )
         self.cell_size = (
             self.window_size[0] // self._n_cols,
             self.window_size[1] // self._n_rows,
@@ -175,7 +189,10 @@ class TreasureHunt(gym.Env):
         return self.grid.flatten(), {}
 
     def step(self, action: int):
-        if self._grid[self._agent_pos] != QCKSND_AGNT or self.np_random.random() < 0.05:
+        if (
+            self._grid[self._agent_pos] != QCKSND_AGNT or
+            self.np_random.random() < 0.05
+        ):
             if self._grid[self._agent_pos] == QCKSND_AGNT:
                 self._grid[self._agent_pos] = QCKSND
             else:
@@ -195,8 +212,10 @@ class TreasureHunt(gym.Env):
             self._has_map = True
 
         if self._grid[self._agent_pos] == GLD_COIN and self._has_map:
+            self._grid[self._agent_pos] = AGENT
             reward = 1
         elif self._grid[self._agent_pos] == CRSD_COIN and self._has_map:
+            self._grid[self._agent_pos] = AGENT
             reward = -1
         else:
             reward = 0
@@ -261,14 +280,10 @@ class TreasureHunt(gym.Env):
         surf_crsd_coin.fill((255, 0, 0))
         surf_empty = pygame.Surface(self.cell_size)
         surf_empty.fill((0, 0, 0))
-        surf_agent = pygame.Surface(self.cell_size)
-        surf_agent.fill((0, 0, 255))
         surf_map = pygame.Surface(self.cell_size)
         surf_map.fill((255, 255, 255))
         surf_qcksnd = pygame.Surface(self.cell_size)
         surf_qcksnd.fill((204, 102, 0))
-        surf_qcksnd_agnt = pygame.Surface((self.cell_size[0] * 0.6, self.cell_size[1] * 0.6))
-        surf_qcksnd_agnt.fill((0, 0, 255))
 
         for y in range(self._n_rows):
             for x in range(self._n_cols):
@@ -278,19 +293,21 @@ class TreasureHunt(gym.Env):
                     self.window_surface.blit(surf_gld_coin, pos)
                 elif grid[y][x] == CRSD_COIN:
                     self.window_surface.blit(surf_crsd_coin, pos)
-                elif grid[y][x] == EMPTY:
+                elif grid[y][x] == EMPTY or grid[y][x] == AGENT:
                     self.window_surface.blit(surf_empty, pos)
-                elif grid[y][x] == AGENT:
-                    self.window_surface.blit(surf_agent, pos)
                 elif grid[y][x] == MAP:
                     self.window_surface.blit(surf_map, pos)
-                elif grid[y][x] == QCKSND:
+                elif grid[y][x] == QCKSND or grid[y][x] == QCKSND_AGNT:
                     self.window_surface.blit(surf_qcksnd, pos)
-                elif grid[y][x] == QCKSND_AGNT:
-                    pos = (x * self.cell_size[0] * 1.05, y * self.cell_size[1] * 1.05)
-                    self.window_surface.blit(surf_qcksnd_agnt, pos)
-                else:
-                    raise ValueError('unknown cell type')
+
+                if grid[y][x] == AGENT or grid[y][x] == QCKSND_AGNT:
+                    pos = (
+                        x * self.cell_size[0] + self.cell_size[0] / 2,
+                        y * self.cell_size[1] + self.cell_size[1] / 2
+                    )
+                    pygame.draw.circle(
+                        self.window_surface, (0, 0, 255), pos, self.cell_size[0] / 2.2
+                    )
 
         if mode == "human":
             pygame.event.pump()
