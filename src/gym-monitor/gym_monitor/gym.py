@@ -3,7 +3,7 @@ from gymnasium.envs.registration import register
 def register_envs():
 
     register(
-        id="TreasureHunt-v0",
+        id="TreasureHunt-Easy-v0",
         entry_point="gym_monitor.treasure_hunt:TreasureHunt",
         max_episode_steps=100,
         kwargs={
@@ -14,7 +14,7 @@ def register_envs():
     )
 
     register(
-        id="TreasureHunt-v1",
+        id="TreasureHunt-Medium-v0",
         entry_point="gym_monitor.treasure_hunt:TreasureHunt",
         max_episode_steps=200,
         kwargs={
@@ -25,7 +25,7 @@ def register_envs():
     )
 
     register(
-        id="TreasureHunt-v2",
+        id="TreasureHunt-Hard-v0",
         entry_point="gym_monitor.treasure_hunt:TreasureHunt",
         max_episode_steps=500,
         kwargs={

@@ -8,14 +8,14 @@ LEFT = 0
 DOWN = 1
 RIGHT = 2
 UP = 3
-COLLECT = 4
 
 EMPTY = 0
 AGENT = 1
 GLD_COIN = 2
 CRSD_COIN = 3
 QCKSND = 4
-MAP = 5
+QCKSND_AGNT = 5
+MAP = 6
 
 INT_TO_ANSI = {
     EMPTY: b'E',
@@ -23,6 +23,7 @@ INT_TO_ANSI = {
     GLD_COIN: b'G',
     CRSD_COIN: b'C',
     QCKSND: b'Q',
+    QCKSND_AGNT: b'X',
     MAP: b'M',
 }
 
@@ -30,9 +31,9 @@ GRIDS = {
     "4x8":
     [
         [EMPTY,  EMPTY,     EMPTY,    EMPTY,     EMPTY,  EMPTY,     EMPTY,    EMPTY],
-        [EMPTY,  CRSD_COIN, GLD_COIN, CRSD_COIN, QCKSND, GLD_COIN,  EMPTY,    EMPTY],
-        [EMPTY,  CRSD_COIN, QCKSND,   EMPTY,     EMPTY,  CRSD_COIN, GLD_COIN, EMPTY],
-        [EMPTY,  EMPTY,     EMPTY,    EMPTY,     EMPTY,  EMPTY,     EMPTY,    EMPTY],
+        [EMPTY,  CRSD_COIN, GLD_COIN, CRSD_COIN, EMPTY,  GLD_COIN,  EMPTY,    EMPTY],
+        [EMPTY,  CRSD_COIN, EMPTY,    EMPTY,     EMPTY,  CRSD_COIN, GLD_COIN, EMPTY],
+        [EMPTY,  EMPTY,     EMPTY,    QCKSND,    MAP,    EMPTY,     EMPTY,    EMPTY],
     ],
 }
 
@@ -46,8 +47,6 @@ def _move(row, col, a, nrow, ncol):
         col = min(col + 1, ncol - 1)
     elif a == UP:
         row = max(row - 1, 0)
-    elif a == COLLECT:
-        pass
     else:
         raise ValueError('illegal action')
     return (row, col)
@@ -55,35 +54,32 @@ def _move(row, col, a, nrow, ncol):
 
 class TreasureHunt(gym.Env):
     """
-    Gridworld where the agent has to find golden coins while ignoring cursed coins.
+    Gridworld where the agent has to find golden coins while avoiding cursed coins.
 
     ## Versions
-    - TreasureHunt-v0: coins are always visible to the agent.
-    - TreasureHunt-v1: some cells have quicksand, where the agent gets
-      stuck and has only 1% chance of escaping.
-    - TreasureHunt-v2: in addition to the presence of quicksand, the agent must
-      first find a map to see and collect coins.
+    - Easy: coins are always visible to the agent.
+    - Medium: some cells have quicksand, where the agent gets
+      stuck and has only 5% chance of escaping.
+    - Hard: in addition to the presence of quicksand, the agent must
+      first find a map to reveal the coins.
 
     ## Grid
     The grid is defined by a 2D array of integers. It is possible to define
     custom grids.
 
     ## Action Space
-    The action shape is `(1,)` in the range `{0, 4}`.
+    The action shape is `(1,)` in the range `{0, 3}`.
 
     - 0: Move left
     - 1: Move down
     - 2: Move right
     - 3: Move up
-    - 4: Collect
 
-    If the agent is in a quicksand cell any action will fail with 99% probability.
-    In TreasureHunt-v2, if the agent hasn't collected the map it can't collect
-    coins.
+    If the agent is in a quicksand cell any action will fail with 95% probability.
 
     ## Observation Space
     The observation shape is `(rows * cols, )` denoting the flattened grid.
-    Each element of the observation is in the range `{0, 5}` denoting the
+    Each element of the observation is in the range `{0, 6}` denoting the
     content of a cell.
 
     - 0: Empty
@@ -91,7 +87,8 @@ class TreasureHunt(gym.Env):
     - 2: Golden coin (reward)
     - 3: Cursed coin (penalty)
     - 4: Quicksand
-    - 5: Map
+    - 5: Quicksand with agent in it
+    - 6: Map
 
     ## Starting State
     The game starts with the agent at any of the leftmost cells.
@@ -108,9 +105,9 @@ class TreasureHunt(gym.Env):
         1. All golden coins have been collected.
 
     - Truncation:
-        1. The length of the episode is 100 for TreasureHunt-v0.
-        2. The length of the episode is 200 for TreasureHunt-v1.
-        3. The length of the episode is 500 for TreasureHunt-v2.
+        1. The length of the episode is 100 for the Easy version.
+        2. The length of the episode is 200 for the Medium version.
+        3. The length of the episode is 500 for the Hard version.
 
     """
     metadata = {
@@ -121,21 +118,23 @@ class TreasureHunt(gym.Env):
     def __init__(self,
                  render_mode: Optional[str] = None,
                  grid: Optional[str] = "4x8",
-                 enable_QCKSND: Optional[bool] = False,
+                 enable_quicksand: Optional[bool] = False,
                  enable_map: Optional[bool] = False,
                  **kwargs):
-        self._enable_QCKSND = enable_QCKSND
+        self._enable_quicksand = enable_quicksand
         self._enable_map = enable_map
         self._grid_key = grid
-        self._grid = np.asarray(MAPS[self._grid_key])
+        self._grid = np.asarray(GRIDS[self._grid_key])
+
         self._n_rows, self._n_cols = self._grid.shape
-        self.observation_space = gym.spaces.Box(low=0, high=5,
+        self.observation_space = gym.spaces.Box(low=0, high=6,
             shape=(self._n_rows * self._n_cols, ),
             dtype=int
         )
         self.action_space = gym.spaces.Discrete(5)
         self._agent_pos = None
         self._last_action = None
+        self._has_map = None
 
         self.render_mode = render_mode
         self.window_surface = None
@@ -146,46 +145,72 @@ class TreasureHunt(gym.Env):
             self.window_size[1] // self._n_rows,
         )
 
+    @property
+    def grid(self):
+        if self._has_map:
+            return self._grid
+
+        grid = self._grid.copy()
+        grid[grid == GLD_COIN] = EMPTY
+        grid[grid == CRSD_COIN] = EMPTY
+
+        return grid
+
     def reset(self, seed: int | None = None, **kwargs):
         super().reset(seed=seed, **kwargs)
-        self._grid = np.asarray(MAPS[self._grid_key])
+        self._grid = np.asarray(GRIDS[self._grid_key])
+        if self._enable_map:
+            self._has_map = False
+        else:
+            self._has_map = True
+            self._grid[self._grid == MAP] = EMPTY
+
+        if not self._enable_quicksand:
+            self._grid[self._grid == QCKSND] = EMPTY
+
         self._agent_pos = (self.np_random.integers(self._n_rows), 0)
         self._grid[self._agent_pos] = AGENT
         self._last_action = None
 
-        return self._grid.flatten(), {}
+        return self.grid.flatten(), {}
 
     def step(self, action: int):
-        self._grid[self._agent_pos] = EMPTY
+        if self._grid[self._agent_pos] != QCKSND_AGNT or self.np_random.random() < 0.05:
+            if self._grid[self._agent_pos] == QCKSND_AGNT:
+                self._grid[self._agent_pos] = QCKSND
+            else:
+                self._grid[self._agent_pos] = EMPTY
+            self._agent_pos = _move(
+                self._agent_pos[0],
+                self._agent_pos[1],
+                action,
+                self._n_rows,
+                self._n_cols
+            )
+        else:
+            return self.grid.flatten(), 0, False, False, {}
 
-        self._agent_pos = _move(
-            self._agent_pos[0],
-            self._agent_pos[1],
-            action,
-            self._n_rows,
-            self._n_cols
-        )
+        if self._grid[self._agent_pos] == MAP:
+            self._grid[self._agent_pos] = AGENT
+            self._has_map = True
 
-        if self._grid[self._agent_pos] == REWARD:
+        if self._grid[self._agent_pos] == GLD_COIN and self._has_map:
             reward = 1
-        elif self._grid[self._agent_pos] == PENALTY:
+        elif self._grid[self._agent_pos] == CRSD_COIN and self._has_map:
             reward = -1
         else:
             reward = 0
 
-        self._grid[self._agent_pos] = AGENT
-
-        is_empty = self._grid == EMPTY
-        is_empty[self._agent_pos] = True
-
-        if is_empty.all():
-            terminated = True
+        if self._grid[self._agent_pos] == QCKSND:
+            self._grid[self._agent_pos] = QCKSND_AGNT
         else:
-            terminated = False
+            self._grid[self._agent_pos] = AGENT
+
+        terminated = (self._grid != GLD_COIN).all()
 
         self._last_action = action
 
-        return self._grid.flatten(), reward, terminated, False, {}
+        return self.grid.flatten(), reward, terminated, False, {}
 
     def render(self):
         if self.render_mode is None:
@@ -215,7 +240,7 @@ class TreasureHunt(gym.Env):
 
             if mode == "human":
                 pygame.display.init()
-                pygame.display.set_caption("Toy Grid")
+                pygame.display.set_caption("Treasure Hunt")
                 self.window_surface = pygame.display.set_mode(self.window_size)
             elif mode == "rgb_array":
                 self.window_surface = pygame.Surface(self.window_size)
@@ -227,31 +252,43 @@ class TreasureHunt(gym.Env):
         if self.clock is None:
             self.clock = pygame.time.Clock()
 
-        map = self._grid.tolist()
-        assert isinstance(map, list), f"map should be a list or an array, got {map}"
+        grid = self.grid.tolist()
+        assert isinstance(grid, list), f"grid should be a list or an array, got {grid}"
 
-        surf_reward = pygame.Surface(self.cell_size)
-        surf_reward.fill((0, 255, 0))
-        surf_penalty = pygame.Surface(self.cell_size)
-        surf_penalty.fill((255, 0, 0))
+        surf_gld_coin = pygame.Surface(self.cell_size)
+        surf_gld_coin.fill((0, 255, 0))
+        surf_crsd_coin = pygame.Surface(self.cell_size)
+        surf_crsd_coin.fill((255, 0, 0))
         surf_empty = pygame.Surface(self.cell_size)
         surf_empty.fill((0, 0, 0))
         surf_agent = pygame.Surface(self.cell_size)
         surf_agent.fill((0, 0, 255))
+        surf_map = pygame.Surface(self.cell_size)
+        surf_map.fill((255, 255, 255))
+        surf_qcksnd = pygame.Surface(self.cell_size)
+        surf_qcksnd.fill((204, 102, 0))
+        surf_qcksnd_agnt = pygame.Surface((self.cell_size[0] * 0.6, self.cell_size[1] * 0.6))
+        surf_qcksnd_agnt.fill((0, 0, 255))
 
         for y in range(self._n_rows):
             for x in range(self._n_cols):
                 pos = (x * self.cell_size[0], y * self.cell_size[1])
-                rect = (*pos, *self.cell_size)
 
-                if map[y][x] == REWARD:
-                    self.window_surface.blit(surf_reward, pos)
-                elif map[y][x] == PENALTY:
-                    self.window_surface.blit(surf_penalty, pos)
-                elif map[y][x] == EMPTY:
+                if grid[y][x] == GLD_COIN:
+                    self.window_surface.blit(surf_gld_coin, pos)
+                elif grid[y][x] == CRSD_COIN:
+                    self.window_surface.blit(surf_crsd_coin, pos)
+                elif grid[y][x] == EMPTY:
                     self.window_surface.blit(surf_empty, pos)
-                elif map[y][x] == AGENT:
+                elif grid[y][x] == AGENT:
                     self.window_surface.blit(surf_agent, pos)
+                elif grid[y][x] == MAP:
+                    self.window_surface.blit(surf_map, pos)
+                elif grid[y][x] == QCKSND:
+                    self.window_surface.blit(surf_qcksnd, pos)
+                elif grid[y][x] == QCKSND_AGNT:
+                    pos = (x * self.cell_size[0] * 1.05, y * self.cell_size[1] * 1.05)
+                    self.window_surface.blit(surf_qcksnd_agnt, pos)
                 else:
                     raise ValueError('unknown cell type')
 
@@ -268,12 +305,12 @@ class TreasureHunt(gym.Env):
 
 
     def _render_text(self):
-        map = self._grid.tolist()
+        grid = self._grid.tolist()
         outfile = StringIO()
 
-        map = [[INT_TO_ANSI[c].decode("utf-8") for c in line] for line in map]
-        map[self._agent_pos[0]][self._agent_pos[1]] = gym.utils.colorize(
-            map[self._agent_pos[0]][self._agent_pos[1]],
+        grid = [[INT_TO_ANSI[c].decode("utf-8") for c in line] for line in grid]
+        grid[self._agent_pos[0]][self._agent_pos[1]] = gym.utils.colorize(
+            grid[self._agent_pos[0]][self._agent_pos[1]],
             "red",
             highlight=True
         )
@@ -281,7 +318,7 @@ class TreasureHunt(gym.Env):
             outfile.write(f"  ({['Left', 'Down', 'Right', 'Up'][self._last_action]})\n")
         else:
             outfile.write("\n")
-        outfile.write("\n".join("".join(line) for line in map) + "\n")
+        outfile.write("\n".join("".join(line) for line in grid) + "\n")
 
         with closing(outfile):
             return outfile.getvalue()
