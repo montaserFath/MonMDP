@@ -3,7 +3,7 @@ critic:
   q0: 0
   gamma: 0.99
   lr: 0.5
-  use_reward_model: True
+  strategy: reward_model
   reward_model:
     r0: 0
     lr: 1.

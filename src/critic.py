@@ -118,11 +118,17 @@ class MonQCritic(Critic):
 
     def update(self, state, action, reward, terminated, next_state, next_action=None):
         if not np.isnan(reward['mdp']):
-            if self._r_model is not None:
+            if self._strategy == "reward_model":
                 self._r_model.update(state['mdp'], action['mdp'], reward['mdp'])
         else:
-            if self._r_model is not None:
+            if self._strategy == "reward_model":
                 reward['mdp'] = self._r_model(state['mdp'], action['mdp'])
+            elif self._strategy == "ignore":
+                return np.nan, np.nan
+            elif self._strategy == "zero_reward":
+                pass
+            else:
+                raise ValueError('unknown update strategy')
 
         if not np.isnan(reward['mdp']):
             mdp_error = self._mdp_critic.update(
@@ -134,7 +140,7 @@ class MonQCritic(Critic):
         if not np.isnan(reward['mdp']):
             reward = reward['monitor'] + reward['mdp']
         else:
-            reward = reward['monitor']
+            reward = reward['monitor'] + 0.
 
         if self._on_policy:
             q_next = self(next_state, next_action)
@@ -159,7 +165,8 @@ class MonQCritic(Critic):
 
 class MonQTable(MonQCritic):
     def __init__(self, observation_space, action_space,
-                 q0=0., gamma=0.99, lr=0.01, on_policy=False, use_reward_model=True,
+                 q0=0., gamma=0.99, lr=0.01, on_policy=False,
+                 strategy: "zero_reward",
                  **kwargs):
         MonQCritic.__init__(self, q0, gamma, lr, on_policy)
         self._mdp_critic = QTable(
@@ -171,7 +178,8 @@ class MonQTable(MonQCritic):
         self._n_actions = action_space['mdp'].n
         self._n_mon_states = observation_space['monitor'].n
         self._n_mon_actions = action_space['monitor'].n
-        if use_reward_model:
+
+        if self._strategy == "reward_model":
             self._r_model = RTable(
                 observation_space['mdp'],
                 action_space['mdp'],
@@ -179,6 +187,7 @@ class MonQTable(MonQCritic):
             )
         else:
             self._r_model = None
+
         self.reset()
 
     def __call__(self, state, action=None):
@@ -201,7 +210,8 @@ class MonQTable(MonQCritic):
 
 class MonQDict(MonQCritic):
     def __init__(self, observation_space, action_space,
-                 q0=0., gamma=0.99, lr=0.01, on_policy=False, use_reward_model=True,
+                 q0=0., gamma=0.99, lr=0.01, on_policy=False,
+                 strategy="zero_reward",
                  **kwargs):
         MonQCritic.__init__(self, q0, gamma, lr, on_policy)
         self._mdp_critic = QDict(
@@ -214,7 +224,8 @@ class MonQDict(MonQCritic):
         self._q0 = q0
         self._gamma = gamma
         self._lr = lr
-        if use_reward_model:
+
+        if self._strategy == "reward_model":
             self._r_model = RDict(
                 observation_space['mdp'],
                 action_space['mdp'],
@@ -222,6 +233,7 @@ class MonQDict(MonQCritic):
             )
         else:
             self._r_model = None
+
         self.reset()
 
     def __call__(self, state, action=None):
