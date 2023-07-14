@@ -228,9 +228,6 @@ class TimeLimitedMonitor(Monitor):
 
 
 
-
-
-
 class LimitedUseMonitor(Monitor):
     """
     The monitor has a battery that is consumed if the monitor is active.
