@@ -35,6 +35,12 @@ GRIDS = {
         [EMPTY,  CRSD_COIN, EMPTY,    EMPTY,     EMPTY,  CRSD_COIN, GLD_COIN, EMPTY],
         [EMPTY,  EMPTY,     EMPTY,    QCKSND,    MAP,    EMPTY,     EMPTY,    EMPTY],
     ],
+    "3x3":
+    [
+        [EMPTY, EMPTY, GLD_COIN],
+        [EMPTY, EMPTY, EMPTY],
+        [EMPTY, EMPTY, EMPTY]
+    ],
 }
 
 
@@ -131,18 +137,24 @@ class TreasureHunt(gym.Env):
                  grid: Optional[str] = "4x8",
                  enable_quicksand: Optional[bool] = False,
                  enable_map: Optional[bool] = False,
+                 init_agent_pos: Optional[tuple] = None,
+                 location_random: Optional[bool] = False,
                  **kwargs):
         self._enable_quicksand = enable_quicksand
         self._enable_map = enable_map
+        self._location_random = location_random
         self._grid_key = grid
         self._grid = np.asarray(GRIDS[self._grid_key])
+        self._is_quicksand = (QCKSND in self._grid.flatten())
+        self._is_map = (MAP in self._grid.flatten())
 
         self._n_rows, self._n_cols = self._grid.shape
         self.observation_space = gym.spaces.Box(low=0, high=6,
             shape=(self._n_rows * self._n_cols, ),
             dtype=int
         )
-        self.action_space = gym.spaces.Discrete(5)
+        self.action_space = gym.spaces.Discrete(5 if self._is_quicksand or self._is_map else 4)
+        self._init_agent_pos = init_agent_pos
         self._agent_pos = None
         self._last_action = None
         self._has_map = None
@@ -181,17 +193,16 @@ class TreasureHunt(gym.Env):
 
         if not self._enable_quicksand:
             self._grid[self._grid == QCKSND] = EMPTY
-
-        self._agent_pos = (self.np_random.integers(self._n_rows), 0)
+            self._agent_pos = (self.np_random.integers(self._n_rows), 0) if self._init_agent_pos is None else self._init_agent_pos
         self._grid[self._agent_pos] = AGENT
         self._last_action = None
-
         return self.grid.flatten(), {}
 
     def step(self, action: int):
+        add_random = True if self._location_random and self.np_random.random() < 0.05 else False
+        sand_map_env = self._is_quicksand or self._is_map
         if (
-            self._grid[self._agent_pos] != QCKSND_AGNT or
-            self.np_random.random() < 0.05
+            self._grid[self._agent_pos] != QCKSND_AGNT or add_random or not sand_map_env
         ):
             if self._grid[self._agent_pos] == QCKSND_AGNT:
                 self._grid[self._agent_pos] = QCKSND
