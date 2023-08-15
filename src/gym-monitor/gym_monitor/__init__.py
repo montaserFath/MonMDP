@@ -1,0 +1,1 @@
+from gym_monitor.treasure_hunt import TreasureHunt

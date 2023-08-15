@@ -7,11 +7,11 @@ install_requires = [
 ]
 
 entry_points = {
-    'gymnasium.envs': ['Gym-Monitor=gym_monitor.gym:register_envs']
+    'gymnasium.envs': ['gym_monitor=gym_monitor.gym:register_envs']
 }
 
 setup(
-    name='Gym-Monitor',
+    name='gym_monitor',
     version='0.0.1',
     license='GPL',
     packages=packages,
