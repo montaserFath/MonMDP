@@ -34,7 +34,16 @@ GRIDS = {
         [EMPTY, CRSD_COIN, EMPTY, EMPTY, EMPTY, CRSD_COIN, GLD_COIN, EMPTY],
         [EMPTY, EMPTY, EMPTY, QCKSND, MAP, EMPTY, EMPTY, EMPTY],
     ],
-    "3x3": [[EMPTY, EMPTY, GLD_COIN], [EMPTY, EMPTY, EMPTY], [EMPTY, EMPTY, EMPTY]],
+    "3x3": [
+        [EMPTY, EMPTY, GLD_COIN],
+        [EMPTY, EMPTY, EMPTY],
+        [EMPTY, EMPTY, EMPTY],
+    ],
+    "3x3 fire": [
+        [EMPTY, CRSD_COIN, GLD_COIN],
+        [EMPTY, CRSD_COIN, EMPTY],
+        [EMPTY, EMPTY, EMPTY],
+    ],
 }
 
 
