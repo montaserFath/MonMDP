@@ -48,3 +48,16 @@ class TabularObservationsWrapper(gym.ObservationWrapper):
 
     def observation(self, obs):
         return np.where(obs == 1)[0]
+
+
+class StableBaselinesWrapper(gym.Wrapper):
+    def __int__(self, env):
+        super.__init__(env)
+
+    def step(self, action):
+        obs, reward, done, truncated, info = super().step(action)
+        return obs, reward, done, truncated, info
+
+    def reset(self, seed: int | None = None, **kwargs):
+        obs, info = super().reset(seed=seed, **kwargs)
+        return obs, info
