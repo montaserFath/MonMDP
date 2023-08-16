@@ -236,11 +236,6 @@ class TreasureHunt(gym.Env):
             self._grid[self._agent_pos] = AGENT
             self._has_map = True
 
-        if self._grid[self._agent_pos] == GLD_COIN and self._has_map:
-            self._grid[self._agent_pos] = AGENT
-        elif self._grid[self._agent_pos] == CRSD_COIN and self._has_map:
-            self._grid[self._agent_pos] = AGENT
-
         if self._grid[self._agent_pos] == QCKSND:
             self._grid[self._agent_pos] = QCKSND_AGNT
         else:
