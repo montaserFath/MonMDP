@@ -14,7 +14,7 @@ def main():
     env = TabularObservationsWrapper(env, grid_size=(3, 3))
     env = TimeStepReward(env, decay_rate=0.01)
     env = StableBaselinesWrapper(env)
-    # model = train_dqn(env, log_dir="models/simple_env/dqn_fire_test")
+    # model = train_dqn(env, log_dir="models/simple_env/something")
     evaluate_mode("models/simple_env/dqn_fire_test.zip", env)
 
     env.close()
@@ -26,8 +26,9 @@ def train_dqn(env, log_dir: str):
         "MlpPolicy",
         env,
         verbose=1,
-        learning_starts=500,
+        learning_starts=5000,
         tensorboard_log=log_dir,
+        exploration_fraction=0.2,
     )
     model.learn(total_timesteps=int(5e5), log_interval=10)
     model.save(log_dir)
