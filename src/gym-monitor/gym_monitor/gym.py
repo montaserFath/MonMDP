@@ -12,6 +12,7 @@ def register_envs():
             "enable_map": False,
             "enable_quicksand": False,
             "init_agent_pos": (0, 0),
+            "render_mode": "human",
         },
     )
 
@@ -24,6 +25,7 @@ def register_envs():
             "enable_map": False,
             "enable_quicksand": False,
             "init_agent_pos": (0, 0),
+            "render_mode": "human",
         },
     )
 
