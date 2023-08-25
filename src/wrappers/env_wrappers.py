@@ -43,8 +43,9 @@ class TabularObservationsWrapper(gym.ObservationWrapper):
         super().__init__(env)
         self.env = env
         self.grid_size = grid_size
-        max_obs = grid_size[0] * grid_size[1] - 1
-        self.observation_space = gym.spaces.Box(0, max_obs, (1,), dtype="uint8")
+        max_obs = grid_size[0] * grid_size[1]
+        # self.observation_space = gym.spaces.Box(0, max_obs, (1,), dtype="uint8")
+        self.observation_space = gym.spaces.Discrete(max_obs)
 
     def observation(self, obs):
         return np.where(obs == 1)[0]

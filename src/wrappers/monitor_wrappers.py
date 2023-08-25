@@ -4,7 +4,6 @@ import numpy as np
 from abc import abstractmethod
 
 
-
 class Monitor(gymnasium.Wrapper):
     """
     Generic monitor class.
@@ -31,7 +30,6 @@ class Monitor(gymnasium.Wrapper):
         info = mdp_info | {'mdp_reward': mdp_reward}
 
         return obs, reward, terminated, truncated, info
-
 
 
 class FullMonitor(Monitor):
@@ -69,7 +67,6 @@ class FullMonitor(Monitor):
         return monitor_obs, proxy_reward, monitor_cost
 
 
-
 class BinaryMonitor(Monitor):
     """
     Simple monitor where the action is "ask for monitor or not".
@@ -86,17 +83,31 @@ class BinaryMonitor(Monitor):
         monitor_reset_prob (float): probability of the monitor resetting itself.
 
     """
-    def __init__(self, env, monitor_cost=0.01, monitor_reset_prob=0.5, **kwargs):
+
+    def __init__(
+        self,
+        env,
+        monitor_cost=0.01,
+        monitor_reset_prob=0.5,
+        init_monitor_state: int = 0,
+        empty_observation_space: bool = True,
+        empty_action_space: bool = False,
+        **kwargs
+    ):
         gymnasium.Wrapper.__init__(self, env)
-        self.action_space = spaces.Dict({
-            'mdp': env.action_space,
-            'monitor': spaces.Discrete(2),
-        })
-        self.observation_space = spaces.Dict({
-            'mdp': env.observation_space,
-            'monitor': spaces.Discrete(2),
-        })
-        self.monitor_state = 0  # deactivated
+        self.action_space = spaces.Dict(
+            {
+                "mdp": env.action_space,
+                "monitor": spaces.Discrete(2 if not empty_action_space else 1),
+            }
+        )
+        self.observation_space = spaces.Dict(
+            {
+                "mdp": env.observation_space,
+                "monitor": spaces.Discrete(2 if not empty_observation_space else 1),
+            }
+        )
+        self.monitor_state = init_monitor_state  # deactivated
         self.monitor_reset_prob = monitor_reset_prob
         self.monitor_cost = monitor_cost
 
@@ -127,7 +138,6 @@ class BinaryMonitor(Monitor):
         monitor_obs = self.monitor_state
 
         return monitor_obs, proxy_reward, monitor_cost
-
 
 
 class NMonitor(Monitor):
@@ -178,8 +188,6 @@ class NMonitor(Monitor):
         return monitor_obs, proxy_reward, monitor_cost
 
 
-
-
 class TimeLimitedMonitor(Monitor):
     """
     The monitor is on at the beginning of the episode and the agent gets to see
@@ -224,8 +232,6 @@ class TimeLimitedMonitor(Monitor):
         monitor_obs = self.monitor_state
 
         return monitor_obs, proxy_reward, monitor_cost
-
-
 
 
 class LimitedUseMonitor(Monitor):
