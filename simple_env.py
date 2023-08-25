@@ -1,21 +1,64 @@
 import gymnasium as gym
-import numpy as np
+import hydra
 from stable_baselines3 import DQN
+import wandb
+from omegaconf import DictConfig, OmegaConf
+from src.utils import dict_to_id
 from src.wrappers.env_wrappers import (
     TimeStepReward,
     TabularObservationsWrapper,
     StableBaselinesWrapper,
 )
+from src.wrappers.monitor_wrappers import BinaryMonitor
+from src.actor import MonEpsilonGreedyOneAction
+from src.critic import MonQTableOneAction
+from src.experiment import MonExperiment
+
+
+@hydra.main(version_base=None, config_path="configs", config_name="simple_env")
+def run_monitor(cfg: DictConfig) -> None:
+    group = cfg.environment.id + "\\" + dict_to_id(cfg.monitor)
+    wandb.init(
+        group=group,
+        config=OmegaConf.to_container(
+            cfg,
+            resolve=True,
+            throw_on_missing=True,
+        ),
+        settings=wandb.Settings(start_method="thread"),
+        **cfg.wandb,
+    )
+    print("env", cfg["environment"]["id"])
+    env = wrappe_env(cfg["environment"]["id"], monitor_wrapper=True)
+
+    critic = MonQTableOneAction(env.observation_space, env.action_space, **cfg.agent.critic)
+
+    actor = MonEpsilonGreedyOneAction(critic, **cfg.agent.actor)
+
+    experiment = MonExperiment(env, actor, critic, **cfg.experiment)
+
+    experiment.train()
+
+
+def wrappe_env(
+    env_id: str = "gym_monitor/TreasureHunt-Simple-v0", monitor_wrapper: bool = False
+):
+    env = gym.make(env_id, render_modes="human")
+    env = TabularObservationsWrapper(env, grid_size=(3, 3))
+    env = TimeStepReward(env, decay_rate=0.01)
+    env = StableBaselinesWrapper(env)
+    if monitor_wrapper:
+        env = BinaryMonitor(
+            env, monitor_cost=0.05, monitor_reset_prob=0.0, init_monitor_state=1
+        )
+    return env
 
 
 def main():
     """main function"""
-    env = gym.make("gym_monitor/TreasureHunt-Fire-v0", render_modes="human")
-    env = TabularObservationsWrapper(env, grid_size=(3, 3))
-    env = TimeStepReward(env, decay_rate=0.01)
-    env = StableBaselinesWrapper(env)
+    env = wrappe_env("gym_monitor/TreasureHunt-Fire-v0", monitor_wrapper=True)
     # model = train_dqn(env, log_dir="models/simple_env/something")
-    evaluate_mode("models/simple_env/dqn_fire_test.zip", env)
+    evaluate_mode("models/simple_env/dqn_fire_test.zip", env, render=True)
 
     env.close()
 
@@ -35,17 +78,16 @@ def train_dqn(env, log_dir: str):
     return model
 
 
-def evaluate_mode(model_dir: str, env, n_episodes: int = 10):
+def evaluate_mode(model_dir: str, env, n_episodes: int = 5, render: bool = False):
     """Evaluate a DQN model in an environment"""
     model = DQN.load(model_dir)
     for ep in range(n_episodes):
         done = False
         total_r, t = 0, 0
         s, _ = env.reset()
-        img = env.render()
-        # np.save("models/simple_env/simple_env_img.npy", img)
-        # print("init state", s[0])
         while not done:
+            if render:
+                env.render()
             # a = env.action_space.sample()
             a, _ = model.predict(s, deterministic=True)
             s, r, done, _, _ = env.step(a)
@@ -55,4 +97,5 @@ def evaluate_mode(model_dir: str, env, n_episodes: int = 10):
 
 
 if __name__ == "__main__":
-    main()
+    run_monitor()
+    # main()
