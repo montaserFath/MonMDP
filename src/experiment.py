@@ -31,7 +31,7 @@ class Experiment():
                 self._actor.train()
                 wandb.log(
                     {
-                        'test/return_true': episode_return.mean()
+                        'test/environment_reward': episode_return.mean()
                     },
                     step=ep,
                     commit=False
@@ -53,7 +53,7 @@ class Experiment():
 
             wandb.log(
                 {
-                    'train/return_true': episode_return,
+                    'train/environment_reward': episode_return,
                     'train/loss_mdp': episode_loss
                 },
                 step=ep,
@@ -97,9 +97,9 @@ class MonExperiment(Experiment):
                 self._actor.train()
                 wandb.log(
                     {
-                        'test/return_true': episode_return_true,
-                        'test/return_proxy': episode_return_proxy,
-                        'test/return_cost': episode_return_cost
+                        'test/environment_reward': episode_return_true,
+                        'test/received_reward': episode_return_proxy,
+                        'test/monitor_reward': episode_return_cost
                     },
                     step=ep,
                     commit=False
@@ -139,9 +139,9 @@ class MonExperiment(Experiment):
 
             wandb.log(
                 {
-                    'train/return_true': episode_return_true,
-                    'train/return_proxy': episode_return_proxy,
-                    'train/return_cost': episode_return_cost,
+                    'train/environment_reward': episode_return_true,
+                    'train/received_reward': episode_return_proxy,
+                    'train/monitor_reward': episode_return_cost,
                     'train/loss_mdp': episode_loss_mdp,
                     'train/loss_mon': episode_loss_mon
                 },
