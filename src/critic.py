@@ -25,7 +25,6 @@ class Critic(ABC):
         pass
 
 
-
 # ------------------------------------------------------------------------------
 # Classic MDP
 # ------------------------------------------------------------------------------
@@ -62,12 +61,14 @@ class QTable(QCritic):
         self.reset()
 
     def __call__(self, state, action=None):
+        state = state.item() if isinstance(state, np.ndarray) else state
         if action is None:
             return self._q_table[state]
         else:
             return self._q_table[state][action]
 
     def _update(self, state, action, new_value):
+        state = state.item() if isinstance(state, np.ndarray) else state
         self._q_table[state][action] = new_value
 
     def reset(self):
@@ -103,18 +104,17 @@ class QDict(QCritic):
         return self._q_dict
 
 
-
-
 # ------------------------------------------------------------------------------
 # Monitored MDP
 # ------------------------------------------------------------------------------
 
 class MonQCritic(Critic):
-    def __init__(self, q0=0., gamma=0.99, lr=0.01, on_policy=False, **kwargs):
+    def __init__(self, q0=0., gamma=0.99, lr=0.01, on_policy=False, strategy: str = "reward_model", **kwargs):
         self._q0 = q0
         self._gamma = gamma
         self._lr = lr
         self._on_policy = on_policy
+        self._strategy = strategy
 
     def update(self, state, action, reward, terminated, next_state, next_action=None):
         if not np.isnan(reward['mdp']):
@@ -166,9 +166,9 @@ class MonQCritic(Critic):
 class MonQTable(MonQCritic):
     def __init__(self, observation_space, action_space,
                  q0=0., gamma=0.99, lr=0.01, on_policy=False,
-                 strategy: "zero_reward",
+                 strategy="zero_reward",
                  **kwargs):
-        MonQCritic.__init__(self, q0, gamma, lr, on_policy)
+        MonQCritic.__init__(self, q0, gamma, lr, on_policy, strategy=strategy)
         self._mdp_critic = QTable(
             observation_space['mdp'],
             action_space['mdp'],
@@ -206,6 +206,32 @@ class MonQTable(MonQCritic):
 
     def report(self):
         return self._q_table, self._mdp_critic.report()
+
+
+class MonQTableOneAction(MonQTable):
+    def __int__(self, observation_space, action_space, **kwargs):
+        super().__int__(self, observation_space, action_space)
+
+    def reset(self):
+        shp = (self._n_states, self._n_actions * self._n_mon_actions)
+        self._q_table = np.ones(shp) * self._q0
+        self._mdp_critic.reset()
+
+    def __call__(self, state, action=None):
+        if action is None:
+            return self._q_table[state["mdp"]]
+        return self._q_table[state["mdp"], self.get_action_ind(action)]
+
+    def _update(self, state, action, new_value):
+        self._q_table[state["mdp"], self.get_action_ind(action)] = new_value
+
+    def get_action_ind(self, action: dict) -> int:
+        mdp_action, mon_action = action["mdp"], action["monitor"]
+        return mon_action * mdp_action + self._n_actions
+
+    def ind_to_action(self, action_ind: int) -> dict:
+        mon_action, mdp_action = action_ind // self._n_actions, action_ind % self._n_actions
+        return {"mdp": mdp_action, "monitor": mon_action}
 
 
 class MonQDict(MonQCritic):
