@@ -80,3 +80,18 @@ class MonEpsilonGreedy(EpsilonGreedy):
             q = self._critic(state)
             action = np.unravel_index(np.argmax(q), q.shape)
             return {'mdp': action[0], 'monitor': action[1]}
+
+
+class MonEpsilonGreedyOneAction(MonEpsilonGreedy):
+    def ind_to_action(self, action_ind: int) -> dict:
+        if action_ind >= (self._critic.n_actions * self._critic.n_mon_actions):
+            raise ValueError("action index is larger than max action")
+        mon_action, mdp_action = action_ind // self._critic.n_actions, action_ind % self._critic.n_actions
+        return {"mdp": mdp_action, "monitor": mon_action}
+
+    def __call__(self, state):
+        if np.random.random() < self._eps.value and self._train:
+            return {'mdp': np.random.randint(0, self._critic.n_actions),
+                    'monitor': np.random.randint(0, self._critic.n_mon_actions)}
+        q = self._critic(state)
+        return self.ind_to_action(np.argmax(q))
