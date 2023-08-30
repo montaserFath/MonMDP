@@ -1,4 +1,5 @@
 from contextlib import closing
+import pygame
 import numpy as np
 import gymnasium as gym
 from typing import Optional
@@ -273,13 +274,6 @@ class TreasureHunt(gym.Env):
             return self._render_gui(self.render_mode)
 
     def _render_gui(self, mode):
-        try:
-            import pygame
-        except ImportError as e:
-            raise DependencyNotInstalled(
-                "pygame is not installed, run `pip install gymnasium[toy-text]`"
-            ) from e
-
         if self.window_surface is None:
             pygame.init()
 
@@ -334,6 +328,8 @@ class TreasureHunt(gym.Env):
                     pygame.draw.circle(
                         self.window_surface, (0, 0, 255), pos, self.cell_size[0] / 2.2
                     )
+        # draw white lines between cells
+        self._draw_white_lines()
 
         if mode == "human":
             pygame.event.pump()
@@ -363,9 +359,23 @@ class TreasureHunt(gym.Env):
         with closing(outfile):
             return outfile.getvalue()
 
+    def _draw_white_lines(self):
+        # white lines between cells
+        w_c = (255, 255, 255)
+        # vertical lines
+        for i in range(1, self._n_rows):
+            pygame.draw.line(
+                self.window_surface, w_c, (0, i * self.cell_size[0]), (3 * self.cell_size[0], i * self.cell_size[1]), 3
+            )
+        # vertical lines
+        for j in range(1, self._n_cols):
+            pygame.draw.line(
+                self.window_surface, w_c, (j * self.cell_size[1], 0), (j * self.cell_size[0], 3 * self.cell_size[1]), 3
+            )
+        # return self.window_surface
+
     def close(self):
         if self.window_surface is not None:
-            import pygame
 
             pygame.display.quit()
             pygame.quit()
