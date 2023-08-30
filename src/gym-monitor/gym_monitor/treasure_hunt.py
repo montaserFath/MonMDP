@@ -311,13 +311,13 @@ class TreasureHunt(gym.Env):
 
                 if grid[y][x] == GLD_COIN:
                     self.window_surface.blit(surf_gld_coin, pos)
-                elif grid[y][x] == CRSD_COIN:
+                if grid[y][x] == CRSD_COIN:
                     self.window_surface.blit(surf_crsd_coin, pos)
-                elif grid[y][x] == EMPTY or grid[y][x] == AGENT:
+                if grid[y][x] == EMPTY:  # or grid[y][x] == AGENT:
                     self.window_surface.blit(surf_empty, pos)
-                elif grid[y][x] == MAP:
+                if grid[y][x] == MAP:
                     self.window_surface.blit(surf_map, pos)
-                elif grid[y][x] == QCKSND or grid[y][x] == QCKSND_AGNT:
+                if grid[y][x] == QCKSND:  # or grid[y][x] == QCKSND_AGNT:
                     self.window_surface.blit(surf_qcksnd, pos)
 
                 if grid[y][x] == AGENT or grid[y][x] == QCKSND_AGNT:
@@ -326,7 +326,7 @@ class TreasureHunt(gym.Env):
                         y * self.cell_size[1] + self.cell_size[1] / 2,
                     )
                     pygame.draw.circle(
-                        self.window_surface, (0, 0, 255), pos, self.cell_size[0] / 2.2
+                        self.window_surface, (0, 0, 255), pos, self.cell_size[0] / 2.5
                     )
         # draw white lines between cells
         self._draw_white_lines()
