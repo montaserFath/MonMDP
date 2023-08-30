@@ -10,7 +10,7 @@ from src.utils import set_rng_seed, cantor_pairing
 
 class Experiment():
     def __init__(self, env: gym.Env, actor: Actor, critic: Critic,
-                 training_episodes, testing_episodes, testing_frequency, rng_seed):
+                 training_episodes, testing_episodes, testing_frequency, rng_seed, log_dir: str):
         self._env = env
         self._actor = actor
         self._critic = critic
@@ -18,6 +18,7 @@ class Experiment():
         self._testing_episodes = testing_episodes
         self._testing_frequency = testing_frequency
         self._rng_seed = rng_seed
+        self._log_dir = log_dir
 
     def train(self):
         set_rng_seed(self._rng_seed)
@@ -61,15 +62,19 @@ class Experiment():
             )
             self._actor.update()
 
+        # save Q-table as numpy array
+        self._critic.save()
         wandb.finish()
         self._env.close()
 
-    def test(self):
+    def test(self, render: bool = False):
         episode_return = np.zeros(self._testing_episodes)
         for ep in range(self._testing_episodes):
             ep_seed = cantor_pairing(self._rng_seed, ep)
             obs, _ = self._env.reset(seed=ep_seed)
             while True:
+                if render:
+                    self._env.render()
                 action = self._actor(obs)
                 next_obs, reward, term, trunc, _ = self._env.step(action)
                 episode_return[ep] += reward
@@ -149,11 +154,12 @@ class MonExperiment(Experiment):
                 commit=True
             )
             self._actor.update()
-
+        # save Q-table as numpy array
+        self._critic.save()
         wandb.finish()
         self._env.close()
 
-    def test(self):
+    def test(self, render: bool = False):
         episode_return_true = np.zeros(self._testing_episodes)
         episode_return_proxy = np.zeros(self._testing_episodes)
         episode_return_cost = np.zeros(self._testing_episodes)
@@ -162,6 +168,8 @@ class MonExperiment(Experiment):
             ep_seed = cantor_pairing(self._rng_seed, ep)
             obs, _ = self._env.reset(seed=ep_seed)
             while True:
+                if render:
+                    self._env.render()
                 action = self._actor(obs)
                 next_obs, reward, term, trunc, info = self._env.step(action)
                 episode_return_true[ep] += info['mdp_reward']

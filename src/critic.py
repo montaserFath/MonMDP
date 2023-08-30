@@ -1,3 +1,5 @@
+import datetime
+import os
 import numpy as np
 from abc import ABC, abstractmethod
 from src.reward import RTable, RDict
@@ -232,6 +234,16 @@ class MonQTableOneAction(MonQTable):
     def ind_to_action(self, action_ind: int) -> dict:
         mon_action, mdp_action = action_ind // self._n_actions, action_ind % self._n_actions
         return {"mdp": mdp_action, "monitor": mon_action}
+
+    def save(self):
+        dir_name = "models/simple_env/{date:%Y_%m_%d-%H_%M_%S}".format(date=datetime.datetime.now())
+        os.makedirs(dir_name, exist_ok=True)
+        np.save(dir_name + "/critic_q_table.npy", self._q_table)
+
+    def load(self, log_dir: str = None):
+        if log_dir is None:
+            raise ValueError("No files to load Q-Table from it")
+        self._q_table = np.load(log_dir + "/critic_q_table.npy")
 
 
 class MonQDict(MonQCritic):

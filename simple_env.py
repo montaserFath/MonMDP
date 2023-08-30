@@ -14,6 +14,8 @@ from src.actor import MonEpsilonGreedyOneAction
 from src.critic import MonQTableOneAction
 from src.experiment import MonExperiment
 
+EVAL = True
+
 
 @hydra.main(version_base=None, config_path="configs", config_name="simple_env")
 def run_monitor(cfg: DictConfig) -> None:
@@ -28,16 +30,19 @@ def run_monitor(cfg: DictConfig) -> None:
         settings=wandb.Settings(start_method="thread"),
         **cfg.wandb,
     )
-    print("env", cfg["environment"]["id"])
+
     env = wrappe_env(cfg["environment"]["id"], monitor_wrapper=True)
 
     critic = MonQTableOneAction(env.observation_space, env.action_space, **cfg.agent.critic)
 
     actor = MonEpsilonGreedyOneAction(critic, **cfg.agent.actor)
 
-    experiment = MonExperiment(env, actor, critic, **cfg.experiment)
-
-    experiment.train()
+    experiment = MonExperiment(env, actor, critic, log_dir="models/simple_env/", **cfg.experiment)
+    if EVAL:
+        critic.load("models/simple_env/2023_08_30-11_33_42/")
+        experiment.test(render=True)
+    else:
+        experiment.train()
 
 
 def wrappe_env(
