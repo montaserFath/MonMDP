@@ -44,16 +44,24 @@ class RTable(Reward):
         self.reset()
 
     def __call__(self, state, action):
+        state = state.item() if isinstance(state, np.ndarray) else state
         return self._r_table[state][action]
 
     def _update(self, state, action, new_value):
-        self._r_table[state][action] = new_value
+        state = state.item() if isinstance(state, np.ndarray) else state
+        old_value = self._r_table[state][action]
+        self._r_table[state][action] = old_value + self._lr * (new_value - old_value)
 
     def reset(self):
         self._r_table = np.ones((self._n_states, self._n_actions)) * self._r0
 
     def report(self):
         return self._r_table
+
+    def save(self, log_dir: str = None):
+        if log_dir is None:
+            raise ValueError("The log directory is empty")
+        np.save(log_dir + "/reward_model_table.npy", self._r_table)
 
 
 class RDict(Reward):

@@ -43,10 +43,10 @@ class Actor(ABC):
 
 
 class EpsilonGreedy(Actor):
-    def __init__(self, critic, init_eps=1., min_eps=0.1, eps_decay=0.0001):
+    def __init__(self, critic, init_eps=1., min_eps=0.1, eps_decay=0.0001, train: bool = True):
         self._critic = critic
         self._eps = LinearEpsilonDecay(init_eps, min_eps, eps_decay)
-        self._train = True
+        self._train = train
         self.reset()
 
     def __call__(self, state):
