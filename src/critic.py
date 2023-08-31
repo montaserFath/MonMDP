@@ -180,6 +180,7 @@ class MonQTable(MonQCritic):
         self._n_actions = action_space['mdp'].n
         self._n_mon_states = observation_space['monitor'].n
         self._n_mon_actions = action_space['monitor'].n
+        self._dir_name = "models/simple_env/{date:%Y_%m_%d-%H_%M_%S}".format(date=datetime.datetime.now())
 
         if self._strategy == "reward_model":
             self._r_model = RTable(
@@ -236,14 +237,17 @@ class MonQTableOneAction(MonQTable):
         return {"mdp": mdp_action, "monitor": mon_action}
 
     def save(self):
-        dir_name = "models/simple_env/{date:%Y_%m_%d-%H_%M_%S}".format(date=datetime.datetime.now())
-        os.makedirs(dir_name, exist_ok=True)
-        np.save(dir_name + "/critic_q_table.npy", self._q_table)
+        os.makedirs(self._dir_name, exist_ok=True)
+        np.save(self._dir_name + "/critic_q_table.npy", self._q_table)
+        if self._r_model is not None:
+            self._r_model.save(self._dir_name)
 
     def load(self, log_dir: str = None):
         if log_dir is None:
             raise ValueError("No files to load Q-Table from it")
         self._q_table = np.load(log_dir + "/critic_q_table.npy")
+        if self._r_model is not None:
+            self._r_model = np.load(log_dir + "/reward_model_table.npy")
 
 
 class MonQDict(MonQCritic):

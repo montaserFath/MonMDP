@@ -35,11 +35,11 @@ def run_monitor(cfg: DictConfig) -> None:
 
     critic = MonQTableOneAction(env.observation_space, env.action_space, **cfg.agent.critic)
 
-    actor = MonEpsilonGreedyOneAction(critic, **cfg.agent.actor)
+    actor = MonEpsilonGreedyOneAction(critic, train=not EVAL, **cfg.agent.actor)
 
     experiment = MonExperiment(env, actor, critic, log_dir="models/simple_env/", **cfg.experiment)
     if EVAL:
-        critic.load("models/simple_env/2023_08_30-11_33_42/")
+        critic.load("models/simple_env/2023_08_30-14_43_08")  #2023_08_30-21_37_49  2023_08_30-14_43_08
         experiment.test(render=True)
     else:
         experiment.train()
