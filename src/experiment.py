@@ -26,7 +26,7 @@ class Experiment():
         self._critic.reset()
 
         for ep in tqdm(range(self._training_episodes)):
-            if ep % self._testing_frequency == 0:
+            if ep % self._testing_frequency == 1:
                 self._actor.eval()
                 episode_return = self.test()
                 self._actor.train()
@@ -93,18 +93,20 @@ class MonExperiment(Experiment):
         self._critic.reset()
 
         for ep in tqdm(range(self._training_episodes)):
-            if ep % self._testing_frequency == 0:
+            if ep > 0 and ep % self._testing_frequency == 0:
                 self._actor.eval()
-                episode_return_true, episode_return_proxy, episode_return_cost = self.test()
-                episode_return_true = episode_return_true.mean()
-                episode_return_proxy = np.nanmean(episode_return_proxy)
-                episode_return_cost = episode_return_cost.mean()
+                ep_return_true, ep_return_proxy, ep_return_cost, ep_monitor_action, ep_length = self.test()
+                episode_return_true = ep_return_true.mean()
+                episode_return_proxy = np.nanmean(ep_return_proxy)
+                episode_return_cost = ep_return_cost.mean()
                 self._actor.train()
                 wandb.log(
                     {
                         'test/environment_reward': episode_return_true,
                         'test/received_reward': episode_return_proxy,
-                        'test/monitor_reward': episode_return_cost
+                        'test/monitor_reward': episode_return_cost,
+                        "test/monitor_action": np.mean(ep_monitor_action),
+                        "test/number_of_timesteps": np.mean(ep_length),
                     },
                     step=ep,
                     commit=False
@@ -118,8 +120,12 @@ class MonExperiment(Experiment):
             episode_loss_mdp = 0.
             episode_loss_mon = 0.
             reward_seen = False
+            episode_monitor_action_count, time_steps = 0, 0
             while True:
+                time_steps += 1
                 action = self._actor(obs)
+                if action["monitor"] == 1:
+                    episode_monitor_action_count += 1
                 next_obs, reward, term, trunc, info = self._env.step(action)
                 next_action = self._actor(next_obs)
                 step_loss_mdp, step_loss_mon = \
@@ -148,7 +154,9 @@ class MonExperiment(Experiment):
                     'train/received_reward': episode_return_proxy,
                     'train/monitor_reward': episode_return_cost,
                     'train/loss_mdp': episode_loss_mdp,
-                    'train/loss_mon': episode_loss_mon
+                    'train/loss_mon': episode_loss_mon,
+                    "train/monitor_action": episode_monitor_action_count,
+                    "train/number_of_timesteps": time_steps,
                 },
                 step=ep,
                 commit=True
@@ -163,14 +171,20 @@ class MonExperiment(Experiment):
         episode_return_true = np.zeros(self._testing_episodes)
         episode_return_proxy = np.zeros(self._testing_episodes)
         episode_return_cost = np.zeros(self._testing_episodes)
+        episode_monitor_action = np.zeros(self._testing_episodes)
+        episode_length = np.zeros(self._testing_episodes)
         for ep in range(self._testing_episodes):
             reward_seen = False
             ep_seed = cantor_pairing(self._rng_seed, ep)
             obs, _ = self._env.reset(seed=ep_seed)
+            episode_monitor_action_count, time_steps = 0, 0
             while True:
+                time_steps += 1
                 if render:
                     self._env.render()
                 action = self._actor(obs)
+                if action["monitor"] == 1:
+                    episode_monitor_action_count += 1
                 next_obs, reward, term, trunc, info = self._env.step(action)
                 episode_return_true[ep] += info['mdp_reward']
                 episode_return_cost[ep] += reward['monitor']
@@ -182,5 +196,7 @@ class MonExperiment(Experiment):
                         episode_return_proxy[ep] = np.nan
                     break
                 obs = next_obs
+            episode_monitor_action[ep] = episode_monitor_action_count
+            episode_length[ep] = time_steps
 
-        return episode_return_true, episode_return_proxy, episode_return_cost
+        return episode_return_true, episode_return_proxy, episode_return_cost, episode_monitor_action, episode_length
