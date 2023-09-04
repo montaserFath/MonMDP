@@ -15,22 +15,23 @@ from src.actor import MonEpsilonGreedyOneAction
 from src.critic import MonQTableOneAction
 from src.experiment import MonExperiment
 
-EVAL = False
+EVAL = True
 
 
 @hydra.main(version_base=None, config_path="configs", config_name="simple_env")
 def run_monitor(cfg: DictConfig) -> None:
     group = cfg.environment.id + "\\" + dict_to_id(cfg.monitor)
-    wandb.init(
-        group=group,
-        config=OmegaConf.to_container(
-            cfg,
-            resolve=True,
-            throw_on_missing=True,
-        ),
-        settings=wandb.Settings(start_method="thread"),
-        **cfg.wandb,
-    )
+    if not EVAL:
+        wandb.init(
+            group=group,
+            config=OmegaConf.to_container(
+                cfg,
+                resolve=True,
+                throw_on_missing=True,
+            ),
+            settings=wandb.Settings(start_method="thread"),
+            **cfg.wandb,
+        )
 
     env = wrappe_env(cfg["environment"]["id"], monitor_wrapper=True, cfg=cfg)
 
@@ -40,7 +41,7 @@ def run_monitor(cfg: DictConfig) -> None:
 
     experiment = MonExperiment(env, actor, critic, log_dir="models/simple_env/", **cfg.experiment)
     if EVAL:
-        critic.load("models/simple_env/2023_08_31-15_13_29")
+        critic.load("models/simple_env/2023_09_03-23_32_22")
         log_results(experiment.test(render=True))
 
     else:
@@ -48,7 +49,11 @@ def run_monitor(cfg: DictConfig) -> None:
 
 
 def log_results(
-        ep_return_true: np.ndarray, ep_return_proxy: np.ndarray, ep_return_cost: np.ndarray, ep_monitor_action: np.ndarray, ep_length: np.ndarray
+        ep_return_true: np.ndarray,
+        ep_return_proxy: np.ndarray,
+        ep_return_cost: np.ndarray,
+        ep_monitor_action: np.ndarray,
+        ep_length: np.ndarray,
 ) -> None:
     print("Mean True reward: {:.3f}".format(np.mean(ep_return_true)))
     print("Mean Proxy reward: {:.3f}".format(np.mean(ep_return_proxy)))
@@ -57,9 +62,7 @@ def log_results(
     print("Mean Episode length: {:.2f}".format(np.mean(ep_length)))
 
 
-def wrappe_env(
-    env_id: str = "gym_monitor/TreasureHunt-Simple-v0", monitor_wrapper: bool = False, cfg: DictConfig = None,
-):
+def wrappe_env(env_id: str, monitor_wrapper: bool = False, cfg: DictConfig = None):
     env = gym.make(env_id, render_modes="human")
     env = TabularObservationsWrapper(env, grid_size=(3, 3))
     env = TimeStepReward(env, decay_rate=0.01)

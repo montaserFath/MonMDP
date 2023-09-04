@@ -362,17 +362,17 @@ class TreasureHunt(gym.Env):
     def _draw_white_lines(self):
         # white lines between cells
         w_c = (255, 255, 255)
-        # vertical lines
+        cell_x, cell_y = self.cell_size[0], self.cell_size[1]
+        # horizontal lines
         for i in range(1, self._n_rows):
             pygame.draw.line(
-                self.window_surface, w_c, (0, i * self.cell_size[0]), (3 * self.cell_size[0], i * self.cell_size[1]), 3
+                self.window_surface, w_c, (0, i * cell_x), (3 * cell_x, i * cell_y), 3
             )
         # vertical lines
         for j in range(1, self._n_cols):
             pygame.draw.line(
-                self.window_surface, w_c, (j * self.cell_size[1], 0), (j * self.cell_size[0], 3 * self.cell_size[1]), 3
+                self.window_surface, w_c, (j * cell_y, 0), (j * cell_x, 3 * cell_y), 3
             )
-        # return self.window_surface
 
     def close(self):
         if self.window_surface is not None:
