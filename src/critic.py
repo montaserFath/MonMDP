@@ -111,12 +111,15 @@ class QDict(QCritic):
 # ------------------------------------------------------------------------------
 
 class MonQCritic(Critic):
-    def __init__(self, q0=0., gamma=0.99, lr=0.01, on_policy=False, strategy: str = "reward_model", **kwargs):
+    def __init__(
+            self, q0=0., gamma=0.99, lr=0.01, on_policy=False, strategy: str = "reward_model", unseen_r_value: float=0.0, **kwargs
+    ):
         self._q0 = q0
         self._gamma = gamma
         self._lr = lr
         self._on_policy = on_policy
         self._strategy = strategy
+        self._unseen_r_value = unseen_r_value
 
     def update(self, state, action, reward, terminated, next_state, next_action=None):
         if not np.isnan(reward['mdp']):
@@ -128,7 +131,7 @@ class MonQCritic(Critic):
             elif self._strategy == "ignore":
                 return np.nan, np.nan
             elif self._strategy == "zero_reward":
-                pass
+                reward['mdp'] = self._unseen_r_value
             else:
                 raise ValueError('unknown update strategy')
 
@@ -230,7 +233,7 @@ class MonQTableOneAction(MonQTable):
 
     def get_action_ind(self, action: dict) -> int:
         mdp_action, mon_action = action["mdp"], action["monitor"]
-        return mon_action * mdp_action + self._n_actions
+        return mon_action * self._n_actions + mdp_action
 
     def ind_to_action(self, action_ind: int) -> dict:
         mon_action, mdp_action = action_ind // self._n_actions, action_ind % self._n_actions
