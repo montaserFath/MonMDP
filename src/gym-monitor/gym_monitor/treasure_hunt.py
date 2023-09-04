@@ -294,16 +294,21 @@ class TreasureHunt(gym.Env):
         grid = self.grid.tolist()
         assert isinstance(grid, list), f"grid should be a list or an array, got {grid}"
 
-        surf_gld_coin = pygame.Surface(self.cell_size)
-        surf_gld_coin.fill((0, 255, 0))
-        surf_crsd_coin = pygame.Surface(self.cell_size)
-        surf_crsd_coin.fill((255, 0, 0))
+        # surf_gld_coin = pygame.Surface(self.cell_size)
+        # surf_gld_coin.fill((0, 255, 0))
+        # surf_crsd_coin = pygame.Surface(self.cell_size)
+        # surf_crsd_coin.fill((255, 0, 0))
         surf_empty = pygame.Surface(self.cell_size)
         surf_empty.fill((0, 0, 0))
         surf_map = pygame.Surface(self.cell_size)
         surf_map.fill((255, 255, 255))
         surf_qcksnd = pygame.Surface(self.cell_size)
         surf_qcksnd.fill((204, 102, 0))
+        # load images for the gold coin, fire and the agent
+        screen_w, screen_h = pygame.display.get_surface().get_size()
+        surf_gld_coin = pygame.transform.scale(pygame.image.load("img/gold_img.png"), (screen_w / 3, screen_h / 3))
+        surf_crsd_coin = pygame.transform.scale(pygame.image.load("img/fire_img.png"), (screen_w / 3, screen_h / 3))
+        surf_agent = pygame.transform.scale(pygame.image.load("img/agent_img.png"), (screen_w / 3, screen_h / 3))
 
         for y in range(self._n_rows):
             for x in range(self._n_cols):
@@ -321,13 +326,14 @@ class TreasureHunt(gym.Env):
                     self.window_surface.blit(surf_qcksnd, pos)
 
                 if grid[y][x] == AGENT or grid[y][x] == QCKSND_AGNT:
-                    pos = (
-                        x * self.cell_size[0] + self.cell_size[0] / 2,
-                        y * self.cell_size[1] + self.cell_size[1] / 2,
-                    )
-                    pygame.draw.circle(
-                        self.window_surface, (0, 0, 255), pos, self.cell_size[0] / 2.5
-                    )
+                    self.window_surface.blit(surf_agent, pos)
+                    # pos = (
+                    #     x * self.cell_size[0] + self.cell_size[0] / 2,
+                    #     y * self.cell_size[1] + self.cell_size[1] / 2,
+                    # )
+                    # pygame.draw.circle(
+                    #     self.window_surface, (0, 0, 255), pos, self.cell_size[0] / 2.5
+                    # )
         # draw white lines between cells
         self._draw_white_lines()
 
