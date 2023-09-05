@@ -30,6 +30,19 @@ def register_envs():
     )
 
     register(
+        id="TreasureHunt-Switch-v0",
+        entry_point="gym_monitor.treasure_hunt:TreasureHunt",
+        max_episode_steps=50,
+        kwargs={
+            "grid": "3x3 switch",
+            "enable_map": False,
+            "enable_quicksand": False,
+            "init_agent_pos": (0, 0),
+            "render_mode": "human",
+        },
+    )
+
+    register(
         id="TreasureHunt-Easy-v0",
         entry_point="gym_monitor.treasure_hunt:TreasureHunt",
         max_episode_steps=100,
