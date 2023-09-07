@@ -70,7 +70,7 @@ def log_results(
 def wrappe_env(env_id: str, monitor_wrapper: bool = False, cfg: DictConfig = None):
     env = gym.make(env_id, render_modes="human")
     env = TabularObservationsWrapper(env, grid_size=(3, 3))
-    env = TimeStepReward(env, decay_rate=0.01)
+    env = TimeStepReward(env, timestep_penalty=1.0)
     env = StableBaselinesWrapper(env)
     if monitor_wrapper:
         env = BinaryMonitor(env, **cfg.monitor)
