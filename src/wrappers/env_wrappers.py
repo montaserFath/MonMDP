@@ -28,14 +28,18 @@ class ActiveActionsWrapper(gym.ActionWrapper):
 
 
 class TimeStepReward(gym.RewardWrapper):
-    """Reward wrapper to decay with timestimes"""
+    """Reward wrapper change goal reward to 0, fire to -50, and timestep penalty to the desired value"""
 
-    def __init__(self, env, decay_rate: float = 0.05):
+    def __init__(self, env, timestep_penalty: float = 1.0):
         super().__init__(env)
-        self.decay_rate = decay_rate
+        self.timestep_penalty = timestep_penalty
 
     def reward(self, reward):
-        return reward - self.decay_rate
+        if reward == 1:  # reach the goal
+            reward = 0
+        elif reward == -1:  # steps on a fire
+            reward = -100
+        return reward - self.timestep_penalty
 
 
 class TabularObservationsWrapper(gym.ObservationWrapper):
