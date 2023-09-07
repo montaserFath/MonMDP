@@ -14,8 +14,11 @@ from src.wrappers.monitor_wrappers import BinaryMonitor
 from src.actor import MonEpsilonGreedyOneAction
 from src.critic import MonQTableOneAction
 from src.experiment import MonExperiment
+from src.policy_analysis import policy_performance
+
 
 EVAL = True
+LOG_DIR = "models/simple_env/zero_reward/1.0/"
 
 
 @hydra.main(version_base=None, config_path="configs", config_name="simple_env")
@@ -39,21 +42,23 @@ def run_monitor(cfg: DictConfig) -> None:
 
     actor = MonEpsilonGreedyOneAction(critic, train=not EVAL, **cfg.agent.actor)
 
-    experiment = MonExperiment(env, actor, critic, log_dir="models/simple_env/", **cfg.experiment)
+    experiment = MonExperiment(env, actor, critic, log_dir=LOG_DIR, **cfg.experiment)
     if EVAL:
-        critic.load("models/simple_env/2023_09_03-23_32_22")
-        log_results(experiment.test(render=True))
+        critic.load(LOG_DIR)
+        _, _, _, _, _, _ = experiment.test(render=False, save_results=True)
+        policy_performance(log_dir=LOG_DIR, save_fig=False)
+        # log_results()
 
     else:
         experiment.train()
 
 
 def log_results(
-        ep_return_true: np.ndarray,
-        ep_return_proxy: np.ndarray,
-        ep_return_cost: np.ndarray,
-        ep_monitor_action: np.ndarray,
-        ep_length: np.ndarray,
+    ep_return_true: np.ndarray,
+    ep_return_proxy: np.ndarray,
+    ep_return_cost: np.ndarray,
+    ep_monitor_action: np.ndarray,
+    ep_length: np.ndarray,
 ) -> None:
     print("Mean True reward: {:.3f}".format(np.mean(ep_return_true)))
     print("Mean Proxy reward: {:.3f}".format(np.mean(ep_return_proxy)))

@@ -167,22 +167,26 @@ class MonExperiment(Experiment):
         wandb.finish()
         self._env.close()
 
-    def test(self, render: bool = False):
+    def test(self, render: bool = False, save_results: bool = False):
         episode_return_true = np.zeros(self._testing_episodes)
         episode_return_proxy = np.zeros(self._testing_episodes)
         episode_return_cost = np.zeros(self._testing_episodes)
         episode_monitor_action = np.zeros(self._testing_episodes)
         episode_length = np.zeros(self._testing_episodes)
+        trajectories = {}
         for ep in range(self._testing_episodes):
             reward_seen = False
             ep_seed = cantor_pairing(self._rng_seed, ep)
             obs, _ = self._env.reset(seed=ep_seed)
             episode_monitor_action_count, time_steps = 0, 0
+            ep_states, ep_actions = [], []
             while True:
+                ep_states.append([obs["mdp"].item(), obs["monitor"]])
                 time_steps += 1
                 if render:
                     self._env.render()
                 action = self._actor(obs)
+                ep_actions.append([action["mdp"], action["monitor"]])
                 if action["monitor"] == 1:
                     episode_monitor_action_count += 1
                 next_obs, reward, term, trunc, info = self._env.step(action)
@@ -198,5 +202,13 @@ class MonExperiment(Experiment):
                 obs = next_obs
             episode_monitor_action[ep] = episode_monitor_action_count
             episode_length[ep] = time_steps
-
-        return episode_return_true, episode_return_proxy, episode_return_cost, episode_monitor_action, episode_length
+            trajectories[ep] = {
+                "states": np.array(ep_states),
+                "actions": np.array(ep_actions),
+                "environment_reward": episode_return_true,
+                "received_reward": episode_return_proxy,
+                "monitor_reward": episode_return_cost,
+            }
+        if save_results:
+            np.save(self._log_dir + "/trajectories.npy", trajectories)
+        return episode_return_true, episode_return_proxy, episode_return_cost, episode_monitor_action, episode_length, trajectories
