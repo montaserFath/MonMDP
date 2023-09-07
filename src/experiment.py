@@ -95,7 +95,7 @@ class MonExperiment(Experiment):
         for ep in tqdm(range(self._training_episodes)):
             if ep > 0 and ep % self._testing_frequency == 0:
                 self._actor.eval()
-                ep_return_true, ep_return_proxy, ep_return_cost, ep_monitor_action, ep_length = self.test()
+                ep_return_true, ep_return_proxy, ep_return_cost, ep_monitor_action, ep_length, _ = self.test()
                 episode_return_true = ep_return_true.mean()
                 episode_return_proxy = np.nanmean(ep_return_proxy)
                 episode_return_cost = ep_return_cost.mean()
