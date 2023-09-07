@@ -94,4 +94,6 @@ class MonEpsilonGreedyOneAction(MonEpsilonGreedy):
             return {'mdp': np.random.randint(0, self._critic.n_actions),
                     'monitor': np.random.randint(0, self._critic.n_mon_actions)}
         q = self._critic(state)
+        if self._critic._strategy == "q_mdp":
+            return {"mdp": np.argmax(q), "monitor": 1}
         return self.ind_to_action(np.argmax(q))

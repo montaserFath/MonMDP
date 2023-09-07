@@ -132,6 +132,8 @@ class MonQCritic(Critic):
                 return np.nan, np.nan
             elif self._strategy == "zero_reward":
                 reward['mdp'] = self._unseen_r_value
+            elif self._strategy in ["q_mdp", "q_monitor_sequential", "q_monitor_joint"]:
+                return np.nan, np.nan
             else:
                 raise ValueError('unknown update strategy')
 
@@ -219,17 +221,29 @@ class MonQTableOneAction(MonQTable):
         super().__int__(self, observation_space, action_space)
 
     def reset(self):
-        shp = (self._n_states, self._n_actions * self._n_mon_actions)
-        self._q_table = np.ones(shp) * self._q0
+        if self._strategy == "q_mdp":
+            table_shape = (self._n_states, self._n_actions)
+        elif self._strategy == "q_monitor_sequential":
+            raise NotImplemented
+        elif self._strategy == "q_monitor_joint":
+            raise NotImplemented
+        else:
+            table_shape = (self._n_states, self._n_actions * self._n_mon_actions)
+        self._q_table = np.ones(table_shape) * self._q0
         self._mdp_critic.reset()
 
     def __call__(self, state, action=None):
         if action is None:
             return self._q_table[state["mdp"]]
+        if self._strategy == "q_mdp":
+            return self._q_table[state["mdp"], action["mdp"]]
         return self._q_table[state["mdp"], self.get_action_ind(action)]
 
     def _update(self, state, action, new_value):
-        self._q_table[state["mdp"], self.get_action_ind(action)] = new_value
+        if self._strategy == "q_mdp":
+            self._q_table[state["mdp"], action["mdp"]] = new_value
+        else:
+            self._q_table[state["mdp"], self.get_action_ind(action)] = new_value
 
     def get_action_ind(self, action: dict) -> int:
         mdp_action, mon_action = action["mdp"], action["monitor"]
