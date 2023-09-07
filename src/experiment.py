@@ -42,10 +42,12 @@ class Experiment():
             obs, _ = self._env.reset(seed=ep_seed)
             episode_return = 0.
             episode_loss = 0.
+            next_action = None
             while True:
-                action = self._actor(obs)
+                action = self._actor(obs) if next_action is None else next_action
                 next_obs, reward, term, trunc, _ = self._env.step(action)
-                next_action = self._actor(next_obs)
+                if self._critic._on_policy:
+                    next_action = self._actor(next_obs)
                 episode_loss += self._critic.update(obs, action, reward, term, next_obs, next_action)
                 episode_return += reward
                 if term or trunc:
@@ -121,13 +123,16 @@ class MonExperiment(Experiment):
             episode_loss_mon = 0.
             reward_seen = False
             episode_monitor_action_count, time_steps = 0, 0
+            next_action = None
             while True:
                 time_steps += 1
-                action = self._actor(obs)
+                action = self._actor(obs) if next_action is None else next_action
+
                 if action["monitor"] == 1:
                     episode_monitor_action_count += 1
                 next_obs, reward, term, trunc, info = self._env.step(action)
-                next_action = self._actor(next_obs)
+                if self._critic._on_policy:
+                    next_action = self._actor(next_obs)
                 step_loss_mdp, step_loss_mon = \
                     self._critic.update(obs, action, reward, term, next_obs, next_action)
 

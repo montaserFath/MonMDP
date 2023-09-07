@@ -39,7 +39,7 @@ class QCritic(Critic):
         self._on_policy = on_policy
 
     def update(self, state, action, reward, terminated, next_state, next_action=None):
-        if self._on_policy:
+        if self._on_policy:  # TODO(Monta): on policy is not working fi it
             q_next = self(next_state, next_action)
         else:
             q_next = self(next_state).max()
@@ -148,7 +148,7 @@ class MonQCritic(Critic):
             reward = reward['monitor'] + 0.
 
         if self._on_policy:
-            q_next = self(next_state, next_action)
+            q_next = self(next_state, next_action).item()
         else:
             q_next = self(next_state).max()
         target = reward + self._gamma * (1. - terminated) * q_next
