@@ -109,6 +109,7 @@ class MonExperiment(Experiment):
                         'test/monitor_reward': episode_return_cost,
                         "test/monitor_action": np.mean(ep_monitor_action),
                         "test/number_of_timesteps": np.mean(ep_length),
+                        "test/joint_reward": episode_return_true + episode_return_cost,
                     },
                     step=ep,
                     commit=False
@@ -162,6 +163,7 @@ class MonExperiment(Experiment):
                     'train/loss_mon': episode_loss_mon,
                     "train/monitor_action": episode_monitor_action_count,
                     "train/number_of_timesteps": time_steps,
+                    "train/joint_reward": episode_return_true + episode_return_cost,
                 },
                 step=ep,
                 commit=True
@@ -213,6 +215,7 @@ class MonExperiment(Experiment):
                 "environment_reward": episode_return_true,
                 "received_reward": episode_return_proxy,
                 "monitor_reward": episode_return_cost,
+                "joint_reward": episode_return_true + episode_return_cost,
             }
         if save_results:
             np.save(self._log_dir + "/trajectories.npy", trajectories)
