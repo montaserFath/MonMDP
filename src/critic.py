@@ -185,7 +185,10 @@ class MonQTable(MonQCritic):
         self._n_actions = action_space['mdp'].n
         self._n_mon_states = observation_space['monitor'].n
         self._n_mon_actions = action_space['monitor'].n
-        self._dir_name = "models/simple_env/{date:%Y_%m_%d-%H_%M_%S}".format(date=datetime.datetime.now())
+        # env_name = env.spec.id.split("/")[1].split("-")[1]
+        self._dir_name = "models/Simple/{}/{date:%Y_%m_%d_%H_%M_%S}".format(
+            self._strategy, date=datetime.datetime.now()
+        )
 
         if self._strategy == "reward_model":
             self._r_model = RTable(
