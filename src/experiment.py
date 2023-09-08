@@ -10,7 +10,7 @@ from src.utils import set_rng_seed, cantor_pairing
 
 class Experiment():
     def __init__(self, env: gym.Env, actor: Actor, critic: Critic,
-                 training_episodes, testing_episodes, testing_frequency, rng_seed, log_dir: str):
+                 training_episodes, testing_episodes, testing_frequency, rng_seed, log_dir: str, save_log: bool = False):
         self._env = env
         self._actor = actor
         self._critic = critic
@@ -19,12 +19,12 @@ class Experiment():
         self._testing_frequency = testing_frequency
         self._rng_seed = rng_seed
         self._log_dir = log_dir
+        self._save_train_log = save_log
 
     def train(self):
         set_rng_seed(self._rng_seed)
         self._actor.reset()
         self._critic.reset()
-
         for ep in tqdm(range(self._training_episodes)):
             if ep % self._testing_frequency == 1:
                 self._actor.eval()
@@ -93,7 +93,7 @@ class MonExperiment(Experiment):
         set_rng_seed(self._rng_seed)
         self._actor.reset()
         self._critic.reset()
-
+        joint_reward = np.zeros(self._training_episodes)
         for ep in tqdm(range(self._training_episodes)):
             if ep > 0 and ep % self._testing_frequency == 0:
                 self._actor.eval()
@@ -153,7 +153,7 @@ class MonExperiment(Experiment):
                     break
 
                 obs = next_obs
-
+            joint_reward[ep] = episode_return_true + episode_return_cost
             wandb.log(
                 {
                     'train/environment_reward': episode_return_true,
@@ -171,6 +171,8 @@ class MonExperiment(Experiment):
             self._actor.update()
         # save Q-table as numpy array
         self._critic.save()
+        if self._save_train_log:
+            np.save(self._log_dir + "/training_joint_reward.npy", joint_reward)
         wandb.finish()
         self._env.close()
 

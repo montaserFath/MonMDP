@@ -30,15 +30,17 @@ class ActiveActionsWrapper(gym.ActionWrapper):
 class TimeStepReward(gym.RewardWrapper):
     """Reward wrapper change goal reward to 0, fire to -50, and timestep penalty to the desired value"""
 
-    def __init__(self, env, timestep_penalty: float = 1.0):
+    def __init__(self, env, goal_reward: float = 0, fire_reward: float = -50, timestep_penalty: float = 1.0):
         super().__init__(env)
         self.timestep_penalty = timestep_penalty
+        self.goal_reward = goal_reward
+        self.fire_reward = fire_reward
 
     def reward(self, reward):
         if reward == 1:  # reach the goal
-            reward = 0
+            reward = self.goal_reward
         elif reward == -1:  # steps on a fire
-            reward = -100
+            reward = self.fire_reward
         return reward - self.timestep_penalty
 
 

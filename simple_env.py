@@ -17,8 +17,8 @@ from src.experiment import MonExperiment
 from src.policy_analysis import plot_policy_actions, plot_reward_table_heatmap, plot_q_table_heatmap
 
 
-EVAL = True
-LOG_DIR = "models/simple_env/zero_reward/1.0/"
+EVAL = False
+LOG_DIR = "models/Simple/zero_reward/"
 
 
 @hydra.main(version_base=None, config_path="configs", config_name="simple_env")
@@ -46,10 +46,10 @@ def run_monitor(cfg: DictConfig) -> None:
     if EVAL:
         critic.load(LOG_DIR)
         _, _, _, _, _, _ = experiment.test(render=False, save_results=True)
-        plot_q_table_heatmap(log_dir=LOG_DIR, save_fig=False)
+        plot_q_table_heatmap(log_dir=LOG_DIR, save_fig=True)
         if "reward_model" in LOG_DIR:
-            plot_reward_table_heatmap(log_dir=LOG_DIR, save_fig=False)
-        plot_policy_actions(log_dir=LOG_DIR, save_fig=False)
+            plot_reward_table_heatmap(log_dir=LOG_DIR, save_fig=True)
+        plot_policy_actions(log_dir=LOG_DIR, env_name=cfg["environment"]["id"].split("/")[1], save_fig=True)
         # log_results()
 
     else:
@@ -73,7 +73,7 @@ def log_results(
 def wrappe_env(env_id: str, monitor_wrapper: bool = False, cfg: DictConfig = None):
     env = gym.make(env_id, render_modes="human")
     env = TabularObservationsWrapper(env, grid_size=(3, 3))
-    env = TimeStepReward(env, timestep_penalty=1.0)
+    env = TimeStepReward(env, timestep_penalty=0.1, goal_reward=1, fire_reward=-10)
     env = StableBaselinesWrapper(env)
     if monitor_wrapper:
         env = BinaryMonitor(env, **cfg.monitor)

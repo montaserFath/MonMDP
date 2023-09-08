@@ -1,4 +1,4 @@
-import datetime
+# import datetime
 import os
 import numpy as np
 from abc import ABC, abstractmethod
@@ -112,8 +112,9 @@ class QDict(QCritic):
 
 class MonQCritic(Critic):
     def __init__(
-            self, q0=0., gamma=0.99, lr=0.01, on_policy=False, strategy: str = "reward_model", unseen_r_value: float=0.0, **kwargs
+            self, q0=0., gamma=0.99, lr=0.01, on_policy=False, strategy: str = "reward_model", unseen_r_value: float = 0., **kwargs
     ):
+        # TODO(Monta): fix load unseen_r_value from yamil file
         self._q0 = q0
         self._gamma = gamma
         self._lr = lr
@@ -173,9 +174,9 @@ class MonQCritic(Critic):
 class MonQTable(MonQCritic):
     def __init__(self, observation_space, action_space,
                  q0=0., gamma=0.99, lr=0.01, on_policy=False,
-                 strategy="zero_reward",
+                 strategy="zero_reward", unseen_r_value=0.0,
                  **kwargs):
-        MonQCritic.__init__(self, q0, gamma, lr, on_policy, strategy=strategy)
+        MonQCritic.__init__(self, q0, gamma, lr, on_policy, strategy=strategy, unseen_r_value=unseen_r_value)
         self._mdp_critic = QTable(
             observation_space['mdp'],
             action_space['mdp'],
@@ -186,9 +187,10 @@ class MonQTable(MonQCritic):
         self._n_mon_states = observation_space['monitor'].n
         self._n_mon_actions = action_space['monitor'].n
         # env_name = env.spec.id.split("/")[1].split("-")[1]
-        self._dir_name = "models/Simple/{}/{date:%Y_%m_%d_%H_%M_%S}".format(
-            self._strategy, date=datetime.datetime.now()
-        )
+        self._dir_name = "models/Simple/{}".format(self._strategy)
+        # self._dir_name = "models/Simple/{}/{date:%Y_%m_%d_%H_%M_%S}".format(
+        #     self._strategy, date=datetime.datetime.now()
+        # )
 
         if self._strategy == "reward_model":
             self._r_model = RTable(
