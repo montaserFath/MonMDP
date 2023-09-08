@@ -14,7 +14,7 @@ from src.wrappers.monitor_wrappers import BinaryMonitor
 from src.actor import MonEpsilonGreedyOneAction
 from src.critic import MonQTableOneAction
 from src.experiment import MonExperiment
-from src.policy_analysis import policy_performance
+from src.policy_analysis import plot_policy_actions, plot_reward_table_heatmap, plot_q_table_heatmap
 
 
 EVAL = True
@@ -46,7 +46,10 @@ def run_monitor(cfg: DictConfig) -> None:
     if EVAL:
         critic.load(LOG_DIR)
         _, _, _, _, _, _ = experiment.test(render=False, save_results=True)
-        policy_performance(log_dir=LOG_DIR, save_fig=False)
+        plot_q_table_heatmap(log_dir=LOG_DIR, save_fig=False)
+        if "reward_model" in LOG_DIR:
+            plot_reward_table_heatmap(log_dir=LOG_DIR, save_fig=False)
+        plot_policy_actions(log_dir=LOG_DIR, save_fig=False)
         # log_results()
 
     else:
