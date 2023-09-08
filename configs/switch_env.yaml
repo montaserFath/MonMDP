@@ -1,0 +1,19 @@
+defaults:
+  - agent: q_learning
+  - monitor: binary
+  - _self_
+
+environment:
+  id: gym_monitor/TreasureHunt-Switch-v0
+
+wandb:
+  mode: offline
+  entity: ualberta-bowling
+  project: MonMDP
+
+experiment:
+  training_episodes: 10000
+  testing_episodes: 20
+  testing_frequency: 10
+  rng_seed: 1
+  save_log: True
