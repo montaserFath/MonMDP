@@ -44,10 +44,14 @@ def plot_reward_table_heatmap(log_dir: str, save_fig: bool = False) -> None:
         plt.savefig(log_dir + "/predictive_reward_table_heatmap.pdf", dpi=300)
 
 
-def plot_policy_actions(log_dir: str, cell_size: tuple = (3, 3), scale: float = 0.25, save_fig: bool = False) -> None:
+def plot_policy_actions(
+        log_dir: str, env_name: str, cell_size: tuple = (3, 3), scale: float = 0.25, save_fig: bool = False
+) -> None:
     """
     plot policy actions as arrows in grid environment
     """
+    if env_name not in ["TreasureHunt-Simple-v0", "TreasureHunt-Fire-v0", "TreasureHunt-Switch-v0"]:
+        raise NotImplemented
     # load images
     fire_img = plt.imread("img/fire_img.png")
     agent_img = plt.imread("img/agent_img.png")
@@ -76,15 +80,18 @@ def plot_policy_actions(log_dir: str, cell_size: tuple = (3, 3), scale: float = 
     plt.xlim(-shift, cell_size[0] - shift)
     plt.ylim(-shift, cell_size[1] - shift)
     plt.axis("off")
+    if env_name == "TreasureHunt-Fire-v0":
+        fire_1 = fig.add_axes([0.41, 0.67, 0.2, 0.2], anchor='NE', zorder=1)
+        fire_1.imshow(fire_img)
+        fire_1.axis('off')
 
-    fire_1 = fig.add_axes([0.41, 0.67, 0.2, 0.2], anchor='NE', zorder=1)
-    fire_1.imshow(fire_img)
-    fire_1.axis('off')
+        fire_2 = fig.add_axes([0.41, 0.41, 0.2, 0.2], anchor='NE', zorder=1)
+        fire_2.imshow(fire_img)
+        fire_2.axis('off')
 
-    fire_2 = fig.add_axes([0.41, 0.41, 0.2, 0.2], anchor='NE', zorder=1)
-    fire_2.imshow(fire_img)
-    fire_2.axis('off')
-    
+    if env_name == "TreasureHunt-Switch-v0":
+        raise NotImplemented
+
     agent = fig.add_axes([0.14, 0.75, 0.12, 0.12], anchor="NE", zorder=1)
     agent.imshow(agent_img)
     agent.axis("off")
