@@ -33,15 +33,16 @@ def plot_q_table_heatmap(log_dir: str, save_fig: bool = False) -> None:
 
 def plot_reward_table_heatmap(log_dir: str, save_fig: bool = False) -> None:
     """Plot Predictive reward table values as a heatmap"""
+    fig = plt.figure(figsize=(4, 5))
     r_table = np.load(log_dir + "/reward_model_table.npy")
-    ax = sns.heatmap(r_table, cmap="crest", annot=True, linewidth=0.1, fmt="g", annot_kws={"fontsize": 12})
-    ax.set_xlabel("Actions", fontsize=15)
-    ax.set_ylabel("States", fontsize=15)
-    ax.set_xticklabels(MDP_ACTIONS, fontsize=15)
-    ax.set_yticklabels(np.arange(r_table.shape[0]), fontsize=15)
-    plt.tight_layout()
+    ax_r = sns.heatmap(r_table, cmap="crest", annot=True, linewidth=0.1, fmt="g", annot_kws={"fontsize": 12})
+    ax_r.set_xlabel("Actions", fontsize=15)
+    ax_r.set_ylabel("States", fontsize=15)
+    ax_r.set_xticklabels(MDP_ACTIONS, fontsize=15)
+    ax_r.set_yticklabels(np.arange(r_table.shape[0]), fontsize=15)
+    fig.tight_layout()
     if save_fig:
-        plt.savefig(log_dir + "/predictive_reward_table_heatmap.pdf", dpi=300)
+        fig.savefig(log_dir + "/predictive_reward_table_heatmap.pdf", dpi=300)
 
 
 def plot_policy_actions(
