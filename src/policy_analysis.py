@@ -104,3 +104,31 @@ def plot_policy_actions(
     # fig.tight_layout()
     if save_fig:
         plt.savefig(log_dir + "/final_policy_performance.pdf", dpi=300)
+
+
+def smooth_vector(vec: np.ndarray, factor=20) -> np.ndarray:
+    box = np.ones(factor) / factor
+    vec_smooth = np.convolve(vec, box, mode='same')
+    return vec_smooth
+
+
+def plot_joint_reward(baselines: list, env_name: str, n_train_steps: int = 10000, save_fig: bool = False) -> None:
+    colors = ["r", "g", "b", "y", "black"]
+    alphas = [0.6, 0.7, 0.7, 0.9, 0.6]
+    joint_rewards = np.zeros((len(baselines), n_train_steps))
+    for i, base in enumerate(baselines):
+        joint_rewards[i] = np.load("models/{}/{}/training_joint_reward.npy".format(env_name, base))
+
+    fig = plt.figure(figsize=(7, 4))
+    for i in range(len(joint_rewards)):
+        plt.plot(smooth_vector(joint_rewards[i], 100), lw=2, alpha=alphas[i], color=colors[i], label=baselines[i])
+    plt.xlabel("Training Timesteps", fontsize=12)
+    plt.ylabel("Joint Reward", fontsize=12)
+    plt.grid(axis="y")
+    plt.xticks(fontsize=12)
+    plt.yticks(fontsize=12)
+    # plt.title("{} Grid Env".format(env_name), fontsize=12)
+    plt.legend()
+    plt.tight_layout()
+    if save_fig:
+        plt.savefig("models/{}/training_joint_reward.pdf".format(env_name), dpi=300)
