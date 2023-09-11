@@ -82,22 +82,22 @@ def plot_policy_actions(
     plt.ylim(-shift, cell_size[1] - shift)
     plt.axis("off")
     if env_name == "TreasureHunt-Fire-v0":
-        fire_1 = fig.add_axes([0.41, 0.67, 0.2, 0.2], anchor='NE', zorder=1)
+        fire_1 = fig.add_axes([0.41, 0.67, 0.2, 0.2], anchor='NE', zorder=-1)
         fire_1.imshow(fire_img)
         fire_1.axis('off')
 
-        fire_2 = fig.add_axes([0.41, 0.41, 0.2, 0.2], anchor='NE', zorder=1)
+        fire_2 = fig.add_axes([0.41, 0.41, 0.2, 0.2], anchor='NE', zorder=-1)
         fire_2.imshow(fire_img)
         fire_2.axis('off')
 
     if env_name == "TreasureHunt-Switch-v0":
         raise NotImplemented
 
-    agent = fig.add_axes([0.14, 0.75, 0.12, 0.12], anchor="NE", zorder=1)
+    agent = fig.add_axes([0.14, 0.75, 0.12, 0.12], anchor="NE", zorder=-1)
     agent.imshow(agent_img)
     agent.axis("off")
     
-    gold = fig.add_axes([0.7, 0.7, 0.15, 0.15], anchor="NE", zorder=1)
+    gold = fig.add_axes([0.7, 0.7, 0.15, 0.15], anchor="NE", zorder=-1)
     gold.imshow(gold_img)
     gold.axis("off")
 
