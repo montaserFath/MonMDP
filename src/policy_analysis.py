@@ -31,6 +31,32 @@ def plot_q_table_heatmap(log_dir: str, save_fig: bool = False) -> None:
         plt.savefig(log_dir + "/q_table_heatmap.pdf", dpi=300)
 
 
+def plot_mdp_mon_q_table_heatmap(log_dir: str, save_fig: bool = False) -> None:
+    """Plot Q-Table values as a heatmap"""
+    mdp_q_table = np.load(log_dir + "/mdp_q_table.npy")
+    mon_q_table = np.load(log_dir + "/monitor_q_table.npy")
+
+    fig = plt.figure(figsize=(4, 5))
+    ax = sns.heatmap(mdp_q_table, cmap="crest", annot=True, linewidth=0.1, fmt="g", annot_kws={"fontsize": 12})
+    ax.set_xlabel("Actions", fontsize=15)
+    ax.set_ylabel("States", fontsize=15)
+    ax.set_xticklabels(MDP_ACTIONS, fontsize=13)
+    ax.set_yticklabels(np.arange(mdp_q_table.shape[0]), fontsize=13)
+    fig.tight_layout()
+
+    fig_1 = plt.figure(figsize=(7, 5))
+    ax_1 = sns.heatmap(mon_q_table, cmap="crest", annot=True, linewidth=0.1, fmt="g", annot_kws={"fontsize": 12})
+    ax_1.set_xlabel("Actions", fontsize=15)
+    ax_1.set_ylabel("States", fontsize=15)
+    ax_1.set_xticklabels(JOINT_ACTIONS, fontsize=13)
+    ax_1.set_yticklabels(np.arange(mon_q_table.shape[0]), fontsize=13)
+    fig_1.tight_layout()
+
+    if save_fig:
+        fig.savefig(log_dir + "/mdp_q_table_heatmap.pdf", dpi=300)
+        fig_1.savefig(log_dir + "/monitor_q_table_heatmap.pdf", dpi=300)
+
+
 def plot_reward_table_heatmap(log_dir: str, save_fig: bool = False) -> None:
     """Plot Predictive reward table values as a heatmap"""
     fig = plt.figure(figsize=(4, 5))
@@ -131,4 +157,4 @@ def plot_joint_reward(baselines: list, env_name: str, n_train_steps: int = 10000
     plt.legend()
     plt.tight_layout()
     if save_fig:
-        plt.savefig("models/{}/training_joint_reward.pdf".format(env_name), dpi=300)
+        fig.savefig("models/{}/training_joint_reward.pdf".format(env_name), dpi=300)
