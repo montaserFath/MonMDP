@@ -94,6 +94,14 @@ class MonEpsilonGreedyOneAction(MonEpsilonGreedy):
             return {'mdp': np.random.randint(0, self._critic.n_actions),
                     'monitor': np.random.randint(0, self._critic.n_mon_actions)}
         q = self._critic(state)
+        if isinstance(q, dict):
+            q_mdp = np.squeeze(q["mdp"])
+            q_mon = np.squeeze(q["monitor"])
+            if self._critic._strategy == "q_monitor_sequential":
+                mdp_action = np.argmax(q_mdp)
+                mon_action = [q_mon[mdp_action], q_mon[mdp_action + self._critic.n_actions]]
+                return {"mdp": mdp_action, "monitor": np.argmax(mon_action)}
+            return self.ind_to_action(np.argmax(q_mdp + q_mon))
         if self._critic._strategy == "q_mdp":
             return {"mdp": np.argmax(q), "monitor": 1}
         return self.ind_to_action(np.argmax(q))

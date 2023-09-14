@@ -121,6 +121,8 @@ class MonQCritic(Critic):
         self._on_policy = on_policy
         self._strategy = strategy
         self._unseen_r_value = unseen_r_value
+        self._mdp_q = None
+        self._mon_q = None
 
     def update(self, state, action, reward, terminated, next_state, next_action=None):
         if not np.isnan(reward['mdp']):
@@ -145,16 +147,29 @@ class MonQCritic(Critic):
         else:
             mdp_error = np.nan
 
+        if self._strategy in ["q_monitor_sequential", "q_monitor_joint"]:
+            # update Q for MDP and MonMDP
+            q_next = self(next_state, next_action if self._on_policy else None)
+            prediction = self(state, action)
+            new_value, error = {}, {}
+            for key in q_next.keys():
+                q_next_value = q_next[key].max() if isinstance(q_next[key], np.ndarray) else q_next[key].item()
+                target = reward[key] + self._gamma * (1.0 - terminated) * q_next_value
+                new_value[key] = (1. - self._lr) * prediction[key] + self._lr * target
+                error[key] = 0.5 * (target - prediction[key]) ** 2
+            self._update(state, action, new_value)
+            return error["mdp"], error["monitor"]
+
         if not np.isnan(reward['mdp']):
-            reward = reward['monitor'] + reward['mdp']
+            joint_reward = reward['monitor'] + reward['mdp']
         else:
-            reward = reward['monitor'] + 0.
+            joint_reward = reward['monitor'] + 0.
 
         if self._on_policy:
             q_next = self(next_state, next_action).item()
         else:
             q_next = self(next_state).max()
-        target = reward + self._gamma * (1. - terminated) * q_next
+        target = joint_reward + self._gamma * (1. - terminated) * q_next
         prediction = self(state, action)
         new_value = (1. - self._lr) * prediction + self._lr * target
         self._update(state, action, new_value)
@@ -188,9 +203,7 @@ class MonQTable(MonQCritic):
         self._n_mon_actions = action_space['monitor'].n
         # env_name = env.spec.id.split("/")[1].split("-")[1]
         self._dir_name = "models/Simple/{}".format(self._strategy)
-        # self._dir_name = "models/Simple/{}/{date:%Y_%m_%d_%H_%M_%S}".format(
-        #     self._strategy, date=datetime.datetime.now()
-        # )
+        # self._dir_name = "models/{}/{}/".format(self._strategy, env_name)
 
         if self._strategy == "reward_model":
             self._r_model = RTable(
@@ -227,26 +240,36 @@ class MonQTableOneAction(MonQTable):
 
     def reset(self):
         if self._strategy == "q_mdp":
-            table_shape = (self._n_states, self._n_actions)
-        elif self._strategy == "q_monitor_sequential":
-            raise NotImplemented
-        elif self._strategy == "q_monitor_joint":
-            raise NotImplemented
+            self._q_table = np.ones((self._n_states, self._n_actions)) * self._q0
+        elif self._strategy in ["q_monitor_sequential", "q_monitor_joint"]:
+            self._mdp_q = np.ones((self._n_states, self._n_actions)) * self._q0
+            self._mon_q = np.ones((self._n_states, self._n_actions * self._n_mon_actions)) * self._q0
         else:
-            table_shape = (self._n_states, self._n_actions * self._n_mon_actions)
-        self._q_table = np.ones(table_shape) * self._q0
+            self._q_table = np.ones((self._n_states, self._n_actions * self._n_mon_actions)) * self._q0
         self._mdp_critic.reset()
 
     def __call__(self, state, action=None):
+        mdp_s = state["mdp"]
         if action is None:
-            return self._q_table[state["mdp"]]
+            if self._strategy in ["q_monitor_sequential", "q_monitor_joint"]:
+                mdp_q = self.expand_mdp_q()[mdp_s] if self._strategy == "q_monitor_joint" else self._mdp_q[mdp_s]
+                return {"mdp": mdp_q, "monitor": self._mon_q[mdp_s]}
+            return self._q_table[mdp_s]
+
         if self._strategy == "q_mdp":
-            return self._q_table[state["mdp"], action["mdp"]]
-        return self._q_table[state["mdp"], self.get_action_ind(action)]
+            return self._q_table[mdp_s, action["mdp"]]
+        if self._strategy in ["q_monitor_sequential", "q_monitor_joint"]:
+            mdp_q = self.expand_mdp_q()[mdp_s] if self._strategy == "q_monitor_joint" else self._mdp_q[mdp_s]
+            mon_q = self._mon_q[mdp_s, self.get_action_ind(action)]
+            return {"mdp": np.squeeze(mdp_q)[action["mdp"]], "monitor": mon_q}
+        return self._q_table[mdp_s, self.get_action_ind(action)]
 
     def _update(self, state, action, new_value):
         if self._strategy == "q_mdp":
             self._q_table[state["mdp"], action["mdp"]] = new_value
+        elif self._strategy in ["q_monitor_sequential", "q_monitor_joint"]:
+            self._mdp_q[state["mdp"], action["mdp"]] = new_value["mdp"]
+            self._mon_q[state["mdp"], self.get_action_ind(action)] = new_value["monitor"]
         else:
             self._q_table[state["mdp"], self.get_action_ind(action)] = new_value
 
@@ -260,16 +283,31 @@ class MonQTableOneAction(MonQTable):
 
     def save(self):
         os.makedirs(self._dir_name, exist_ok=True)
-        np.save(self._dir_name + "/critic_q_table.npy", self._q_table)
+        if self._strategy in ["q_monitor_sequential", "q_monitor_joint"]:
+            np.save(self._dir_name + "/mdp_q_table.npy", self._mdp_q)
+            np.save(self._dir_name + "/monitor_q_table.npy", self._mon_q)
+        else:
+            np.save(self._dir_name + "/critic_q_table.npy", self._q_table)
         if self._r_model is not None:
             self._r_model.save(self._dir_name)
 
     def load(self, log_dir: str = None):
         if log_dir is None:
             raise ValueError("No files to load Q-Table from it")
-        self._q_table = np.load(log_dir + "/critic_q_table.npy")
+        if self._strategy in ["q_monitor_sequential", "q_monitor_joint"]:
+            self._mdp_q = np.load(self._dir_name + "/mdp_q_table.npy")
+            self._mon_q = np.load(self._dir_name + "/monitor_q_table.npy")
+        else:
+            self._q_table = np.load(log_dir + "/critic_q_table.npy")
         if self._r_model is not None:
             self._r_model = np.load(log_dir + "/reward_model_table.npy")
+
+    def expand_mdp_q(self):
+        """Expand Q-table for MDP"""
+        new_q = np.zeros((self._mdp_q.shape[0], self._mdp_q.shape[1] * 2))
+        new_q[:, 0:4] = self._mdp_q.copy()
+        new_q[:, 4:] = self._mdp_q.copy()
+        return new_q
 
 
 class MonQDict(MonQCritic):
