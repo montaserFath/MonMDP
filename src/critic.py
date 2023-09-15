@@ -203,7 +203,7 @@ class MonQTable(MonQCritic):
         self._n_mon_states = observation_space['monitor'].n
         self._n_mon_actions = action_space['monitor'].n
         env_name = self._env_name.split("/")[1].split("-")[1]
-        self._dir_name = "models/{}/{}/".format(self._strategy, env_name)
+        self._dir_name = "models/{}/{}/".format(env_name, self._strategy)
 
         if self._strategy == "reward_model":
             self._r_model = RTable(
