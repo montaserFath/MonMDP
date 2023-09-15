@@ -107,7 +107,8 @@ class BinaryMonitor(Monitor):
                 "monitor": spaces.Discrete(2 if not empty_observation_space else 1),
             }
         )
-        self.monitor_state = init_monitor_state  # deactivated
+        self.init_monitor_state = init_monitor_state
+        self.monitor_state = self.init_monitor_state  # deactivated
         self.monitor_reset_prob = monitor_reset_prob
         self.monitor_cost = monitor_cost
 
@@ -115,29 +116,21 @@ class BinaryMonitor(Monitor):
         self.action_space.seed(seed)
         self.observation_space.seed(seed)
         mdp_obs, mdp_info = self.env.reset(seed=seed, **kwargs)
-        self.monitor_state = 0
+        self.monitor_state = self.init_monitor_state
         return {'mdp': mdp_obs, 'monitor': self.monitor_state}, mdp_info
 
     def _monitor_step(self, action, mdp_reward):
         if action['monitor'] == 1:
             self.monitor_state = 1
             monitor_cost = - self.monitor_cost
+            proxy_reward = mdp_reward
         elif action['monitor'] == 0:
+            self.monitor_state = 0
             monitor_cost = 0.
+            proxy_reward = np.nan
         else:
             raise ValueError('illegal monitor action')
-
-        if self.monitor_state == 1:
-            proxy_reward = mdp_reward
-        else:
-            proxy_reward = np.nan
-
-        if self.monitor_state == 1:
-            if self.np_random.random() < self.monitor_reset_prob:
-                self.monitor_state = 0
-        monitor_obs = self.monitor_state
-
-        return monitor_obs, proxy_reward, monitor_cost
+        return self.monitor_state, proxy_reward, monitor_cost
 
 
 class NMonitor(Monitor):
