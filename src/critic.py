@@ -239,9 +239,7 @@ class MonQTableOneAction(MonQTable):
         super().__int__(self, observation_space, action_space)
 
     def reset(self):
-        if self._strategy == "q_mdp":
-            self._q_table = np.ones((self._n_states, self._n_actions)) * self._q0
-        elif self._strategy in ["q_monitor_sequential", "q_monitor_joint"]:
+        if self._strategy in ["q_monitor_sequential", "q_monitor_joint"]:
             self._mdp_q = np.ones((self._n_states, self._n_actions)) * self._q0
             self._mon_q = np.ones((self._n_states, self._n_actions * self._n_mon_actions)) * self._q0
         else:
@@ -256,8 +254,6 @@ class MonQTableOneAction(MonQTable):
                 return {"mdp": mdp_q, "monitor": self._mon_q[mdp_s]}
             return self._q_table[mdp_s]
 
-        if self._strategy == "q_mdp":
-            return self._q_table[mdp_s, action["mdp"]]
         if self._strategy in ["q_monitor_sequential", "q_monitor_joint"]:
             mdp_q = self.expand_mdp_q()[mdp_s] if self._strategy == "q_monitor_joint" else self._mdp_q[mdp_s]
             mon_q = self._mon_q[mdp_s, self.get_action_ind(action)]
@@ -265,9 +261,7 @@ class MonQTableOneAction(MonQTable):
         return self._q_table[mdp_s, self.get_action_ind(action)]
 
     def _update(self, state, action, new_value):
-        if self._strategy == "q_mdp":
-            self._q_table[state["mdp"], action["mdp"]] = new_value
-        elif self._strategy in ["q_monitor_sequential", "q_monitor_joint"]:
+        if self._strategy in ["q_monitor_sequential", "q_monitor_joint"]:
             self._mdp_q[state["mdp"], action["mdp"]] = new_value["mdp"]
             self._mon_q[state["mdp"], self.get_action_ind(action)] = new_value["monitor"]
         else:

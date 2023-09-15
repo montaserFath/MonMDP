@@ -102,6 +102,4 @@ class MonEpsilonGreedyOneAction(MonEpsilonGreedy):
                 mon_action = [q_mon[mdp_action], q_mon[mdp_action + self._critic.n_actions]]
                 return {"mdp": mdp_action, "monitor": np.argmax(mon_action)}
             return self.ind_to_action(np.argmax(q_mdp + q_mon))
-        if self._critic._strategy == "q_mdp":
-            return {"mdp": np.argmax(q), "monitor": 1}
         return self.ind_to_action(np.argmax(q))
