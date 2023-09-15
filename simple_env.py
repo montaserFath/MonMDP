@@ -44,7 +44,7 @@ def run_monitor(cfg: DictConfig) -> None:
 
     env = wrappe_env(cfg["environment"]["id"], monitor_wrapper=True, cfg=cfg)
 
-    critic = MonQTableOneAction(env.observation_space, env.action_space, **cfg.agent.critic)
+    critic = MonQTableOneAction(cfg["environment"]["id"], env.observation_space, env.action_space, **cfg.agent.critic)
 
     actor = MonEpsilonGreedyOneAction(critic, train=not EVAL, **cfg.agent.actor)
 

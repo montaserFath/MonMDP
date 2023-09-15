@@ -112,9 +112,10 @@ class QDict(QCritic):
 
 class MonQCritic(Critic):
     def __init__(
-            self, q0=0., gamma=0.99, lr=0.01, on_policy=False, strategy: str = "reward_model", unseen_r_value: float = 0., **kwargs
+            self, env_name: str, q0=0., gamma=0.99, lr=0.01, on_policy=False, strategy: str = "reward_model", unseen_r_value: float = 0., **kwargs
     ):
         # TODO(Monta): fix load unseen_r_value from yamil file
+        self._env_name = env_name
         self._q0 = q0
         self._gamma = gamma
         self._lr = lr
@@ -187,11 +188,11 @@ class MonQCritic(Critic):
 
 
 class MonQTable(MonQCritic):
-    def __init__(self, observation_space, action_space,
+    def __init__(self, env_name, observation_space, action_space,
                  q0=0., gamma=0.99, lr=0.01, on_policy=False,
                  strategy="zero_reward", unseen_r_value=0.0,
                  **kwargs):
-        MonQCritic.__init__(self, q0, gamma, lr, on_policy, strategy=strategy, unseen_r_value=unseen_r_value)
+        MonQCritic.__init__(self, env_name, q0, gamma, lr, on_policy, strategy=strategy, unseen_r_value=unseen_r_value)
         self._mdp_critic = QTable(
             observation_space['mdp'],
             action_space['mdp'],
@@ -201,9 +202,8 @@ class MonQTable(MonQCritic):
         self._n_actions = action_space['mdp'].n
         self._n_mon_states = observation_space['monitor'].n
         self._n_mon_actions = action_space['monitor'].n
-        # env_name = env.spec.id.split("/")[1].split("-")[1]
-        self._dir_name = "models/Simple/{}".format(self._strategy)
-        # self._dir_name = "models/{}/{}/".format(self._strategy, env_name)
+        env_name = self._env_name.split("/")[1].split("-")[1]
+        self._dir_name = "models/{}/{}/".format(self._strategy, env_name)
 
         if self._strategy == "reward_model":
             self._r_model = RTable(
@@ -235,8 +235,8 @@ class MonQTable(MonQCritic):
 
 
 class MonQTableOneAction(MonQTable):
-    def __int__(self, observation_space, action_space, **kwargs):
-        super().__int__(self, observation_space, action_space)
+    def __int__(self, env_name, observation_space, action_space, **kwargs):
+        super().__int__(self, env_name, observation_space, action_space)
 
     def reset(self):
         if self._strategy in ["q_monitor_sequential", "q_monitor_joint"]:
