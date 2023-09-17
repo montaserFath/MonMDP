@@ -20,7 +20,7 @@ JOINT_ACTIONS = [
 
 def plot_q_table_heatmap(log_dir: str, save_fig: bool = False) -> None:
     """Plot Q-Table values as a heatmap"""
-    q_table = np.load(log_dir + "/critic_q_table.npy")
+    q_table = np.round(np.load(log_dir + "/critic_q_table.npy"), 2)
     ax = sns.heatmap(q_table, cmap="crest", annot=True, linewidth=0.1, fmt="g", annot_kws={"fontsize": 12})
     ax.set_xlabel("Actions", fontsize=15)
     ax.set_ylabel("States", fontsize=15)
@@ -33,8 +33,8 @@ def plot_q_table_heatmap(log_dir: str, save_fig: bool = False) -> None:
 
 def plot_mdp_mon_q_table_heatmap(log_dir: str, save_fig: bool = False) -> None:
     """Plot Q-Table values as a heatmap"""
-    mdp_q_table = np.load(log_dir + "/mdp_q_table.npy")
-    mon_q_table = np.load(log_dir + "/monitor_q_table.npy")
+    mdp_q_table = np.round(np.load(log_dir + "/mdp_q_table.npy"), 2)
+    mon_q_table = np.round(np.load(log_dir + "/monitor_q_table.npy"), 2)
 
     fig = plt.figure(figsize=(4, 5))
     ax = sns.heatmap(mdp_q_table, cmap="crest", annot=True, linewidth=0.1, fmt="g", annot_kws={"fontsize": 12})
@@ -60,7 +60,7 @@ def plot_mdp_mon_q_table_heatmap(log_dir: str, save_fig: bool = False) -> None:
 def plot_reward_table_heatmap(log_dir: str, save_fig: bool = False) -> None:
     """Plot Predictive reward table values as a heatmap"""
     fig = plt.figure(figsize=(4, 5))
-    r_table = np.load(log_dir + "/reward_model_table.npy")
+    r_table = np.round(np.load(log_dir + "/reward_model_table.npy"), 2)
     ax_r = sns.heatmap(r_table, cmap="crest", annot=True, linewidth=0.1, fmt="g", annot_kws={"fontsize": 12})
     ax_r.set_xlabel("Actions", fontsize=15)
     ax_r.set_ylabel("States", fontsize=15)

@@ -52,7 +52,7 @@ def run_monitor(cfg: DictConfig) -> None:
     if EVAL:
         critic.load(LOG_DIR)
         _, _, _, _, _, _ = experiment.test(render=False, save_results=True)
-        if cfg.agent.critic.strategy in ["q_monitor_sequential", "q_monitor_joint"]:
+        if LOG_DIR.split("/")[-2] in ["q_monitor_sequential", "q_monitor_joint"]:
             plot_mdp_mon_q_table_heatmap(log_dir=LOG_DIR, save_fig=True)
         else:
             plot_q_table_heatmap(log_dir=LOG_DIR, save_fig=True)
@@ -82,7 +82,7 @@ def log_results(
 def wrappe_env(env_id: str, monitor_wrapper: bool = False, cfg: DictConfig = None):
     env = gym.make(env_id, render_modes="human")
     env = TabularObservationsWrapper(env, grid_size=(3, 3))
-    env = TimeStepReward(env, timestep_penalty=0.1, goal_reward=1, fire_reward=-10)
+    env = TimeStepReward(env, timestep_penalty=0.0, goal_reward=1, fire_reward=-10)
     env = StableBaselinesWrapper(env)
     if monitor_wrapper:
         env = BinaryMonitor(env, **cfg.monitor)
