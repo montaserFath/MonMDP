@@ -241,7 +241,7 @@ class MonQTableOneAction(MonQTable):
     def reset(self):
         if self._strategy in ["q_monitor_sequential", "q_monitor_joint"]:
             self._mdp_q = np.ones((self._n_states, self._n_actions)) * self._q0
-            self._mon_q = np.ones((self._n_states, self._n_actions * self._n_mon_actions)) * self._q0
+            self._mon_q = np.ones((self._n_states, self._n_actions * self._n_mon_actions)) * 0  # TODO(Monta): remove 0
         else:
             self._q_table = np.ones((self._n_states, self._n_actions * self._n_mon_actions)) * self._q0
         self._mdp_critic.reset()
@@ -299,8 +299,60 @@ class MonQTableOneAction(MonQTable):
     def expand_mdp_q(self):
         """Expand Q-table for MDP"""
         new_q = np.zeros((self._mdp_q.shape[0], self._mdp_q.shape[1] * 2))
-        new_q[:, 0:4] = self._mdp_q.copy()
-        new_q[:, 4:] = self._mdp_q.copy()
+        new_q[:, :self._n_actions] = self._mdp_q.copy()
+        new_q[:, self._n_actions:] = self._mdp_q.copy()
+        return new_q
+
+
+class StateMonTable(MonQTableOneAction):
+    # def __int__(self, env_name, observation_space, action_space, **kwargs):
+    #     super().__int__(self, env_name, observation_space, action_space)
+
+    def reset(self):
+        if self._strategy in ["q_monitor_sequential", "q_monitor_joint"]:
+            self._mdp_q = np.ones((self._n_states, self._n_actions)) * self._q0
+            self._mon_q = np.ones((self._n_states * self._n_mon_states, self._n_actions)) * 0  # TODO(Monta): remove 0
+        else:
+            self._q_table = np.ones((self._n_states * self._n_mon_states, self._n_actions)) * self._q0
+        self._mdp_critic.reset()
+
+    def __call__(self, state, action=None):
+        mdp_state, mon_state, mdp_action = state["mdp"], state["monitor"], action["mdp"] if action is not None else None
+        state_ind = self.get_state_ind(state)
+
+        if action is None:
+            if self._strategy in ["q_monitor_sequential", "q_monitor_joint"]:
+                mdp_q = self.expand_mdp_q()[state_ind] if self._strategy == "q_monitor_joint" else self._mdp_q[mdp_state]
+                return {"mdp": mdp_q, "monitor": self._mon_q[state_ind]}
+            return self._q_table[state_ind]
+
+        if self._strategy in ["q_monitor_sequential", "q_monitor_joint"]:
+            mdp_q = self.expand_mdp_q()[state_ind] if self._strategy == "q_monitor_joint" else self._mdp_q[mdp_state]
+            mon_q = self._mon_q[state_ind, mdp_action]
+            return {"mdp": np.squeeze(mdp_q)[mdp_action], "monitor": mon_q}
+        return self._q_table[self.get_state_ind(state), mdp_action]
+
+    def _update(self, state, action, new_value):
+        if self._strategy in ["q_monitor_sequential", "q_monitor_joint"]:
+            self._mdp_q[state["mdp"], action["mdp"]] = new_value["mdp"]
+            self._mon_q[self.get_state_ind(state), action["mdp"]] = new_value["monitor"]
+        else:
+            self._q_table[self.get_state_ind(state), action["mdp"]] = new_value
+
+    def get_state_ind(self, state: dict) -> int:
+        return state["monitor"] * self._n_states + state["mdp"].item()
+
+    def ind_to_state(self, state_ind: int) -> dict:
+        if state_ind >= self._n_states * self._n_mon_states:
+            raise ValueError("State index is larger than max Number of states")
+        mon_state, mdp_state = state_ind // self._n_states, state_ind % self._n_states
+        return {"mdp": mdp_state, "monitor": mon_state}
+
+    def expand_mdp_q(self):
+        """Expand Q-table for MDP"""
+        new_q = np.zeros((self._mdp_q.shape[0] * 2, self._mdp_q.shape[1]))
+        new_q[: self._n_states] = self._mdp_q.copy()
+        new_q[self._n_states:] = self._mdp_q.copy()
         return new_q
 
 

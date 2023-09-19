@@ -103,3 +103,26 @@ class MonEpsilonGreedyOneAction(MonEpsilonGreedy):
                 return {"mdp": mdp_action, "monitor": np.argmax(mon_action)}
             return self.ind_to_action(np.argmax(q_mdp + q_mon))
         return self.ind_to_action(np.argmax(q))
+
+
+class MonStateEpsilonGreedy(MonEpsilonGreedyOneAction):
+    def ind_to_state(self, state_ind: int) -> dict:
+        if state_ind >= self._critic.n_states * self._critic.n_mon_states:
+            raise ValueError("State index is larger than max Number of states")
+        mon_state, mdp_state = state_ind // self._critic._n_states, state_ind % self._critic._n_states
+        return {"mdp": mdp_state, "monitor": mon_state}
+
+    def get_state_ind(self, state: dict) -> int:
+        return state["monitor"] * self._critic._n_states + state["mdp"].item()
+
+    def __call__(self, state):
+        if np.random.random() < self._eps.value and self._train:
+            return {"mdp": np.random.randint(0, self._critic.n_actions), "monitor": 0}
+        q = self._critic(state)
+        if isinstance(q, dict):
+            q_mdp = np.squeeze(q["mdp"])
+            q_mon = np.squeeze(q["monitor"])
+            if self._critic._strategy == "q_monitor_sequential":
+                return {"mdp": np.argmax(q_mdp), "monitor": 0}
+            return {"mdp": np.argmax(q_mdp + q_mon), "monitor": 0}
+        return {"mdp": np.argmax(q), "monitor": 0}
