@@ -94,10 +94,13 @@ class MonExperiment(Experiment):
         self._actor.reset()
         self._critic.reset()
         joint_reward = np.zeros(self._training_episodes)
+        eval_joint_reward = np.zeros((self._training_episodes // self._testing_frequency, self._testing_episodes))
+        eval_count = 0
         for ep in tqdm(range(self._training_episodes)):
             if ep > 0 and ep % self._testing_frequency == 0:
                 self._actor.eval()
                 ep_return_true, ep_return_proxy, ep_return_cost, ep_monitor_action, ep_length, _ = self.test()
+                eval_joint_reward[eval_count] = ep_return_true + ep_return_cost
                 episode_return_true = ep_return_true.mean()
                 episode_return_proxy = np.nanmean(ep_return_proxy)
                 episode_return_cost = ep_return_cost.mean()
@@ -114,6 +117,7 @@ class MonExperiment(Experiment):
                     step=ep,
                     commit=False
                 )
+                eval_count += 1
 
             ep_seed = cantor_pairing(self._rng_seed, ep)
             obs, _ = self._env.reset(seed=ep_seed)
@@ -173,6 +177,7 @@ class MonExperiment(Experiment):
         self._critic.save()
         if self._save_train_log:
             np.save(self._log_dir + "/training_joint_reward.npy", joint_reward)
+            np.save(self._log_dir + "/evaluation_joint_reward.npy", eval_joint_reward)
         wandb.finish()
         self._env.close()
 

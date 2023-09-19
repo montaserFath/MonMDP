@@ -5,6 +5,8 @@ import seaborn as sns
 
 
 ARROWS = {0: (-1.5, 0), 1: (0, -1.5), 2: (1.5, 0), 3: (0, 1.5)}
+STATES = np.arange(9)
+JOINT_STATES = np.concatenate(([(a, 0) for a in range(9)], [(a, 1) for a in range(9)]))
 MDP_ACTIONS = [r"$\leftarrow$", r"$\downarrow$", r"$\rightarrow$", r"$\uparrow$"]
 JOINT_ACTIONS = [
     r"($\leftarrow$,0)",
@@ -83,10 +85,11 @@ def plot_policy_actions(
     fire_img = plt.imread("img/fire_img.png")
     agent_img = plt.imread("img/agent_img.png")
     gold_img = plt.imread("img/gold_img.png")
+    switch_img = plt.imread("img/switch_img.png")
     shift = scale * 2
 
     traj = np.load(log_dir + "/trajectories.npy", allow_pickle=True)[()]
-    states, actions = traj[0]["states"], traj[0]["actions"]  # TODO(Monta): remove hardcoded 0
+    states, actions = traj[1]["states"], traj[1]["actions"]  # TODO(Monta): remove hardcoded 0
 
     fig = plt.figure(figsize=cell_size)
     plt.hlines(np.arange(cell_size[1] + 1) - shift, -shift, cell_size[0] - shift, color="black")
@@ -107,7 +110,7 @@ def plot_policy_actions(
     plt.xlim(-shift, cell_size[0] - shift)
     plt.ylim(-shift, cell_size[1] - shift)
     plt.axis("off")
-    if env_name == "TreasureHunt-Fire-v0":
+    if env_name in ["TreasureHunt-Fire-v0", "TreasureHunt-Switch-v0"]:
         fire_1 = fig.add_axes([0.41, 0.67, 0.2, 0.2], anchor='NE', zorder=-1)
         fire_1.imshow(fire_img)
         fire_1.axis('off')
@@ -117,7 +120,9 @@ def plot_policy_actions(
         fire_2.axis('off')
 
     if env_name == "TreasureHunt-Switch-v0":
-        raise NotImplemented
+        switch = fig.add_axes([0.12, 0.1, 0.15, 0.15], anchor='NE', zorder=-1)
+        switch.imshow(switch_img)
+        switch.axis('off')
 
     agent = fig.add_axes([0.14, 0.75, 0.12, 0.12], anchor="NE", zorder=-1)
     agent.imshow(agent_img)
@@ -138,23 +143,59 @@ def smooth_vector(vec: np.ndarray, factor=20) -> np.ndarray:
     return vec_smooth
 
 
-def plot_joint_reward(baselines: list, env_name: str, n_train_steps: int = 10000, save_fig: bool = False) -> None:
+def mean_time_period(vec: np.ndarray, period: int) -> np.ndarray:
+    mean_vec = np.zeros(len(vec) // period)
+    for i in range(len(vec) // period):
+        mean_vec[i] = np.mean(vec[i * period: i * period + period])
+    return mean_vec
+
+
+def plot_joint_reward(
+        baselines: list,
+        env_name: str,
+        n_train_steps: int = 10000,
+        testing_freq: int = 10,
+        save_fig: bool = False,
+) -> None:
+    train_freq = 100
     colors = ["r", "g", "b", "y", "black"]
-    alphas = [0.6, 0.7, 0.7, 0.9, 0.6]
+    alphas = [0.6, 0.8, 0.6, 0.9, 0.5]
     joint_rewards = np.zeros((len(baselines), n_train_steps))
+    eval_joint_rewards = np.zeros((len(baselines), n_train_steps // testing_freq))
+    x_axis = testing_freq * np.arange(n_train_steps // testing_freq)
     for i, base in enumerate(baselines):
-        joint_rewards[i] = np.load("models/{}/{}/training_joint_reward.npy".format(env_name, base))
+            joint_rewards[i] = np.load("models/{}/{}/training_joint_reward.npy".format(env_name, base))
+            eval_joint_rewards[i] = np.mean(
+                np.load("models/{}/{}/evaluation_joint_reward.npy".format(env_name, base)), 1
+            )
+            eval_joint_rewards[i, -1] = eval_joint_rewards[i, -2]
 
     fig = plt.figure(figsize=(7, 4))
+    train_x_axis = train_freq * np.arange(n_train_steps // train_freq)
     for i in range(len(joint_rewards)):
-        plt.plot(smooth_vector(joint_rewards[i], 100), lw=2, alpha=alphas[i], color=colors[i], label=baselines[i])
-    plt.xlabel("Training Timesteps", fontsize=12)
-    plt.ylabel("Joint Reward", fontsize=12)
+        # plt.plot(smooth_vector(joint_rewards[i], 100), lw=2, alpha=alphas[i], color=colors[i], label=baselines[i])
+        plt.plot(train_x_axis, mean_time_period(joint_rewards[i], train_freq), lw=2, alpha=alphas[i], color=colors[i], label=baselines[i])
+        plt.plot(train_x_axis, mean_time_period(joint_rewards[i], train_freq), "*", alpha=alphas[i], color=colors[i])
+    plt.xlabel("Training Episodes", fontsize=12)
+    plt.ylabel("Training Joint Reward", fontsize=12)
     plt.grid(axis="y")
     plt.xticks(fontsize=12)
     plt.yticks(fontsize=12)
-    # plt.title("{} Grid Env".format(env_name), fontsize=12)
+    plt.legend()
+    plt.tight_layout()
+
+    eval_fig = plt.figure(figsize=(7, 4))
+
+    for i in range(len(joint_rewards)):
+        plt.plot(x_axis, eval_joint_rewards[i], lw=2, alpha=alphas[i], color=colors[i], label=baselines[i])
+        # plt.scatter(x_axis, eval_joint_rewards[i], marker="*", s=5, alpha=alphas[i], color=colors[i])
+    plt.xlabel("Training Episodes", fontsize=12)
+    plt.ylabel("Testing Joint Reward", fontsize=12)
+    plt.grid(axis="y")
+    plt.xticks(fontsize=12)
+    plt.yticks(fontsize=12)
     plt.legend()
     plt.tight_layout()
     if save_fig:
         fig.savefig("models/{}/training_joint_reward.pdf".format(env_name), dpi=300)
+        eval_fig.savefig("models/{}/evaluation_joint_reward.pdf".format(env_name), dpi=300)

@@ -11,8 +11,8 @@ from src.wrappers.env_wrappers import (
     StableBaselinesWrapper,
 )
 from src.wrappers.monitor_wrappers import BinaryMonitor
-from src.actor import MonEpsilonGreedyOneAction
-from src.critic import MonQTableOneAction
+from src.actor import MonEpsilonGreedyOneAction, MonStateEpsilonGreedy
+from src.critic import MonQTableOneAction, StateMonTable
 from src.experiment import MonExperiment
 from src.policy_analysis import (
     plot_policy_actions,
@@ -41,14 +41,17 @@ def run_monitor(cfg: DictConfig) -> None:
             settings=wandb.Settings(start_method="thread"),
             **cfg.wandb,
         )
+    env_id = cfg["environment"]["id"]
+    env = wrappe_env(env_id, monitor_wrapper=True, cfg=cfg)
 
-    env = wrappe_env(cfg["environment"]["id"], monitor_wrapper=True, cfg=cfg)
-
-    critic = MonQTableOneAction(cfg["environment"]["id"], env.observation_space, env.action_space, **cfg.agent.critic)
-
-    actor = MonEpsilonGreedyOneAction(critic, train=not EVAL, **cfg.agent.actor)
-
-    experiment = MonExperiment(env, actor, critic, log_dir=LOG_DIR, **cfg.experiment)
+    if env_id.split("/")[1] == "Switch":
+        critic = StateMonTable(env_id, env.observation_space, env.action_space, **cfg.agent.critic)
+        actor = MonStateEpsilonGreedy(critic, train=not EVAL, **cfg.agent.actor)
+    else:
+        critic = MonQTableOneAction(env_id, env.observation_space, env.action_space, **cfg.agent.critic)
+        actor = MonEpsilonGreedyOneAction(critic, train=not EVAL, **cfg.agent.actor)
+    train_dir = "models/" + env_id.split("/")[1].split("-")[1] + "/" + str(cfg.agent.critic.strategy) + "/"
+    experiment = MonExperiment(env, actor, critic, log_dir=train_dir, **cfg.experiment)
     if EVAL:
         critic.load(LOG_DIR)
         _, _, _, _, _, _ = experiment.test(render=False, save_results=True)
@@ -58,7 +61,7 @@ def run_monitor(cfg: DictConfig) -> None:
             plot_q_table_heatmap(log_dir=LOG_DIR, save_fig=True)
         if "reward_model" in LOG_DIR:
             plot_reward_table_heatmap(log_dir=LOG_DIR, save_fig=True)
-        plot_policy_actions(log_dir=LOG_DIR, env_name=cfg["environment"]["id"].split("/")[1], save_fig=True)
+        plot_policy_actions(log_dir=LOG_DIR, env_name=env_id.split("/")[1], save_fig=True)
         # log_results()
 
     else:
@@ -132,6 +135,7 @@ def evaluate_mode(model_dir: str, env, n_episodes: int = 5, render: bool = False
 
 
 if __name__ == "__main__":
-    # plot_joint_reward(["reward_model", "q_monitor_joint", "q_monitor_sequential", "q_mdp", "zero_reward"], env_name="Simple", save_fig=True)
-    run_monitor()
+    baselines = ["reward_model", "q_monitor_joint", "q_monitor_sequential", "q_mdp", "zero_reward"]
+    # plot_joint_reward(baselines, env_name="Simple", save_fig=True)
+    # run_monitor()
     # main()
