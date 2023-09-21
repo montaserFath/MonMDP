@@ -68,14 +68,14 @@ class FullMonitor(Monitor):
 
 
 class StateMonitor(Monitor):
-    def __int__(
-            self,
-            env,
-            monitor_cost: float = 0.01,
-            init_state_prob: float = 0.5,
-            switch_state: int = 6,
-            switch_action: int = 1,
-            **kwargs,
+    def __init__(
+        self,
+        env,
+        monitor_cost: float = 0.01,
+        init_state_prob: float = 0.5,
+        switch_state: int = 6,
+        switch_action: int = 1,
+        **kwargs
     ):
         gymnasium.Wrapper.__init__(self, env)
         self.action_space = spaces.Dict({"mdp": env.action_space, "monitor": spaces.Discrete(1)})
@@ -83,6 +83,7 @@ class StateMonitor(Monitor):
         self.monitor_cost = monitor_cost
         self.init_state_prob = init_state_prob
         self.switch_state = switch_state
+        self.switch_action = switch_action
         self.monitor_state = None
 
     def reset(self, seed=None, **kwargs):
@@ -93,13 +94,13 @@ class StateMonitor(Monitor):
         return {"mdp": mdp_obs, "monitor": self.monitor_state}, mdp_info
 
     def _monitor_step(self, action, mdp_reward, mdp_state=None):
-        if mdp_state == self.switch_state and action["mdp"] == self.action_space:
+        if mdp_state == self.switch_state and action["mdp"] == self.switch_action:
             self.monitor_state = (self.monitor_state + 1) % 2  # flip the switch
         if self.monitor_state == 0:  # switch is off -> monitor is off
             monitor_cost = 0.0
             proxy_reward = np.nan
         else:  # switch is on -> monitor is on
-            monitor_cost = self.monitor_cost
+            monitor_cost = - self.monitor_cost
             proxy_reward = mdp_reward
         return self.monitor_state, proxy_reward, monitor_cost
 

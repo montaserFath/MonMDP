@@ -317,7 +317,7 @@ class StateMonTable(MonQTableOneAction):
         self._mdp_critic.reset()
 
     def __call__(self, state, action=None):
-        mdp_state, mon_state, mdp_action = state["mdp"], state["monitor"], action["mdp"] if action is not None else None
+        mdp_state, mon_state, mdp_action = state["mdp"].item(), state["monitor"], action["mdp"] if action is not None else None
         state_ind = self.get_state_ind(state)
 
         if action is None:
