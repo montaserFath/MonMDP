@@ -6,7 +6,14 @@ import seaborn as sns
 
 ARROWS = {0: (-1.5, 0), 1: (0, -1.5), 2: (1.5, 0), 3: (0, 1.5)}
 STATES = np.arange(9)
-JOINT_STATES = np.concatenate(([(a, 0) for a in range(9)], [(a, 1) for a in range(9)]))
+JOINT_STATES = [
+    "(0,0)", "(1,0)", "(2,0)", "(3,0)", "(4,0)", "(5,0)", "(6,0)", "(7,0)", "(8,0)",
+    "(0,1)", "(1,1)", "(2,1)", "(3,1)", "(4,1)", "(5,1)", "(6,1)", "(7,1)", "(8,1)",
+]
+# JOINT_STATES = [
+#     "(0,off)", "(1,off)", "(2,off)", "(3,off)", "(4,off)", "(5,off)", "(6,off)", "(7,off)", "(8,off)",
+#     "(0,on)", "(1,on)", "(2,on)", "(3,on)", "(4,on)", "(5,on)", "(6,on)", "(7,on)", "(8,on)",
+# ]
 MDP_ACTIONS = [r"$\leftarrow$", r"$\downarrow$", r"$\rightarrow$", r"$\uparrow$"]
 JOINT_ACTIONS = [
     r"($\leftarrow$,0)",
@@ -23,35 +30,42 @@ JOINT_ACTIONS = [
 def plot_q_table_heatmap(log_dir: str, save_fig: bool = False) -> None:
     """Plot Q-Table values as a heatmap"""
     q_table = np.round(np.load(log_dir + "/critic_q_table.npy"), 2)
+    y_sticks = JOINT_STATES if q_table.shape[0] == 18 else np.arange(q_table.shape[0])
+
+    fig = plt.figure(figsize=(7, 8 if len(y_sticks) == 18 else 5))
     ax = sns.heatmap(q_table, cmap="crest", annot=True, linewidth=0.1, fmt="g", annot_kws={"fontsize": 12})
     ax.set_xlabel("Actions", fontsize=15)
     ax.set_ylabel("States", fontsize=15)
     ax.set_xticklabels(MDP_ACTIONS if q_table.shape[1] == 4 else JOINT_ACTIONS, fontsize=13)
-    ax.set_yticklabels(np.arange(q_table.shape[0]), fontsize=13)
+    ax.set_yticks(0.5 + np.arange(len(y_sticks)))
+    ax.set_yticklabels(y_sticks, fontsize=10 if len(y_sticks) == 18 else 13)
     plt.tight_layout()
     if save_fig:
-        plt.savefig(log_dir + "/q_table_heatmap.pdf", dpi=300)
+        fig.savefig(log_dir + "/q_table_heatmap.pdf", dpi=300)
 
 
 def plot_mdp_mon_q_table_heatmap(log_dir: str, save_fig: bool = False) -> None:
     """Plot Q-Table values as a heatmap"""
     mdp_q_table = np.round(np.load(log_dir + "/mdp_q_table.npy"), 2)
     mon_q_table = np.round(np.load(log_dir + "/monitor_q_table.npy"), 2)
+    y_sticks = JOINT_STATES if mon_q_table.shape[0] == 18 else np.arange(mon_q_table.shape[0])
 
     fig = plt.figure(figsize=(4, 5))
     ax = sns.heatmap(mdp_q_table, cmap="crest", annot=True, linewidth=0.1, fmt="g", annot_kws={"fontsize": 12})
     ax.set_xlabel("Actions", fontsize=15)
     ax.set_ylabel("States", fontsize=15)
     ax.set_xticklabels(MDP_ACTIONS, fontsize=13)
-    ax.set_yticklabels(np.arange(mdp_q_table.shape[0]), fontsize=13)
+    ax.set_yticks(0.5 + np.arange(len(STATES)))
+    ax.set_yticklabels(STATES, fontsize=13)
     fig.tight_layout()
 
-    fig_1 = plt.figure(figsize=(7, 5))
+    fig_1 = plt.figure(figsize=(7, 8 if len(y_sticks) == 18 else 5))
     ax_1 = sns.heatmap(mon_q_table, cmap="crest", annot=True, linewidth=0.1, fmt="g", annot_kws={"fontsize": 12})
     ax_1.set_xlabel("Actions", fontsize=15)
     ax_1.set_ylabel("States", fontsize=15)
-    ax_1.set_xticklabels(JOINT_ACTIONS, fontsize=13)
-    ax_1.set_yticklabels(np.arange(mon_q_table.shape[0]), fontsize=13)
+    ax_1.set_xticklabels(MDP_ACTIONS if mon_q_table.shape[1] == 4 else JOINT_ACTIONS, fontsize=13)
+    ax_1.set_yticks(0.5 + np.arange(len(y_sticks)))
+    ax_1.set_yticklabels(y_sticks, fontsize=10 if len(y_sticks) == 18 else 13)
     fig_1.tight_layout()
 
     if save_fig:
@@ -74,7 +88,12 @@ def plot_reward_table_heatmap(log_dir: str, save_fig: bool = False) -> None:
 
 
 def plot_policy_actions(
-        log_dir: str, env_name: str, cell_size: tuple = (3, 3), scale: float = 0.25, save_fig: bool = False
+        log_dir: str,
+        env_name: str,
+        cell_size: tuple = (3, 3),
+        scale: float = 0.25,
+        traj_n: int = 0,
+        save_fig: bool = False,
 ) -> None:
     """
     plot policy actions as arrows in grid environment
@@ -89,7 +108,7 @@ def plot_policy_actions(
     shift = scale * 2
 
     traj = np.load(log_dir + "/trajectories.npy", allow_pickle=True)[()]
-    states, actions = traj[1]["states"], traj[1]["actions"]  # TODO(Monta): remove hardcoded 0
+    states, actions = traj[traj_n]["states"], traj[traj_n]["actions"]
 
     fig = plt.figure(figsize=cell_size)
     plt.hlines(np.arange(cell_size[1] + 1) - shift, -shift, cell_size[0] - shift, color="black")
@@ -134,7 +153,7 @@ def plot_policy_actions(
 
     # fig.tight_layout()
     if save_fig:
-        plt.savefig(log_dir + "/final_policy_performance.pdf", dpi=300)
+        plt.savefig(log_dir + "/final_policy_performance_{}.pdf".format(traj_n), dpi=300)
 
 
 def smooth_vector(vec: np.ndarray, factor=20) -> np.ndarray:
@@ -148,6 +167,13 @@ def mean_time_period(vec: np.ndarray, period: int) -> np.ndarray:
     for i in range(len(vec) // period):
         mean_vec[i] = np.mean(vec[i * period: i * period + period])
     return mean_vec
+
+
+def dict_to_numpy(reward: dict) -> np.ndarray:
+    array = np.zeros(len(reward))
+    for i, key in enumerate(reward.keys()):
+        array[i] = np.mean(reward[key])
+    return array
 
 
 def plot_joint_reward(
@@ -164,7 +190,9 @@ def plot_joint_reward(
     eval_joint_rewards = np.zeros((len(baselines), n_train_steps // testing_freq))
     x_axis = testing_freq * np.arange(n_train_steps // testing_freq)
     for i, base in enumerate(baselines):
-            joint_rewards[i] = np.load("models/{}/{}/training_joint_reward.npy".format(env_name, base))
+            joint_rewards[i] = dict_to_numpy(np.load(
+                "models/{}/{}/training_joint_reward.npy".format(env_name, base), allow_pickle=True
+            )[()])
             eval_joint_rewards[i] = np.mean(
                 np.load("models/{}/{}/evaluation_joint_reward.npy".format(env_name, base)), 1
             )
