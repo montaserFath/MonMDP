@@ -93,7 +93,7 @@ class MonExperiment(Experiment):
         set_rng_seed(self._rng_seed)
         self._actor.reset()
         self._critic.reset()
-        joint_reward = np.zeros(self._training_episodes)
+        joint_reward = {}
         eval_joint_reward = np.zeros((self._training_episodes // self._testing_frequency, self._testing_episodes))
         eval_count = 0
         for ep in tqdm(range(self._training_episodes)):
@@ -129,6 +129,7 @@ class MonExperiment(Experiment):
             reward_seen = False
             episode_monitor_action_count, time_steps = 0, 0
             next_action = None
+            ep_joint_reward = []
             while True:
                 time_steps += 1
                 action = self._actor(obs) if next_action is None else next_action
@@ -151,13 +152,15 @@ class MonExperiment(Experiment):
                 if not np.isnan(step_loss_mon):
                     episode_loss_mon += step_loss_mon
 
+                ep_joint_reward.append(info['mdp_reward'] + reward['monitor'])
+
                 if term or trunc:
                     if not reward_seen:
                         episode_return_proxy = np.nan
                     break
 
                 obs = next_obs
-            joint_reward[ep] = episode_return_true + episode_return_cost
+            joint_reward.update({ep: ep_joint_reward})
             wandb.log(
                 {
                     'train/environment_reward': episode_return_true,
@@ -176,8 +179,8 @@ class MonExperiment(Experiment):
         # save Q-table as numpy array
         self._critic.save()
         if self._save_train_log:
-            np.save(self._log_dir + "/training_joint_reward.npy", joint_reward)
-            np.save(self._log_dir + "/evaluation_joint_reward.npy", eval_joint_reward)
+            np.save(self._log_dir + "/training_joint_reward_{}.npy".format(self._rng_seed), joint_reward)
+            np.save(self._log_dir + "/evaluation_joint_reward_{}.npy".format(self._rng_seed), eval_joint_reward)
         wandb.finish()
         self._env.close()
 
