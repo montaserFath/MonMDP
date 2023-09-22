@@ -25,6 +25,7 @@ class Experiment():
         set_rng_seed(self._rng_seed)
         self._actor.reset()
         self._critic.reset()
+        joint_reward = {}
         for ep in tqdm(range(self._training_episodes)):
             if ep % self._testing_frequency == 1:
                 self._actor.eval()
@@ -43,17 +44,19 @@ class Experiment():
             episode_return = 0.
             episode_loss = 0.
             next_action = None
+            ep_joint_reward = []
             while True:
                 action = self._actor(obs) if next_action is None else next_action
                 next_obs, reward, term, trunc, _ = self._env.step(action)
                 if self._critic._on_policy:
                     next_action = self._actor(next_obs)
                 episode_loss += self._critic.update(obs, action, reward, term, next_obs, next_action)
+                ep_joint_reward.append(reward)
                 episode_return += reward
                 if term or trunc:
                     break
                 obs = next_obs
-
+            joint_reward[ep] = ep_joint_reward
             wandb.log(
                 {
                     'train/environment_reward': episode_return,
@@ -63,13 +66,14 @@ class Experiment():
                 commit=True
             )
             self._actor.update()
-
+        if self._save_train_log:
+            np.save(self._log_dir + "/training_joint_reward_{}.npy".format(self._rng_seed), joint_reward)
         # save Q-table as numpy array
         self._critic.save()
         wandb.finish()
         self._env.close()
 
-    def test(self, render: bool = False):
+    def test(self, render: bool = False, save_results: bool = False):
         episode_return = np.zeros(self._testing_episodes)
         for ep in range(self._testing_episodes):
             ep_seed = cantor_pairing(self._rng_seed, ep)

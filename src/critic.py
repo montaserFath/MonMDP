@@ -56,10 +56,12 @@ class QCritic(Critic):
 
 class QTable(QCritic):
     def __init__(self, observation_space, action_space,
-                 q0=0., gamma=0.99, lr=0.01, on_policy=False, **kwargs):
+                 q0=0., gamma=0.99, lr=0.01, on_policy=False, env_name: str = None, **kwargs):
         QCritic.__init__(self, q0, gamma, lr, on_policy)
         self._n_states = observation_space.n
         self._n_actions = action_space.n
+        if env_name is not None:
+            self._dir_name = "models/{}/q_learning/".format(env_name.split("-")[1])
         self.reset()
 
     def __call__(self, state, action=None):
@@ -79,6 +81,15 @@ class QTable(QCritic):
 
     def report(self):
         return self._q_table
+
+    def save(self):
+        os.makedirs(self._dir_name, exist_ok=True)
+        np.save(self._dir_name + "/critic_q_table.npy", self._q_table)
+
+    def load(self, log_dir: str = None):
+        if log_dir is None:
+            raise ValueError("No files to load Q-Table from it")
+        self._q_table = np.load(log_dir + "/critic_q_table.npy")
 
 
 class QDict(QCritic):
