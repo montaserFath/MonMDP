@@ -7,8 +7,24 @@ import seaborn as sns
 ARROWS = {0: (-1.5, 0), 1: (0, -1.5), 2: (1.5, 0), 3: (0, 1.5)}
 STATES = np.arange(9)
 JOINT_STATES = [
-    "(0,0)", "(1,0)", "(2,0)", "(3,0)", "(4,0)", "(5,0)", "(6,0)", "(7,0)", "(8,0)",
-    "(0,1)", "(1,1)", "(2,1)", "(3,1)", "(4,1)", "(5,1)", "(6,1)", "(7,1)", "(8,1)",
+    "(0,0)",
+    "(1,0)",
+    "(2,0)",
+    "(3,0)",
+    "(4,0)",
+    "(5,0)",
+    "(6,0)",
+    "(7,0)",
+    "(8,0)",
+    "(0,1)",
+    "(1,1)",
+    "(2,1)",
+    "(3,1)",
+    "(4,1)",
+    "(5,1)",
+    "(6,1)",
+    "(7,1)",
+    "(8,1)",
 ]
 # JOINT_STATES = [
 #     "(0,off)", "(1,off)", "(2,off)", "(3,off)", "(4,off)", "(5,off)", "(6,off)", "(7,off)", "(8,off)",
@@ -25,7 +41,14 @@ JOINT_ACTIONS = [
     r"($\rightarrow$,1)",
     r"($\uparrow$,1)",
 ]
-COLORS = ["black", "y", "brown", "g", "b", "r", ]
+COLORS = [
+    "black",
+    "y",
+    "brown",
+    "g",
+    "b",
+    "r",
+]
 ALPHAS = [0.5, 0.9, 0.9, 0.6, 0.4, 0.4]
 N_TRAIN_EP = 10000
 BASELINES = {
@@ -99,12 +122,12 @@ def plot_reward_table_heatmap(log_dir: str, save_fig: bool = False) -> None:
 
 
 def plot_policy_trajectory(
-        log_dir: str,
-        env_name: str,
-        cell_size: tuple = (3, 3),
-        scale: float = 0.25,
-        traj_n: int = 0,
-        save_fig: bool = False,
+    log_dir: str,
+    env_name: str,
+    cell_size: tuple = (3, 3),
+    scale: float = 0.25,
+    traj_n: int = 0,
+    save_fig: bool = False,
 ) -> None:
     """
     plot policy actions as arrows in grid environment
@@ -138,7 +161,9 @@ def plot_policy_trajectory(
             fig.savefig(log_dir + "/final_policy_performance.pdf", dpi=300)
 
 
-def plot_env_actions(env_name: str, states, actions, cell_size: tuple = (3, 3), scale: float = 0.25, switch: bool = False):
+def plot_env_actions(
+    env_name: str, states, actions, cell_size: tuple = (3, 3), scale: float = 0.25, switch: bool = False
+):
     # load images
     fire_img = plt.imread("img/fire_img.png")
     agent_img = plt.imread("img/agent_img.png")
@@ -159,7 +184,14 @@ def plot_env_actions(env_name: str, states, actions, cell_size: tuple = (3, 3), 
             line_c = "r" if action[1] == 0 else "b"  # Monitor action
         arrow = ARROWS[action[0]]
         plt.arrow(
-            pos[1], pos[0], scale * arrow[0], scale * arrow[1], lw=1.8, head_length=0.1, head_width=0.15, color=line_c,
+            pos[1],
+            pos[0],
+            scale * arrow[0],
+            scale * arrow[1],
+            lw=1.8,
+            head_length=0.1,
+            head_width=0.15,
+            color=line_c,
         )
 
     mon_off = matplotlib.patches.Patch(color="r", label="Monitor Off")
@@ -169,18 +201,18 @@ def plot_env_actions(env_name: str, states, actions, cell_size: tuple = (3, 3), 
     plt.ylim(-shift, cell_size[1] - shift)
     plt.axis("off")
     if env_name in ["TreasureHunt-Fire-v0", "TreasureHunt-Switch-v0"]:
-        fire_1 = fig.add_axes([0.41, 0.67, 0.2, 0.2], anchor='NE', zorder=-1)
+        fire_1 = fig.add_axes([0.41, 0.67, 0.2, 0.2], anchor="NE", zorder=-1)
         fire_1.imshow(fire_img)
-        fire_1.axis('off')
+        fire_1.axis("off")
 
-        fire_2 = fig.add_axes([0.41, 0.41, 0.2, 0.2], anchor='NE', zorder=-1)
+        fire_2 = fig.add_axes([0.41, 0.41, 0.2, 0.2], anchor="NE", zorder=-1)
         fire_2.imshow(fire_img)
-        fire_2.axis('off')
+        fire_2.axis("off")
 
     if env_name == "TreasureHunt-Switch-v0":
-        switch = fig.add_axes([0.12, 0.1, 0.15, 0.15], anchor='NE', zorder=-1)
+        switch = fig.add_axes([0.12, 0.1, 0.15, 0.15], anchor="NE", zorder=-1)
         switch.imshow(switch_img)
-        switch.axis('off')
+        switch.axis("off")
 
     agent = fig.add_axes([0.14, 0.75, 0.12, 0.12], anchor="NE", zorder=-1)
     agent.imshow(agent_img)
@@ -196,7 +228,7 @@ def plot_env_actions(env_name: str, states, actions, cell_size: tuple = (3, 3), 
 def mean_time_period(vec: np.ndarray, period: int) -> np.ndarray:
     mean_vec = np.zeros(len(vec) // period)
     for i in range(len(vec) // period):
-        mean_vec[i] = np.mean(vec[i * period: i * period + period])
+        mean_vec[i] = np.mean(vec[i * period : i * period + period])
     return mean_vec
 
 
@@ -210,23 +242,21 @@ def discount_episode_reward(reward: dict, gamma: float = 0.99) -> np.ndarray:
 
 
 def plot_joint_reward(
-        baselines: list,
-        env_name: str,
-        testing_freq: int = 10,
-        save_fig: bool = False,
+    baselines: list,
+    env_name: str,
+    testing_freq: int = 10,
+    save_fig: bool = False,
 ) -> None:
     train_freq = 100
     joint_rewards = np.zeros((len(baselines), N_TRAIN_EP))
     eval_joint_rewards = np.zeros((len(baselines), N_TRAIN_EP // testing_freq))
     x_axis = testing_freq * np.arange(N_TRAIN_EP // testing_freq)
     for i, base in enumerate(baselines):
-            joint_rewards[i] = discount_episode_reward(np.load(
-                "models/{}/{}/training_joint_reward.npy".format(env_name, base), allow_pickle=True
-            )[()])
-            eval_joint_rewards[i] = np.mean(
-                np.load("models/{}/{}/evaluation_joint_reward.npy".format(env_name, base)), 1
-            )
-            eval_joint_rewards[i, -1] = eval_joint_rewards[i, -2]
+        joint_rewards[i] = discount_episode_reward(
+            np.load("models/{}/{}/training_joint_reward.npy".format(env_name, base), allow_pickle=True)[()]
+        )
+        eval_joint_rewards[i] = np.mean(np.load("models/{}/{}/evaluation_joint_reward.npy".format(env_name, base)), 1)
+        eval_joint_rewards[i, -1] = eval_joint_rewards[i, -2]
 
     fig = plt.figure(figsize=(7, 4))
     train_x_axis = train_freq * np.arange(N_TRAIN_EP // train_freq)
@@ -268,7 +298,8 @@ def plot_joint_reward_seeds(env_name: str, baseline: str, save_fig: bool = False
     fig = plt.figure(figsize=(7, 4))
     for seed in range(n_seeds):
         reward = np.load(
-            "models/{}/{}/training_joint_reward_{}.npy".format(env_name, baseline, seed), allow_pickle=True,
+            "models/{}/{}/training_joint_reward_{}.npy".format(env_name, baseline, seed),
+            allow_pickle=True,
         )[()]
         joint_reward[seed] = mean_time_period(discount_episode_reward(reward))
         plt.plot(train_x_axis, joint_reward[seed], lw=0.1)
@@ -293,9 +324,15 @@ def plot_joint_reward_seeds_baselines(env_name: str, baselines: list, save_fig: 
     for i, baseline in enumerate(baselines):
         for seed in range(n_seeds):
             label = BASELINES[baselines[i]] if seed == 0 else None
-            reward = mean_time_period(discount_episode_reward(np.load(
-                "models/{}/{}/training_joint_reward_{}.npy".format(env_name, baseline, seed), allow_pickle=True,
-            )[()]), train_freq)
+            reward = mean_time_period(
+                discount_episode_reward(
+                    np.load(
+                        "models/{}/{}/training_joint_reward_{}.npy".format(env_name, baseline, seed),
+                        allow_pickle=True,
+                    )[()]
+                ),
+                train_freq,
+            )
             plt.plot(train_x_axis, reward, lw=1, c=COLORS[i], alpha=ALPHAS[i], label=label)
             plt.scatter(train_x_axis, reward, marker="*", s=2, c=COLORS[i], alpha=ALPHAS[i])
 
