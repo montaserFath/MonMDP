@@ -98,7 +98,7 @@ def plot_reward_table_heatmap(log_dir: str, save_fig: bool = False) -> None:
         fig.savefig(log_dir + "/predictive_reward_table_heatmap.pdf", dpi=300)
 
 
-def plot_policy_actions(
+def plot_policy_trajectory(
         log_dir: str,
         env_name: str,
         cell_size: tuple = (3, 3),
@@ -125,8 +125,8 @@ def plot_policy_actions(
                     monitor_off_ind = i
         on_states, on_actions = traj[monitor_on_ind]["states"], traj[monitor_on_ind]["actions"]
         off_states, off_actions = traj[monitor_off_ind]["states"], traj[monitor_off_ind]["actions"]
-        on_fig = plot_env_actions(env_name, on_states, on_actions, cell_size, scale)
-        off_fig = plot_env_actions(env_name, off_states, off_actions, cell_size, scale)
+        on_fig = plot_env_actions(env_name, on_states, on_actions, cell_size, scale, switch=True)
+        off_fig = plot_env_actions(env_name, off_states, off_actions, cell_size, scale, switch=True)
         if save_fig:
             on_fig.savefig(log_dir + "/final_policy_performance_on.pdf", dpi=300)
             off_fig.savefig(log_dir + "/final_policy_performance_off.pdf", dpi=300)
@@ -138,7 +138,7 @@ def plot_policy_actions(
             fig.savefig(log_dir + "/final_policy_performance.pdf", dpi=300)
 
 
-def plot_env_actions(env_name: str, states, actions, cell_size: tuple = (3, 3), scale: float = 0.25):
+def plot_env_actions(env_name: str, states, actions, cell_size: tuple = (3, 3), scale: float = 0.25, switch: bool = False):
     # load images
     fire_img = plt.imread("img/fire_img.png")
     agent_img = plt.imread("img/agent_img.png")
@@ -153,10 +153,13 @@ def plot_env_actions(env_name: str, states, actions, cell_size: tuple = (3, 3), 
     for i, action in enumerate(actions):
         pos = np.array([states[i, 0] // cell_size[0], states[i, 0] % cell_size[0]])  # MDP state
         pos[0] = np.abs(pos[0] - cell_size[0] + 1)
-        line_c = "r" if action[1] == 0 else "b"  # Monitor action
+        if switch:
+            line_c = "r" if states[i, 1] == 0 else "b"  # Monitor action
+        else:
+            line_c = "r" if action[1] == 0 else "b"  # Monitor action
         arrow = ARROWS[action[0]]
         plt.arrow(
-            pos[1], pos[0], scale * arrow[0], scale * arrow[1], lw=1.8, head_length=0.1, head_width=0.15, color=line_c
+            pos[1], pos[0], scale * arrow[0], scale * arrow[1], lw=1.8, head_length=0.1, head_width=0.15, color=line_c,
         )
 
     mon_off = matplotlib.patches.Patch(color="r", label="Monitor Off")
