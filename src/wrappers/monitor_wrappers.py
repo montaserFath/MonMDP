@@ -85,16 +85,18 @@ class StateMonitor(Monitor):
         self.switch_state = switch_state
         self.switch_action = switch_action
         self.monitor_state = None
+        self.prev_mdp_state = None
 
     def reset(self, seed=None, **kwargs):
         self.action_space.seed(seed)
         self.observation_space.seed(seed)
         mdp_obs, mdp_info = self.env.reset(seed=seed, **kwargs)
         self.monitor_state = (np.random.random() < self.init_state_prob) + 0
+        self.prev_mdp_state = None
         return {"mdp": mdp_obs, "monitor": self.monitor_state}, mdp_info
 
     def _monitor_step(self, action, mdp_reward, mdp_state=None):
-        if mdp_state == self.switch_state and action["mdp"] == self.switch_action:
+        if self.prev_mdp_state == self.switch_state and action["mdp"] == self.switch_action:
             self.monitor_state = (self.monitor_state + 1) % 2  # flip the switch
         if self.monitor_state == 0:  # switch is off -> monitor is off
             monitor_cost = 0.0
@@ -102,6 +104,7 @@ class StateMonitor(Monitor):
         else:  # switch is on -> monitor is on
             monitor_cost = - self.monitor_cost
             proxy_reward = mdp_reward
+        self.prev_mdp_state = mdp_state
         return self.monitor_state, proxy_reward, monitor_cost
 
 
