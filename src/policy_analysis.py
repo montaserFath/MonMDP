@@ -25,10 +25,11 @@ JOINT_ACTIONS = [
     r"($\rightarrow$,1)",
     r"($\uparrow$,1)",
 ]
-COLORS = ["r", "g", "b", "y", "black"]
-ALPHAS = [0.6, 0.8, 0.6, 0.9, 0.5]
+COLORS = ["black", "y", "brown", "g", "b", "r", ]
+ALPHAS = [0.5, 0.9, 0.9, 0.6, 0.4, 0.4]
 N_TRAIN_EP = 10000
 BASELINES = {
+    "q_learning": "Q-Learning in MDP",
     "reward_model": "Reward Model",
     "q_monitor_joint": r"$Q_{joint}$",
     "q_monitor_sequential": r"$Q_{Sequential}$",
@@ -189,12 +190,6 @@ def plot_env_actions(env_name: str, states, actions, cell_size: tuple = (3, 3), 
     return fig
 
 
-def smooth_vector(vec: np.ndarray, factor=20) -> np.ndarray:
-    box = np.ones(factor) / factor
-    vec_smooth = np.convolve(vec, box, mode='same')
-    return vec_smooth
-
-
 def mean_time_period(vec: np.ndarray, period: int) -> np.ndarray:
     mean_vec = np.zeros(len(vec) // period)
     for i in range(len(vec) // period):
@@ -202,7 +197,7 @@ def mean_time_period(vec: np.ndarray, period: int) -> np.ndarray:
     return mean_vec
 
 
-def dict_to_numpy(reward: dict, gamma: float = 0.99) -> np.ndarray:
+def discount_episode_reward(reward: dict, gamma: float = 0.99) -> np.ndarray:
     discount = [gamma**i for i in range(100)]
     array = np.zeros(len(reward))
     for i, key in enumerate(reward.keys()):
@@ -222,7 +217,7 @@ def plot_joint_reward(
     eval_joint_rewards = np.zeros((len(baselines), N_TRAIN_EP // testing_freq))
     x_axis = testing_freq * np.arange(N_TRAIN_EP // testing_freq)
     for i, base in enumerate(baselines):
-            joint_rewards[i] = dict_to_numpy(np.load(
+            joint_rewards[i] = discount_episode_reward(np.load(
                 "models/{}/{}/training_joint_reward.npy".format(env_name, base), allow_pickle=True
             )[()])
             eval_joint_rewards[i] = np.mean(
@@ -233,7 +228,6 @@ def plot_joint_reward(
     fig = plt.figure(figsize=(7, 4))
     train_x_axis = train_freq * np.arange(N_TRAIN_EP // train_freq)
     for i in range(len(joint_rewards)):
-        # plt.plot(smooth_vector(joint_rewards[i], 100), lw=2, alpha=alphas[i], color=colors[i], label=BASELINES[baselines[i]])
         mean_reward = mean_time_period(joint_rewards[i], train_freq)
         plt.plot(train_x_axis, mean_reward, lw=2, alpha=ALPHAS[i], color=COLORS[i], label=BASELINES[baselines[i]])
         plt.plot(train_x_axis, mean_time_period(joint_rewards[i], train_freq), "*", alpha=ALPHAS[i], color=COLORS[i])
@@ -273,13 +267,10 @@ def plot_joint_reward_seeds(env_name: str, baseline: str, save_fig: bool = False
         reward = np.load(
             "models/{}/{}/training_joint_reward_{}.npy".format(env_name, baseline, seed), allow_pickle=True,
         )[()]
-        joint_reward[seed] = mean_time_period(dict_to_numpy(reward) if isinstance(reward, dict) else reward, train_freq)
+        joint_reward[seed] = mean_time_period(discount_episode_reward(reward))
         plt.plot(train_x_axis, joint_reward[seed], lw=0.1)
         plt.scatter(train_x_axis, joint_reward[seed], marker="*", s=1)
-    # mean, std = np.mean(joint_reward, 0), np.std(joint_reward, 0)
-    # plt.plot(train_x_axis, mean, lw=0.5, c="r", alpha=0.9)
-    # plt.plot(train_x_axis, mean, marker="*", c="r", alpha=0.9)
-    # plt.fill_between(train_x_axis, mean + std, mean - std, facecolor="r", alpha=0.3)
+
     plt.xlabel("Training Episodes", fontsize=12)
     plt.ylabel("Episode Joint Reward", fontsize=12)
     plt.grid(axis="y")
@@ -292,29 +283,19 @@ def plot_joint_reward_seeds(env_name: str, baseline: str, save_fig: bool = False
 
 def plot_joint_reward_seeds_baselines(env_name: str, baselines: list, save_fig: bool = False):
     n_seeds = 30
-    train_freq = 100
-    # joint_reward = np.zeros((len(baselines), n_seeds, n_train_steps // train_freq))
-    mean = np.zeros((len(baselines), N_TRAIN_EP // train_freq))
-    std = np.zeros((len(baselines), N_TRAIN_EP // train_freq))
-
-    for i, baseline in enumerate(baselines):
-        base_joint_reward = np.zeros((n_seeds, N_TRAIN_EP // train_freq))
-        for seed in range(n_seeds):
-            reward = np.load(
-                "models/{}/{}/training_joint_reward_{}.npy".format(env_name, baseline, seed), allow_pickle=True,
-            )[()]
-            base_joint_reward[seed] = mean_time_period(
-                dict_to_numpy(reward) if isinstance(reward, dict) else reward, train_freq,
-            )
-        mean[i], std[i] = np.mean(base_joint_reward, 0), np.std(base_joint_reward, 0)
-
+    train_freq = 500
     train_x_axis = train_freq * np.arange(N_TRAIN_EP // train_freq)
 
     fig = plt.figure(figsize=(7, 4))
-    for i in range(len(baselines)):
-        plt.plot(train_x_axis, mean[i], lw=2, c=COLORS[i], alpha=ALPHAS[i], label=BASELINES[baselines[i]])
-        plt.scatter(train_x_axis, mean[i], marker="*", c=COLORS[i], s=1, alpha=ALPHAS[i])
-        plt.fill_between(train_x_axis, mean[i] + std[i], mean[i] - std[i], facecolor=COLORS[i], alpha=ALPHAS[i])
+    for i, baseline in enumerate(baselines):
+        for seed in range(n_seeds):
+            label = BASELINES[baselines[i]] if seed == 0 else None
+            reward = mean_time_period(discount_episode_reward(np.load(
+                "models/{}/{}/training_joint_reward_{}.npy".format(env_name, baseline, seed), allow_pickle=True,
+            )[()]), train_freq)
+            plt.plot(train_x_axis, reward, lw=1, c=COLORS[i], alpha=ALPHAS[i], label=label)
+            plt.scatter(train_x_axis, reward, marker="*", s=2, c=COLORS[i], alpha=ALPHAS[i])
+
     plt.xlabel("Training Episodes", fontsize=12)
     plt.ylabel("Episode Joint Reward", fontsize=12)
     plt.grid(axis="y")
