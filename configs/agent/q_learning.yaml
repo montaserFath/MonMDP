@@ -1,14 +1,15 @@
 critic:
   on_policy: False
-  q0: 0
+  q0: -1
   gamma: 0.99
-  lr: 0.5
-  strategy: reward_model
+  lr: 1.0
+  strategy: q_mdp
+  unseen_r_value: 0.0
   reward_model:
     r0: 0
     lr: 1.
 
 actor:
   init_eps: 0.8
-  min_eps: 0.2
+  min_eps: 0.0
   eps_decay: 0.0001
