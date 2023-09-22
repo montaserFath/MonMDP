@@ -1,4 +1,4 @@
 id: BinaryMonitor
 monitor_reset_prob: 0.0
 monitor_cost: 0.2
-init_monitor_state: 1
+init_monitor_state: 0
