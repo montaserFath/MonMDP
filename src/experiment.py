@@ -69,7 +69,7 @@ class Experiment():
         if self._save_train_log:
             np.save(self._log_dir + "/training_joint_reward_{}.npy".format(self._rng_seed), joint_reward)
         # save Q-table as numpy array
-        self._critic.save()
+        self._critic.save(seed=self._rng_seed)
         wandb.finish()
         self._env.close()
 
@@ -181,7 +181,7 @@ class MonExperiment(Experiment):
             )
             self._actor.update()
         # save Q-table as numpy array
-        self._critic.save()
+        self._critic.save(seed=self._rng_seed)
         if self._save_train_log:
             np.save(self._log_dir + "/training_joint_reward_{}.npy".format(self._rng_seed), joint_reward)
             np.save(self._log_dir + "/evaluation_joint_reward_{}.npy".format(self._rng_seed), eval_joint_reward)

@@ -82,14 +82,14 @@ class QTable(QCritic):
     def report(self):
         return self._q_table
 
-    def save(self):
+    def save(self, seed: int = 1):
         os.makedirs(self._dir_name, exist_ok=True)
-        np.save(self._dir_name + "/critic_q_table.npy", self._q_table)
+        np.save(self._dir_name + "/critic_q_table_{}.npy".format(seed), self._q_table)
 
-    def load(self, log_dir: str = None):
+    def load(self, log_dir: str = None, seed: int = 1):
         if log_dir is None:
             raise ValueError("No files to load Q-Table from it")
-        self._q_table = np.load(log_dir + "/critic_q_table.npy")
+        self._q_table = np.load(log_dir + "/critic_q_table_{}.npy".format(seed))
 
 
 class QDict(QCritic):
@@ -286,26 +286,26 @@ class MonQTableOneAction(MonQTable):
         mon_action, mdp_action = action_ind // self._n_actions, action_ind % self._n_actions
         return {"mdp": mdp_action, "monitor": mon_action}
 
-    def save(self):
+    def save(self, seed: int = 1):
         os.makedirs(self._dir_name, exist_ok=True)
         if self._strategy in ["q_monitor_sequential", "q_monitor_joint"]:
-            np.save(self._dir_name + "/mdp_q_table.npy", self._mdp_q)
-            np.save(self._dir_name + "/monitor_q_table.npy", self._mon_q)
+            np.save(self._dir_name + "/mdp_q_table_{}.npy".format(seed), self._mdp_q)
+            np.save(self._dir_name + "/monitor_q_table_{}.npy".format(seed), self._mon_q)
         else:
-            np.save(self._dir_name + "/critic_q_table.npy", self._q_table)
+            np.save(self._dir_name + "/critic_q_table_{}.npy".format(seed), self._q_table)
         if self._r_model is not None:
             self._r_model.save(self._dir_name)
 
-    def load(self, log_dir: str = None):
+    def load(self, log_dir: str = None, seed: int = 1):
         if log_dir is None:
             raise ValueError("No files to load Q-Table from it")
         if self._strategy in ["q_monitor_sequential", "q_monitor_joint"]:
-            self._mdp_q = np.load(self._dir_name + "/mdp_q_table.npy")
-            self._mon_q = np.load(self._dir_name + "/monitor_q_table.npy")
+            self._mdp_q = np.load(self._dir_name + "/mdp_q_table_{}.npy".format(seed))
+            self._mon_q = np.load(self._dir_name + "/monitor_q_table_{}.npy".format(seed))
         else:
-            self._q_table = np.load(log_dir + "/critic_q_table.npy")
+            self._q_table = np.load(log_dir + "/critic_q_table_{}.npy".format(seed))
         if self._r_model is not None:
-            self._r_model = np.load(log_dir + "/reward_model_table.npy")
+            self._r_model = np.load(log_dir + "/reward_model_table_{}.npy".format(seed))
 
     def expand_mdp_q(self):
         """Expand Q-table for MDP"""

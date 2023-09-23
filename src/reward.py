@@ -58,10 +58,10 @@ class RTable(Reward):
     def report(self):
         return self._r_table
 
-    def save(self, log_dir: str = None):
+    def save(self, log_dir: str = None, seed: int = 1):
         if log_dir is None:
             raise ValueError("The log directory is empty")
-        np.save(log_dir + "/reward_model_table.npy", self._r_table)
+        np.save(log_dir + "/reward_model_table_{}.npy".format(seed), self._r_table)
 
 
 class RDict(Reward):
