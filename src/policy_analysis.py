@@ -148,22 +148,78 @@ def plot_policy_trajectory(
                     monitor_off_ind = i
         on_states, on_actions = traj[monitor_on_ind]["states"], traj[monitor_on_ind]["actions"]
         off_states, off_actions = traj[monitor_off_ind]["states"], traj[monitor_off_ind]["actions"]
-        on_fig = plot_env_actions(env_name, on_states, on_actions, cell_size, scale, switch=True)
-        off_fig = plot_env_actions(env_name, off_states, off_actions, cell_size, scale, switch=True)
+        on_fig = plot_env_actions(env_name.split("-")[1], on_states, on_actions, cell_size, scale)
+        off_fig = plot_env_actions(env_name.split("-")[1], off_states, off_actions, cell_size, scale)
         if save_fig:
             on_fig.savefig(log_dir + "/final_policy_performance_on.pdf", dpi=300)
             off_fig.savefig(log_dir + "/final_policy_performance_off.pdf", dpi=300)
     else:
         states, actions = traj[traj_n]["states"], traj[traj_n]["actions"]
-        fig = plot_env_actions(env_name, states, actions, cell_size, scale)
+        fig = plot_env_actions(env_name.split("-")[1], states, actions, cell_size, scale)
         # fig.tight_layout()
         if save_fig:
             fig.savefig(log_dir + "/final_policy_performance.pdf", dpi=300)
 
 
-def plot_env_actions(
-    env_name: str, states, actions, cell_size: tuple = (3, 3), scale: float = 0.25, switch: bool = False
-):
+def plot_policy(baselines: list, env_id: str, cell_size: tuple = (3, 3), scale: float = 0.25, save_fig: bool = False):
+    n_states = int(cell_size[0] * cell_size[1])
+    mdp_q_table = None
+    n_actions = 4
+
+    for i, base in enumerate(baselines):
+        if base in ["q_monitor_sequential", "q_monitor_joint"]:
+            mdp_q_table = np.load("models/{}/{}/mdp_q_table.npy".format(env_id, base))
+            q_table = np.load("models/{}/{}/monitor_q_table.npy".format(env_id, base))
+        else:
+            q_table = np.load("models/{}/{}/critic_q_table.npy".format(env_id, base))
+        states = np.arange(n_states)
+        policy_states, policy_actions = np.zeros((n_states * 2, 2)), np.zeros((n_states, 2))
+
+        for j in range(n_states):
+            policy_states[j] = ind_to_state(j, n_states, n_mon_states=2)
+            policy_states[j + n_states] = ind_to_state(j + n_states, n_states, n_mon_states=2)
+            if q_table.shape[1] == n_actions:
+                mdp_action = np.argmax(q_table[states[j]])
+                mon_action = 0
+            else:
+                if mdp_q_table is None:
+                    mdp_action, mon_action = ind_to_action(np.argmax(q_table[states[j]]))
+                else:
+                    mdp_action = np.argmax(mdp_q_table[states[j]])
+                    if base == "q_monitor_sequential":
+                        off_q, on_q = q_table[states[j], mdp_action], q_table[states[j], mdp_action + n_actions]
+                        mon_action = 0 if off_q > on_q else 1
+                    else:
+                        q_value = np.concatenate((mdp_q_table[states[j]], mdp_q_table[states[j]])) + q_table[states[j]]
+                        mdp_action, mon_action = ind_to_action(np.argmax(q_value))
+            policy_actions[j] = [mdp_action, mon_action]
+        fig = plot_env_actions(env_id, policy_states, policy_actions, cell_size, scale)
+        if save_fig:
+            fig.savefig("models/{}/{}/policy_actions.pdf".format(env_id, base), dpi=300)
+
+
+def get_action_ind(action: list, n_actions: int = 4) -> int:
+    mdp_action, mon_action = action[0], action[1]
+    return mon_action * n_actions + mdp_action
+
+
+def ind_to_action(action_ind: int, n_actions: int = 4) -> tuple:
+    mon_action, mdp_action = action_ind // n_actions, action_ind % n_actions
+    return mdp_action, mon_action
+
+
+def get_state_ind(state: list, n_states: int) -> int:
+    return state[1] * n_states + state[0].item()
+
+
+def ind_to_state(state_ind: int, n_states: int, n_mon_states: int = 2) -> tuple:
+    if state_ind >= n_states * n_mon_states:
+        raise ValueError("State index is larger than max Number of states")
+    mon_state, mdp_state = state_ind // n_states, state_ind % n_states
+    return mdp_state, mon_state
+
+
+def plot_env_actions(env_id: str, states, actions, cell_size: tuple = (3, 3), scale: float = 0.25):
     # load images
     fire_img = plt.imread("img/fire_img.png")
     agent_img = plt.imread("img/agent_img.png")
@@ -175,24 +231,44 @@ def plot_env_actions(
     plt.hlines(np.arange(cell_size[1] + 1) - shift, -shift, cell_size[0] - shift, color="black")
     plt.vlines(np.arange(cell_size[0] + 1) - shift, -shift, cell_size[1] - shift, color="black")
 
-    for i, action in enumerate(actions):
-        pos = np.array([states[i, 0] // cell_size[0], states[i, 0] % cell_size[0]])  # MDP state
-        pos[0] = np.abs(pos[0] - cell_size[0] + 1)
-        if switch:
-            line_c = "r" if states[i, 1] == 0 else "b"  # Monitor action
-        else:
-            line_c = "r" if action[1] == 0 else "b"  # Monitor action
-        arrow = ARROWS[action[0]]
-        plt.arrow(
-            pos[1],
-            pos[0],
-            scale * arrow[0],
-            scale * arrow[1],
-            lw=1.8,
-            head_length=0.1,
-            head_width=0.15,
-            color=line_c,
-        )
+    if len(states) == 18:
+        for i in [0, 1, 3, 4, 5, 6, 7, 8]:
+            pos = np.array([states[i, 0] // cell_size[0], states[i, 0] % cell_size[0]])  # MDP state
+            pos[0] = np.abs(pos[0] - cell_size[0] + 1)
+            if env_id == "Switch":
+                line_c = "r" if states[i, 1] == 0 else "b"  # Monitor action
+            else:
+                line_c = "r" if actions[i, 1] == 0 else "b"  # Monitor action
+            arrow = ARROWS[actions[i, 0]]
+            plt.arrow(
+                pos[1],
+                pos[0],
+                scale * arrow[0],
+                scale * arrow[1],
+                lw=1.8,
+                head_length=0.1,
+                head_width=0.15,
+                color=line_c,
+            )
+    else:
+        for i in range(len(states)):
+            pos = np.array([states[i, 0] // cell_size[0], states[i, 0] % cell_size[0]])  # MDP state
+            pos[0] = np.abs(pos[0] - cell_size[0] + 1)
+            if env_id == "Switch":
+                line_c = "r" if states[i, 1] == 0 else "b"  # Monitor action
+            else:
+                line_c = "r" if actions[i, 1] == 0 else "b"  # Monitor action
+            arrow = ARROWS[actions[i, 0]]
+            plt.arrow(
+                pos[1],
+                pos[0],
+                scale * arrow[0],
+                scale * arrow[1],
+                lw=1.8,
+                head_length=0.1,
+                head_width=0.15,
+                color=line_c,
+                )
 
     mon_off = matplotlib.patches.Patch(color="r", label="Monitor Off")
     mon_on = matplotlib.patches.Patch(color="b", label="Monitor On")
@@ -200,7 +276,7 @@ def plot_env_actions(
     plt.xlim(-shift, cell_size[0] - shift)
     plt.ylim(-shift, cell_size[1] - shift)
     plt.axis("off")
-    if env_name in ["TreasureHunt-Fire-v0", "TreasureHunt-Switch-v0"]:
+    if env_id in ["Fire", "Switch"]:
         fire_1 = fig.add_axes([0.41, 0.67, 0.2, 0.2], anchor="NE", zorder=-1)
         fire_1.imshow(fire_img)
         fire_1.axis("off")
@@ -209,7 +285,7 @@ def plot_env_actions(
         fire_2.imshow(fire_img)
         fire_2.axis("off")
 
-    if env_name == "TreasureHunt-Switch-v0":
+    if env_id == "Switch":
         switch = fig.add_axes([0.12, 0.1, 0.15, 0.15], anchor="NE", zorder=-1)
         switch.imshow(switch_img)
         switch.axis("off")
@@ -301,7 +377,7 @@ def plot_joint_reward_seeds(env_name: str, baseline: str, save_fig: bool = False
             "models/{}/{}/training_joint_reward_{}.npy".format(env_name, baseline, seed),
             allow_pickle=True,
         )[()]
-        joint_reward[seed] = mean_time_period(discount_episode_reward(reward))
+        joint_reward[seed] = mean_time_period(discount_episode_reward(reward), train_freq)
         plt.plot(train_x_axis, joint_reward[seed], lw=0.1)
         plt.scatter(train_x_axis, joint_reward[seed], marker="*", s=1)
 
