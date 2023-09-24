@@ -346,17 +346,18 @@ def plot_env_actions(env_id: str, states, actions, cell_size: tuple = (3, 3), sc
 def mean_time_period(vec: np.ndarray, period: int) -> np.ndarray:
     mean_vec = np.zeros(len(vec) // period)
     for i in range(len(vec) // period):
-        mean_vec[i] = np.mean(vec[i * period : i * period + period])
+        mean_vec[i] = np.mean(vec[i * period: i * period + period])
     return mean_vec
 
 
-def discount_episode_reward(reward: dict, gamma: float = 0.99) -> np.ndarray:
+def discount_episode_reward(reward: dict, gamma: float = 0.99) -> (np.ndarray, np.ndarray):
     discount = [gamma**i for i in range(100)]
-    array = np.zeros(len(reward))
+    array, length = np.zeros(len(reward)), np.zeros(len(reward))
     for i, key in enumerate(reward.keys()):
         n = len(reward[key])
+        length[i] = n
         array[i] = np.sum(np.array(reward[key]) * np.array(discount[:n]))
-    return array
+    return array, length
 
 
 def plot_joint_reward(
@@ -370,7 +371,7 @@ def plot_joint_reward(
     eval_joint_rewards = np.zeros((len(baselines), N_TRAIN_EP // testing_freq))
     x_axis = testing_freq * np.arange(N_TRAIN_EP // testing_freq)
     for i, base in enumerate(baselines):
-        joint_rewards[i] = discount_episode_reward(
+        joint_rewards[i], _ = discount_episode_reward(
             np.load("models/{}/{}/training_joint_reward.npy".format(env_name, base), allow_pickle=True)[()]
         )
         eval_joint_rewards[i] = np.mean(np.load("models/{}/{}/evaluation_joint_reward.npy".format(env_name, base)), 1)
@@ -418,7 +419,7 @@ def plot_joint_reward_seeds(env_name: str, baseline: str, save_fig: bool = False
             "models/{}/{}/training_joint_reward_{}.npy".format(env_name, baseline, seed),
             allow_pickle=True,
         )[()]
-        joint_reward[seed] = mean_time_period(discount_episode_reward(reward), train_freq)
+        joint_reward[seed], _ = mean_time_period(discount_episode_reward(reward), train_freq)
         plt.plot(train_x_axis, joint_reward[seed], lw=0.1)
         plt.scatter(train_x_axis, joint_reward[seed], marker="*", s=1)
 
@@ -432,7 +433,7 @@ def plot_joint_reward_seeds(env_name: str, baseline: str, save_fig: bool = False
         fig.savefig("models/{}/{}/seeds_training_joint_reward.pdf".format(env_name, baseline), dpi=300)
 
 
-def plot_joint_reward_seeds_baselines(env_name: str, baselines: list, save_fig: bool = False):
+def plot_joint_reward_seeds_baselines(env_name: str, baselines: list, plot_mean: bool = False, save_fig: bool = False):
     n_seeds = 30
     train_freq = 500
     train_x_axis = train_freq * np.arange(N_TRAIN_EP // train_freq)
@@ -441,17 +442,17 @@ def plot_joint_reward_seeds_baselines(env_name: str, baselines: list, save_fig: 
     for i, baseline in enumerate(baselines):
         for seed in range(n_seeds):
             label = BASELINES[baselines[i]] if seed == 0 else None
-            reward = mean_time_period(
-                discount_episode_reward(
-                    np.load(
-                        "models/{}/{}/training_joint_reward_{}.npy".format(env_name, baseline, seed),
-                        allow_pickle=True,
-                    )[()]
-                ),
-                train_freq,
+            ep_reward, _ = discount_episode_reward(
+                np.load(
+                    "models/{}/{}/training_joint_reward_{}.npy".format(env_name, baseline, seed), allow_pickle=True,
+                )[()]
             )
-            plt.plot(train_x_axis, reward, lw=1, c=COLORS[i], alpha=ALPHAS[i], label=label)
-            plt.scatter(train_x_axis, reward, marker="*", s=2, c=COLORS[i], alpha=ALPHAS[i])
+            reward = mean_time_period(ep_reward, train_freq)
+            if not plot_mean:
+                plt.plot(train_x_axis, reward, lw=1, c=COLORS[i], alpha=ALPHAS[i], label=label)
+                plt.scatter(train_x_axis, reward, marker="*", s=2, c=COLORS[i], alpha=ALPHAS[i])
+            else:
+                raise NotImplemented
 
     plt.xlabel("Training Episodes", fontsize=12)
     plt.ylabel("Episode Joint Reward", fontsize=12)
@@ -462,3 +463,60 @@ def plot_joint_reward_seeds_baselines(env_name: str, baselines: list, save_fig: 
     plt.tight_layout()
     if save_fig:
         fig.savefig("models/{}/seeds_training_joint_reward.pdf".format(env_name), dpi=300)
+
+
+def plot_train_joint_reward_timesteps(
+        env_id: str,
+        baselines: list,
+        n_seeds: int = 30,
+        timesteps_freq: int = 2500,
+        plot_mean: bool = False,
+        save_fig: bool = False,
+) -> None:
+    train_timesteps = int(10000 * 50)
+    fig = plt.figure(figsize=(7, 4))
+    for i, baseline in enumerate(baselines):
+        all_y_axis = []
+        for seed in range(n_seeds):
+            train_reward = np.load(
+                "models/{}/{}/training_joint_reward_{}.npy".format(env_id, baseline, seed), allow_pickle=True,
+            )[()]
+            ep_reward, ep_length = discount_episode_reward(train_reward)
+            ep_timesteps_sum = sum_ep_timesteps(ep_length)
+            x_axis = np.arange(0, int(ep_timesteps_sum[-1]), timesteps_freq)
+
+            y_axis = np.ones(len(x_axis))
+            count = 0
+            for timestep in range(timesteps_freq, int(ep_timesteps_sum[-1]) + 1, timesteps_freq):
+                y_axis[count] = ep_reward[np.where(ep_timesteps_sum > timestep)[0][0]]
+                count += 1
+            y_axis[-1] = y_axis[-2]
+            all_y_axis.append(y_axis)
+            label = BASELINES[baseline] if seed == 0 else None
+            if not plot_mean:
+                plt.plot(x_axis, y_axis, lw=1, c=COLORS[i], alpha=ALPHAS[i], label=label)
+                plt.scatter(x_axis, y_axis, marker="*", s=5, c=COLORS[i], alpha=ALPHAS[i])
+        if plot_mean:
+            min_len = np.min([len(i) for i in all_y_axis])
+            all_y_axis = np.array([i[: min_len] for i in all_y_axis]).reshape(n_seeds, min_len)
+            x_axis = x_axis[:min_len]
+            plt.plot(x_axis, np.mean(np.array(all_y_axis), 0), lw=3, c=COLORS[i], alpha=ALPHAS[i], label=BASELINES[baseline])
+            plt.scatter(x_axis, np.mean(np.array(all_y_axis), 0), marker="*", s=10, c=COLORS[i], alpha=ALPHAS[i])
+    plt.xlabel("Training Timesteps", fontsize=12)
+    plt.ylabel("Episode Joint Reward", fontsize=12)
+    plt.grid(axis="y")
+    plt.xticks(fontsize=12)
+    plt.yticks(fontsize=12)
+    plt.legend()
+    plt.tight_layout()
+    if save_fig:
+        fig.savefig("models/{}/timesteps_seeds_training_joint_rewar{}.pdf".format(env_id, "d_mean" if plot_mean else "d"), dpi=300)
+
+
+def sum_ep_timesteps(ep_timesteps: np.ndarray) -> np.ndarray:
+    sum_timesteps = np.zeros(len(ep_timesteps))
+    last_length = 0
+    for i in range(len(ep_timesteps)):
+        sum_timesteps[i] = last_length + ep_timesteps[i]
+        last_length = sum_timesteps[i]
+    return sum_timesteps
