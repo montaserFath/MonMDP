@@ -291,47 +291,27 @@ def plot_env_actions(env_id: str, states, actions, cell_size: tuple = (3, 3), sc
     plt.vlines(np.arange(cell_size[0] + 1) - shift, -shift, cell_size[1] - shift, color="black")
 
     if len(states) == 18:
-        for i in range(len(states)):
-            if i in [2, 11]:
-                continue
-            pos = np.array([states[i, 0] // cell_size[0], states[i, 0] % cell_size[0]])  # MDP state
-            pos[0] = np.abs(pos[0] - cell_size[0] + 1)
-            if env_id == "Switch":
-                line_c = "r" if states[i, 1] == 0 else "b"  # Monitor action
-            else:
-                line_c = "r" if actions[i, 1] == 0 else "b"  # Monitor action
-            arrow = ARROWS[actions[i, 0]]
-            plt.arrow(
-                pos[1],
-                pos[0],
-                scale * arrow[0],
-                scale * arrow[1],
-                lw=1.8,
-                head_length=0.1,
-                head_width=0.15,
-                color=line_c,
+        raise NotImplemented
+    for i in range(len(states)):
+        if i == 2:  # skip the gaol state
+            continue
+        pos = np.array([states[i, 0] // cell_size[0], states[i, 0] % cell_size[0]])  # MDP state
+        pos[0] = np.abs(pos[0] - cell_size[0] + 1)
+        if env_id == "Switch":
+            line_c = "r" if states[i, 1] == 0 else "b"  # Monitor action
+        else:
+            line_c = "r" if actions[i, 1] == 0 else "b"  # Monitor action
+        arrow = ARROWS[actions[i, 0]]
+        plt.arrow(
+            pos[1],
+            pos[0],
+            scale * arrow[0],
+            scale * arrow[1],
+            lw=1.8,
+            head_length=0.1,
+            head_width=0.15,
+            color=line_c,
             )
-    else:
-        for i in range(len(states)):
-            if i == 2:  # skip the gaol state
-                continue
-            pos = np.array([states[i, 0] // cell_size[0], states[i, 0] % cell_size[0]])  # MDP state
-            pos[0] = np.abs(pos[0] - cell_size[0] + 1)
-            if env_id == "Switch":
-                line_c = "r" if states[i, 1] == 0 else "b"  # Monitor action
-            else:
-                line_c = "r" if actions[i, 1] == 0 else "b"  # Monitor action
-            arrow = ARROWS[actions[i, 0]]
-            plt.arrow(
-                pos[1],
-                pos[0],
-                scale * arrow[0],
-                scale * arrow[1],
-                lw=1.8,
-                head_length=0.1,
-                head_width=0.15,
-                color=line_c,
-                )
 
     mon_off = matplotlib.patches.Patch(color="r", label="Monitor Off")
     mon_on = matplotlib.patches.Patch(color="b", label="Monitor On")
