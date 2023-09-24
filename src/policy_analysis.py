@@ -201,8 +201,6 @@ def plot_policy_switch(baselines: list, cell_size: tuple = (3, 3), scale: float 
 def plot_policy(baselines: list, env_id: str, cell_size: tuple = (3, 3), scale: float = 0.25, save_fig: bool = False):
     if env_id == "Switch":
         raise NotImplemented
-    n_states = int(cell_size[0] * cell_size[1])
-    n_actions = 4
 
     for i, base in enumerate(baselines):
         mdp_q_table = None
@@ -218,12 +216,14 @@ def plot_policy(baselines: list, env_id: str, cell_size: tuple = (3, 3), scale: 
 
 
 def get_policy_states_actions(
-        env_id: str, baseline: str, q_table: np.ndarray, mdp_q_table: np.ndarray = None, cell_size: tuple = (3, 3),
+    env_id: str,
+    baseline: str,
+    q_table: np.ndarray,
+    mdp_q_table: np.ndarray = None,
+    cell_size: tuple = (3, 3),
 ) -> tuple:
     n_states = int(cell_size[0] * cell_size[1])
     n_actions = 4
-    # policy_states = np.zeros((n_states * 2, 2))
-    # policy_states[:n_states, 0], policy_states[n_states:, 1] = np.arange(n_states), np.arange(n_states)
     if env_id == "Switch":
         states = np.zeros((n_states * 2, 2))
         states[:n_states, 0], states[n_states:, 1] = np.arange(n_states), np.arange(n_states)
@@ -232,7 +232,6 @@ def get_policy_states_actions(
     else:
         states = np.arange(n_states)
     policy_actions = np.zeros((states.shape[0], 2))
-
 
     for i in range(states.shape[0]):
         if isinstance(states[i], np.ndarray):
@@ -311,7 +310,7 @@ def plot_env_actions(env_id: str, states, actions, cell_size: tuple = (3, 3), sc
             head_length=0.1,
             head_width=0.15,
             color=line_c,
-            )
+        )
 
     mon_off = matplotlib.patches.Patch(color="r", label="Monitor Off")
     mon_on = matplotlib.patches.Patch(color="b", label="Monitor On")
@@ -395,7 +394,6 @@ def plot_joint_reward(
 
     for i in range(len(joint_rewards)):
         plt.plot(x_axis, eval_joint_rewards[i], lw=2, alpha=ALPHAS[i], color=COLORS[i], label=BASELINES[baselines[i]])
-        # plt.scatter(x_axis, eval_joint_rewards[i], marker="*", s=5, alpha=alphas[i], color=colors[i])
     plt.xlabel("Training Episodes", fontsize=12)
     plt.ylabel("Testing Joint Reward", fontsize=12)
     plt.grid(axis="y")
