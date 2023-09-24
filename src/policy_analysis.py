@@ -161,46 +161,105 @@ def plot_policy_trajectory(
             fig.savefig(log_dir + "/final_policy_performance.pdf", dpi=300)
 
 
-def plot_policy(baselines: list, env_id: str, cell_size: tuple = (3, 3), scale: float = 0.25, save_fig: bool = False):
+def plot_policy_switch(baselines: list, cell_size: tuple = (3, 3), scale: float = 0.25, save_fig: bool = False) -> None:
     n_states = int(cell_size[0] * cell_size[1])
-    mdp_q_table = None
+    for i, base in enumerate(baselines):
+        mdp_q_table = None
+        if base in ["q_monitor_sequential", "q_monitor_joint"]:
+            mdp_q_table = np.load("models/Switch/{}/mdp_q_table.npy".format(base))
+            q_table = np.load("models/Switch/{}/monitor_q_table.npy".format(base))
+        else:
+            q_table = np.load("models/Switch/{}/critic_q_table.npy".format(base))
+        states = np.zeros((2 * n_states, 2))
+        states[:n_states, 0], states[n_states:, 0] = np.arange(n_states), np.arange(n_states)
+        states[n_states:, 1] = 1
+
+        on_actions, off_actions = np.zeros(n_states), np.zeros(n_states)
+        for j in range(n_states):
+            if mdp_q_table is None:
+                off_actions[j] = np.argmax(q_table[get_state_ind(states[j], n_states)])
+                on_actions[j] = np.argmax(q_table[get_state_ind(states[j + n_states], n_states)])
+            else:
+                if base == "q_monitor_sequential":
+                    off_actions[j] = np.argmax(mdp_q_table[int(states[j, 0])])
+                    on_actions[j] = np.argmax(mdp_q_table[int(states[j, 0])])
+                else:
+                    mdp_value = mdp_q_table[int(states[j, 0])]
+                    off_q_value = mdp_value + q_table[get_state_ind(states[j], n_states)]
+                    on_q_value = mdp_value + q_table[get_state_ind(states[j + n_states], n_states)]
+                    off_actions[j], on_actions[j] = np.argmax(off_q_value), np.argmax(on_q_value)
+
+        on_actions = np.stack((on_actions, np.zeros(n_states)), 1)
+        off_actions = np.stack((off_actions, np.zeros(n_states)), 1)
+        on_fig = plot_env_actions("Switch", states[n_states:], on_actions, cell_size, scale)
+        off_fig = plot_env_actions("Switch", states[:n_states], off_actions, cell_size, scale)
+        if save_fig:
+            on_fig.savefig("models/Switch/{}/policy_actions_on.pdf".format(base), dpi=300)
+            off_fig.savefig("models/Switch/{}/policy_actions_off.pdf".format(base), dpi=300)
+
+
+def plot_policy(baselines: list, env_id: str, cell_size: tuple = (3, 3), scale: float = 0.25, save_fig: bool = False):
+    if env_id == "Switch":
+        raise NotImplemented
+    n_states = int(cell_size[0] * cell_size[1])
     n_actions = 4
 
     for i, base in enumerate(baselines):
+        mdp_q_table = None
         if base in ["q_monitor_sequential", "q_monitor_joint"]:
             mdp_q_table = np.load("models/{}/{}/mdp_q_table.npy".format(env_id, base))
             q_table = np.load("models/{}/{}/monitor_q_table.npy".format(env_id, base))
         else:
             q_table = np.load("models/{}/{}/critic_q_table.npy".format(env_id, base))
-        states = np.arange(n_states)
-        policy_states, policy_actions = np.zeros((n_states * 2, 2)), np.zeros((n_states, 2))
-
-        for j in range(n_states):
-            policy_states[j] = ind_to_state(j, n_states, n_mon_states=2)
-            policy_states[j + n_states] = ind_to_state(j + n_states, n_states, n_mon_states=2)
-            if q_table.shape[1] == n_actions:
-                mdp_action = np.argmax(q_table[states[j]])
-                mon_action = 0
-            else:
-                if mdp_q_table is None:
-                    mdp_action, mon_action = ind_to_action(np.argmax(q_table[states[j]]))
-                else:
-                    mdp_action = np.argmax(mdp_q_table[states[j]])
-                    if base == "q_monitor_sequential":
-                        off_q, on_q = q_table[states[j], mdp_action], q_table[states[j], mdp_action + n_actions]
-                        mon_action = 0 if off_q > on_q else 1
-                    else:
-                        q_value = np.concatenate((mdp_q_table[states[j]], mdp_q_table[states[j]])) + q_table[states[j]]
-                        mdp_action, mon_action = ind_to_action(np.argmax(q_value))
-            policy_actions[j] = [mdp_action, mon_action]
+        policy_states, policy_actions = get_policy_states_actions(env_id, base, q_table, mdp_q_table)
         fig = plot_env_actions(env_id, policy_states, policy_actions, cell_size, scale)
         if save_fig:
             fig.savefig("models/{}/{}/policy_actions.pdf".format(env_id, base), dpi=300)
 
 
+def get_policy_states_actions(
+        env_id: str, baseline: str, q_table: np.ndarray, mdp_q_table: np.ndarray = None, cell_size: tuple = (3, 3),
+) -> tuple:
+    n_states = int(cell_size[0] * cell_size[1])
+    n_actions = 4
+    # policy_states = np.zeros((n_states * 2, 2))
+    # policy_states[:n_states, 0], policy_states[n_states:, 1] = np.arange(n_states), np.arange(n_states)
+    if env_id == "Switch":
+        states = np.zeros((n_states * 2, 2))
+        states[:n_states, 0], states[n_states:, 1] = np.arange(n_states), np.arange(n_states)
+        states[n_states:, 1] = 1
+
+    else:
+        states = np.arange(n_states)
+    policy_actions = np.zeros((states.shape[0], 2))
+
+
+    for i in range(states.shape[0]):
+        if isinstance(states[i], np.ndarray):
+            state = get_state_ind(states[i], n_states)
+        else:
+            state = states[i]
+        if q_table.shape[1] == n_actions:
+            mdp_action = np.argmax(q_table[state])
+            mon_action = 0
+        else:
+            if mdp_q_table is None:
+                mdp_action, mon_action = ind_to_action(np.argmax(q_table[state]))
+            else:
+                mdp_action = np.argmax(mdp_q_table[state])
+                if baseline == "q_monitor_sequential":
+                    off_q, on_q = q_table[state, mdp_action], q_table[state, mdp_action + n_actions]
+                    mon_action = 0 if off_q > on_q else 1
+                else:
+                    q_value = np.concatenate((mdp_q_table[state], mdp_q_table[state])) + q_table[state]
+                    mdp_action, mon_action = ind_to_action(np.argmax(q_value))
+        policy_actions[i] = [mdp_action, mon_action]
+    return states, policy_actions
+
+
 def get_action_ind(action: list, n_actions: int = 4) -> int:
     mdp_action, mon_action = action[0], action[1]
-    return mon_action * n_actions + mdp_action
+    return int(mon_action * n_actions + mdp_action)
 
 
 def ind_to_action(action_ind: int, n_actions: int = 4) -> tuple:
@@ -209,7 +268,7 @@ def ind_to_action(action_ind: int, n_actions: int = 4) -> tuple:
 
 
 def get_state_ind(state: list, n_states: int) -> int:
-    return state[1] * n_states + state[0].item()
+    return int(state[1] * n_states + state[0])
 
 
 def ind_to_state(state_ind: int, n_states: int, n_mon_states: int = 2) -> tuple:
@@ -232,7 +291,9 @@ def plot_env_actions(env_id: str, states, actions, cell_size: tuple = (3, 3), sc
     plt.vlines(np.arange(cell_size[0] + 1) - shift, -shift, cell_size[1] - shift, color="black")
 
     if len(states) == 18:
-        for i in [0, 1, 3, 4, 5, 6, 7, 8]:
+        for i in range(len(states)):
+            if i in [2, 11]:
+                continue
             pos = np.array([states[i, 0] // cell_size[0], states[i, 0] % cell_size[0]])  # MDP state
             pos[0] = np.abs(pos[0] - cell_size[0] + 1)
             if env_id == "Switch":
@@ -252,6 +313,8 @@ def plot_env_actions(env_id: str, states, actions, cell_size: tuple = (3, 3), sc
             )
     else:
         for i in range(len(states)):
+            if i == 2:  # skip the gaol state
+                continue
             pos = np.array([states[i, 0] // cell_size[0], states[i, 0] % cell_size[0]])  # MDP state
             pos[0] = np.abs(pos[0] - cell_size[0] + 1)
             if env_id == "Switch":
