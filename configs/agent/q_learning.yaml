@@ -1,6 +1,6 @@
 critic:
   on_policy: False
-  q0: -1
+  q0: -10
   gamma: 0.99
   lr: 1.0
   strategy: q_mdp
