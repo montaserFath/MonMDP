@@ -279,7 +279,7 @@ def calculate_confidence_interval(vector: np.ndarray, confidence: float = 0.95) 
         raise ValueError("the confidence value should be between [0, 1]")
     results = np.zeros(vector.shape[1])
     for i in range(vector.shape[1]):
-        results[i] = scipy.stats.sem(vector[:, i]) * scipy.stats.t.ppf((1 + confidence) / 2., len(vector[:, i]) - 1)
+        results[i] = scipy.stats.sem(vector[:, i]) * scipy.stats.t.ppf((1 + confidence) / 2.0, len(vector[:, i]) - 1)
     return results
 
 
@@ -472,7 +472,8 @@ def plot_joint_reward_seeds_baselines(env_name: str, baselines: list, plot_mean:
             label = BASELINES[baselines[i]] if seed == 0 else None
             ep_reward, _ = discount_episode_reward(
                 np.load(
-                    "models/{}/{}/training_joint_reward_{}.npy".format(env_name, baseline, seed), allow_pickle=True,
+                    "models/{}/{}/training_joint_reward_{}.npy".format(env_name, baseline, seed),
+                    allow_pickle=True,
                 )[()]
             )
             reward = mean_time_period(ep_reward, train_freq)
@@ -486,7 +487,9 @@ def plot_joint_reward_seeds_baselines(env_name: str, baselines: list, plot_mean:
             conf_reward = calculate_confidence_interval(np.array(all_rewards))
             plt.plot(train_x_axis, mean_reward, lw=3, c=COLORS[i], alpha=ALPHAS[i], label=BASELINES[baseline])
             # plt.scatter(train_x_axis, mean_reward, marker="*", s=20, c=COLORS[i], alpha=ALPHAS[i])
-            plt.errorbar(train_x_axis, mean_reward, yerr=conf_reward, elinewidth=1, capsize=2, c=COLORS[i], alpha=ALPHAS[i])
+            plt.errorbar(
+                train_x_axis, mean_reward, yerr=conf_reward, elinewidth=1, capsize=2, c=COLORS[i], alpha=ALPHAS[i]
+            )
     plt.xlabel("Training Episodes", fontsize=12)
     plt.ylabel("Episode Joint Reward", fontsize=12)
     plt.grid(axis="y")
@@ -495,16 +498,18 @@ def plot_joint_reward_seeds_baselines(env_name: str, baselines: list, plot_mean:
     plt.legend()
     plt.tight_layout()
     if save_fig:
-        fig.savefig("models/{}/seeds_training_joint_rewar{}.pdf".format(env_name, "d_mean" if plot_mean else "d"), dpi=300)
+        fig.savefig(
+            "models/{}/seeds_training_joint_rewar{}.pdf".format(env_name, "d_mean" if plot_mean else "d"), dpi=300
+        )
 
 
 def plot_train_joint_reward_timesteps(
-        env_id: str,
-        baselines: list,
-        n_seeds: int = 30,
-        timesteps_freq: int = 2500,
-        plot_mean: bool = False,
-        save_fig: bool = False,
+    env_id: str,
+    baselines: list,
+    n_seeds: int = 30,
+    timesteps_freq: int = 2500,
+    plot_mean: bool = False,
+    save_fig: bool = False,
 ) -> None:
     train_timesteps = int(10000 * 50)
     fig = plt.figure(figsize=(7, 4))
@@ -512,7 +517,8 @@ def plot_train_joint_reward_timesteps(
         all_y_axis = []
         for seed in range(n_seeds):
             train_reward = np.load(
-                "models/{}/{}/training_joint_reward_{}.npy".format(env_id, baseline, seed), allow_pickle=True,
+                "models/{}/{}/training_joint_reward_{}.npy".format(env_id, baseline, seed),
+                allow_pickle=True,
             )[()]
             ep_reward, ep_length = discount_episode_reward(train_reward)
             ep_timesteps_sum = sum_ep_timesteps(ep_length)
@@ -531,7 +537,7 @@ def plot_train_joint_reward_timesteps(
                 plt.scatter(x_axis, y_axis, marker="*", s=5, c=COLORS[i], alpha=ALPHAS[i])
         if plot_mean:
             min_len = np.min([len(i) for i in all_y_axis])
-            all_y_axis = np.array([i[: min_len] for i in all_y_axis]).reshape(n_seeds, min_len)
+            all_y_axis = np.array([i[:min_len] for i in all_y_axis]).reshape(n_seeds, min_len)
             x_axis = x_axis[:min_len]
             mean_reward = np.mean(np.array(all_y_axis), 0)
             confi_reward = calculate_confidence_interval(np.array(all_y_axis))
@@ -547,7 +553,10 @@ def plot_train_joint_reward_timesteps(
     plt.legend()
     plt.tight_layout()
     if save_fig:
-        fig.savefig("models/{}/timesteps_seeds_training_joint_rewar{}.pdf".format(env_id, "d_mean" if plot_mean else "d"), dpi=300)
+        fig.savefig(
+            "models/{}/timesteps_seeds_training_joint_rewar{}.pdf".format(env_id, "d_mean" if plot_mean else "d"),
+            dpi=300,
+        )
 
 
 def sum_ep_timesteps(ep_timesteps: np.ndarray) -> np.ndarray:
