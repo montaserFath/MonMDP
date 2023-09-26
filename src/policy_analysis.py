@@ -2,6 +2,8 @@ import numpy as np
 import matplotlib
 import matplotlib.pylab as plt
 import seaborn as sns
+import scipy
+import colorsys
 
 
 ARROWS = {0: (-1.5, 0), 1: (0, -1.5), 2: (1.5, 0), 3: (0, 1.5)}
@@ -59,6 +61,22 @@ BASELINES = {
     "q_mdp": r"$Q_{ignore}$",
     "zero_reward": r"$Q_{\bot=0}$",
 }
+
+
+def set_blind_colors() -> tuple:
+    dark_hues = [0, 0.1, 0.4, 0.55, 0.65, 0.75, 0.9]
+    dark_lightness = [0.4, 0.2, 0.15, 0.4, 0.4, 0.4, 0.4]
+    light_hues = [1, 0.1, 0.3, 0.5, 0.6, 0.75, 0.85]
+    light_lightness = [0.75, 0.6, 0.45, 0.6, 0.65, 0.8, 0.55]
+    dark_colors = [colorsys.hls_to_rgb(h, dark_lightness[i], 1) for i, h in enumerate(dark_hues)]
+    sns.palplot(dark_colors)
+    light_colors = [colorsys.hls_to_rgb(h, light_lightness[i], 1) for i, h in enumerate(light_hues)]
+    sns.palplot(light_colors)
+    return light_colors, dark_colors
+
+
+COLORS, _ = set_blind_colors()
+ALPHAS = np.ones(len(COLORS))
 
 
 def plot_q_table_heatmap(log_dir: str, save_fig: bool = False) -> None:
@@ -256,6 +274,15 @@ def get_policy_states_actions(
     return states, policy_actions
 
 
+def calculate_confidence_interval(vector: np.ndarray, confidence: float = 0.95) -> np.ndarray:
+    if confidence > 1 or confidence < 0:
+        raise ValueError("the confidence value should be between [0, 1]")
+    results = np.zeros(vector.shape[1])
+    for i in range(vector.shape[1]):
+        results[i] = scipy.stats.sem(vector[:, i]) * scipy.stats.t.ppf((1 + confidence) / 2., len(vector[:, i]) - 1)
+    return results
+
+
 def get_action_ind(action: list, n_actions: int = 4) -> int:
     mdp_action, mon_action = action[0], action[1]
     return int(mon_action * n_actions + mdp_action)
@@ -440,6 +467,7 @@ def plot_joint_reward_seeds_baselines(env_name: str, baselines: list, plot_mean:
 
     fig = plt.figure(figsize=(7, 4))
     for i, baseline in enumerate(baselines):
+        all_rewards = []
         for seed in range(n_seeds):
             label = BASELINES[baselines[i]] if seed == 0 else None
             ep_reward, _ = discount_episode_reward(
@@ -448,12 +476,17 @@ def plot_joint_reward_seeds_baselines(env_name: str, baselines: list, plot_mean:
                 )[()]
             )
             reward = mean_time_period(ep_reward, train_freq)
+            all_rewards.append(reward)
             if not plot_mean:
                 plt.plot(train_x_axis, reward, lw=1, c=COLORS[i], alpha=ALPHAS[i], label=label)
                 plt.scatter(train_x_axis, reward, marker="*", s=2, c=COLORS[i], alpha=ALPHAS[i])
-            else:
-                raise NotImplemented
 
+        if plot_mean:
+            mean_reward = np.mean(np.array(all_rewards), 0)
+            conf_reward = calculate_confidence_interval(np.array(all_rewards))
+            plt.plot(train_x_axis, mean_reward, lw=3, c=COLORS[i], alpha=ALPHAS[i], label=BASELINES[baseline])
+            # plt.scatter(train_x_axis, mean_reward, marker="*", s=20, c=COLORS[i], alpha=ALPHAS[i])
+            plt.errorbar(train_x_axis, mean_reward, yerr=conf_reward, elinewidth=1, capsize=2, c=COLORS[i], alpha=ALPHAS[i])
     plt.xlabel("Training Episodes", fontsize=12)
     plt.ylabel("Episode Joint Reward", fontsize=12)
     plt.grid(axis="y")
@@ -462,7 +495,7 @@ def plot_joint_reward_seeds_baselines(env_name: str, baselines: list, plot_mean:
     plt.legend()
     plt.tight_layout()
     if save_fig:
-        fig.savefig("models/{}/seeds_training_joint_reward.pdf".format(env_name), dpi=300)
+        fig.savefig("models/{}/seeds_training_joint_rewar{}.pdf".format(env_name, "d_mean" if plot_mean else "d"), dpi=300)
 
 
 def plot_train_joint_reward_timesteps(
@@ -483,11 +516,11 @@ def plot_train_joint_reward_timesteps(
             )[()]
             ep_reward, ep_length = discount_episode_reward(train_reward)
             ep_timesteps_sum = sum_ep_timesteps(ep_length)
-            x_axis = np.arange(0, int(ep_timesteps_sum[-1]), timesteps_freq)
+            x_axis = np.arange(ep_length[0], int(ep_timesteps_sum[-1]), timesteps_freq)
 
             y_axis = np.ones(len(x_axis))
             count = 0
-            for timestep in range(timesteps_freq, int(ep_timesteps_sum[-1]) + 1, timesteps_freq):
+            for timestep in range(int(ep_length[0]), int(ep_timesteps_sum[-1]) + 1, timesteps_freq):
                 y_axis[count] = ep_reward[np.where(ep_timesteps_sum > timestep)[0][0]]
                 count += 1
             y_axis[-1] = y_axis[-2]
@@ -500,8 +533,12 @@ def plot_train_joint_reward_timesteps(
             min_len = np.min([len(i) for i in all_y_axis])
             all_y_axis = np.array([i[: min_len] for i in all_y_axis]).reshape(n_seeds, min_len)
             x_axis = x_axis[:min_len]
-            plt.plot(x_axis, np.mean(np.array(all_y_axis), 0), lw=3, c=COLORS[i], alpha=ALPHAS[i], label=BASELINES[baseline])
-            plt.scatter(x_axis, np.mean(np.array(all_y_axis), 0), marker="*", s=10, c=COLORS[i], alpha=ALPHAS[i])
+            mean_reward = np.mean(np.array(all_y_axis), 0)
+            confi_reward = calculate_confidence_interval(np.array(all_y_axis))
+            plt.plot(x_axis, mean_reward, lw=3, c=COLORS[i], alpha=ALPHAS[i], label=BASELINES[baseline])
+            plt.scatter(x_axis, mean_reward, marker="*", s=20, c=COLORS[i], alpha=ALPHAS[i])
+            # plt.errorbar(x_axis, mean_reward, yerr=confi_reward, elinewidth=1, capsize=2, c=COLORS[i], alpha=ALPHAS[i])
+
     plt.xlabel("Training Timesteps", fontsize=12)
     plt.ylabel("Episode Joint Reward", fontsize=12)
     plt.grid(axis="y")
