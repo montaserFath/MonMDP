@@ -1,9 +1,10 @@
+"""Plotting functions for the training/testing, heatmaps for the q-tables, policy actions, and final trajectories"""
+import colorsys
 import numpy as np
 import matplotlib
 import matplotlib.pylab as plt
-import seaborn as sns
 import scipy
-import colorsys
+import seaborn as sns
 
 
 ARROWS = {0: (-1.5, 0), 1: (0, -1.5), 2: (1.5, 0), 3: (0, 1.5)}
@@ -64,6 +65,7 @@ BASELINES = {
 
 
 def set_blind_colors() -> tuple:
+    """Get Blind colors friendly colors"""
     dark_hues = [0, 0.1, 0.4, 0.55, 0.65, 0.75, 0.9]
     dark_lightness = [0.4, 0.2, 0.15, 0.4, 0.4, 0.4, 0.4]
     light_hues = [1, 0.1, 0.3, 0.5, 0.6, 0.75, 0.85]
@@ -80,44 +82,44 @@ ALPHAS = np.ones(len(COLORS))
 
 
 def plot_q_table_heatmap(log_dir: str, save_fig: bool = False) -> None:
-    """Plot Q-Table values as a heatmap"""
+    """Plot Monitor Q-Table for values as a heatmap"""
     q_table = np.round(np.load(log_dir + "/critic_q_table.npy"), 2)
     y_sticks = JOINT_STATES if q_table.shape[0] == 18 else np.arange(q_table.shape[0])
 
     fig = plt.figure(figsize=(7, 8 if len(y_sticks) == 18 else 5))
-    ax = sns.heatmap(q_table, cmap="crest", annot=True, linewidth=0.1, fmt="g", annot_kws={"fontsize": 12})
-    ax.set_xlabel("Actions", fontsize=15)
-    ax.set_ylabel("States", fontsize=15)
-    ax.set_xticklabels(MDP_ACTIONS if q_table.shape[1] == 4 else JOINT_ACTIONS, fontsize=13)
-    ax.set_yticks(0.5 + np.arange(len(y_sticks)))
-    ax.set_yticklabels(y_sticks, fontsize=10 if len(y_sticks) == 18 else 13)
+    axis = sns.heatmap(q_table, cmap="crest", annot=True, linewidth=0.1, fmt="g", annot_kws={"fontsize": 12})
+    axis.set_xlabel("Actions", fontsize=15)
+    axis.set_ylabel("States", fontsize=15)
+    axis.set_xticklabels(MDP_ACTIONS if q_table.shape[1] == 4 else JOINT_ACTIONS, fontsize=13)
+    axis.set_yticks(0.5 + np.arange(len(y_sticks)))
+    axis.set_yticklabels(y_sticks, fontsize=10 if len(y_sticks) == 18 else 13)
     plt.tight_layout()
     if save_fig:
         fig.savefig(log_dir + "/q_table_heatmap.pdf", dpi=300)
 
 
 def plot_mdp_mon_q_table_heatmap(log_dir: str, save_fig: bool = False) -> None:
-    """Plot Q-Table values as a heatmap"""
+    """Plot MDP and Monitor Q-Tables values as a heatmap"""
     mdp_q_table = np.round(np.load(log_dir + "/mdp_q_table.npy"), 2)
     mon_q_table = np.round(np.load(log_dir + "/monitor_q_table.npy"), 2)
     y_sticks = JOINT_STATES if mon_q_table.shape[0] == 18 else np.arange(mon_q_table.shape[0])
 
     fig = plt.figure(figsize=(4, 5))
-    ax = sns.heatmap(mdp_q_table, cmap="crest", annot=True, linewidth=0.1, fmt="g", annot_kws={"fontsize": 12})
-    ax.set_xlabel("Actions", fontsize=15)
-    ax.set_ylabel("States", fontsize=15)
-    ax.set_xticklabels(MDP_ACTIONS, fontsize=13)
-    ax.set_yticks(0.5 + np.arange(len(STATES)))
-    ax.set_yticklabels(STATES, fontsize=13)
+    axis = sns.heatmap(mdp_q_table, cmap="crest", annot=True, linewidth=0.1, fmt="g", annot_kws={"fontsize": 12})
+    axis.set_xlabel("Actions", fontsize=15)
+    axis.set_ylabel("States", fontsize=15)
+    axis.set_xticklabels(MDP_ACTIONS, fontsize=13)
+    axis.set_yticks(0.5 + np.arange(len(STATES)))
+    axis.set_yticklabels(STATES, fontsize=13)
     fig.tight_layout()
 
     fig_1 = plt.figure(figsize=(7, 8 if len(y_sticks) == 18 else 5))
-    ax_1 = sns.heatmap(mon_q_table, cmap="crest", annot=True, linewidth=0.1, fmt="g", annot_kws={"fontsize": 12})
-    ax_1.set_xlabel("Actions", fontsize=15)
-    ax_1.set_ylabel("States", fontsize=15)
-    ax_1.set_xticklabels(MDP_ACTIONS if mon_q_table.shape[1] == 4 else JOINT_ACTIONS, fontsize=13)
-    ax_1.set_yticks(0.5 + np.arange(len(y_sticks)))
-    ax_1.set_yticklabels(y_sticks, fontsize=10 if len(y_sticks) == 18 else 13)
+    axis_1 = sns.heatmap(mon_q_table, cmap="crest", annot=True, linewidth=0.1, fmt="g", annot_kws={"fontsize": 12})
+    axis_1.set_xlabel("Actions", fontsize=15)
+    axis_1.set_ylabel("States", fontsize=15)
+    axis_1.set_xticklabels(MDP_ACTIONS if mon_q_table.shape[1] == 4 else JOINT_ACTIONS, fontsize=13)
+    axis_1.set_yticks(0.5 + np.arange(len(y_sticks)))
+    axis_1.set_yticklabels(y_sticks, fontsize=10 if len(y_sticks) == 18 else 13)
     fig_1.tight_layout()
 
     if save_fig:
@@ -139,16 +141,17 @@ def plot_reward_table_heatmap(log_dir: str, save_fig: bool = False) -> None:
         fig.savefig(log_dir + "/predictive_reward_table_heatmap.pdf", dpi=300)
 
 
+# pylint: disable=too-many-arguments, too-many-locals
 def plot_policy_trajectory(
-    log_dir: str,
-    env_name: str,
-    cell_size: tuple = (3, 3),
-    scale: float = 0.25,
-    traj_n: int = 0,
-    save_fig: bool = False,
+        log_dir: str,
+        env_name: str,
+        cell_size: tuple = (3, 3),
+        scale: float = 0.25,
+        traj_n: int = 0,
+        save_fig: bool = False,
 ) -> None:
     """
-    plot policy actions as arrows in grid environment
+    plot final actions actions as arrows in grid environment
     """
     if env_name not in ["TreasureHunt-Simple-v0", "TreasureHunt-Fire-v0", "TreasureHunt-Switch-v0"]:
         raise NotImplemented
@@ -179,9 +182,11 @@ def plot_policy_trajectory(
             fig.savefig(log_dir + "/final_policy_performance.pdf", dpi=300)
 
 
+# pylint: disable=too-many-locals
 def plot_policy_switch(baselines: list, cell_size: tuple = (3, 3), scale: float = 0.25, save_fig: bool = False) -> None:
+    """Plot policy actions for each state in switch environment"""
     n_states = int(cell_size[0] * cell_size[1])
-    for i, base in enumerate(baselines):
+    for base in baselines:
         mdp_q_table = None
         if base in ["q_monitor_sequential", "q_monitor_joint"]:
             mdp_q_table = np.load("models/Switch/{}/mdp_q_table.npy".format(base))
@@ -217,6 +222,7 @@ def plot_policy_switch(baselines: list, cell_size: tuple = (3, 3), scale: float 
 
 
 def plot_policy(baselines: list, env_id: str, cell_size: tuple = (3, 3), scale: float = 0.25, save_fig: bool = False):
+    """Plot policy actions for each state for Simple and Fire environments"""
     if env_id == "Switch":
         raise NotImplemented
 
@@ -233,13 +239,15 @@ def plot_policy(baselines: list, env_id: str, cell_size: tuple = (3, 3), scale: 
             fig.savefig("models/{}/{}/policy_actions.pdf".format(env_id, base), dpi=300)
 
 
+# pylint: disable=too-many-locals
 def get_policy_states_actions(
-    env_id: str,
-    baseline: str,
-    q_table: np.ndarray,
-    mdp_q_table: np.ndarray = None,
-    cell_size: tuple = (3, 3),
+        env_id: str,
+        baseline: str,
+        q_table: np.ndarray,
+        mdp_q_table: np.ndarray = None,
+        cell_size: tuple = (3, 3),
 ) -> tuple:
+    """Get policy actions for each state from the q-table"""
     n_states = int(cell_size[0] * cell_size[1])
     n_actions = 4
     if env_id == "Switch":
@@ -275,6 +283,7 @@ def get_policy_states_actions(
 
 
 def calculate_confidence_interval(vector: np.ndarray, confidence: float = 0.95) -> np.ndarray:
+    """Calculate confidence interval for 2d numpy array"""
     if confidence > 1 or confidence < 0:
         raise ValueError("the confidence value should be between [0, 1]")
     results = np.zeros(vector.shape[1])
@@ -284,27 +293,33 @@ def calculate_confidence_interval(vector: np.ndarray, confidence: float = 0.95) 
 
 
 def get_action_ind(action: list, n_actions: int = 4) -> int:
+    """Transform MDP and Monitor actions to an index integer"""
     mdp_action, mon_action = action[0], action[1]
     return int(mon_action * n_actions + mdp_action)
 
 
 def ind_to_action(action_ind: int, n_actions: int = 4) -> tuple:
+    """Transform integer index to MDP and Monitor actions"""
     mon_action, mdp_action = action_ind // n_actions, action_ind % n_actions
     return mdp_action, mon_action
 
 
 def get_state_ind(state: list, n_states: int) -> int:
+    """Transform MDP and Monitor states to an index integer"""
     return int(state[1] * n_states + state[0])
 
 
 def ind_to_state(state_ind: int, n_states: int, n_mon_states: int = 2) -> tuple:
+    """Transform integer index to MDP and Monitor states"""
     if state_ind >= n_states * n_mon_states:
         raise ValueError("State index is larger than max Number of states")
     mon_state, mdp_state = state_ind // n_states, state_ind % n_states
     return mdp_state, mon_state
 
 
+# pylint: disable=too-many-locals
 def plot_env_actions(env_id: str, states, actions, cell_size: tuple = (3, 3), scale: float = 0.25):
+    """Plot Simple, Fire, and Switch env in grid world"""
     # load images
     fire_img = plt.imread("img/fire_img.png")
     agent_img = plt.imread("img/agent_img.png")
@@ -371,6 +386,7 @@ def plot_env_actions(env_id: str, states, actions, cell_size: tuple = (3, 3), sc
 
 
 def mean_time_period(vec: np.ndarray, period: int) -> np.ndarray:
+    """Calculate average reward over a period of time"""
     mean_vec = np.zeros(len(vec) // period)
     for i in range(len(vec) // period):
         mean_vec[i] = np.mean(vec[i * period: i * period + period])
@@ -378,21 +394,23 @@ def mean_time_period(vec: np.ndarray, period: int) -> np.ndarray:
 
 
 def discount_episode_reward(reward: dict, gamma: float = 0.99) -> (np.ndarray, np.ndarray):
+    """Calculate each episode discount reward and number of timesteps"""
     discount = [gamma**i for i in range(100)]
-    array, length = np.zeros(len(reward)), np.zeros(len(reward))
+    discount_reward, length = np.zeros(len(reward)), np.zeros(len(reward))
     for i, key in enumerate(reward.keys()):
-        n = len(reward[key])
-        length[i] = n
-        array[i] = np.sum(np.array(reward[key]) * np.array(discount[:n]))
-    return array, length
+        length[i] = len(reward[key])
+        discount_reward[i] = np.sum(np.array(reward[key]) * np.array(discount[:len(reward[key])]))
+    return discount_reward, length
 
 
+# pylint: disable=too-many-locals
 def plot_joint_reward(
-    baselines: list,
-    env_name: str,
-    testing_freq: int = 10,
-    save_fig: bool = False,
+        baselines: list,
+        env_name: str,
+        testing_freq: int = 10,
+        save_fig: bool = False,
 ) -> None:
+    """Plot Episode joint reward per episode"""
     train_freq = 100
     joint_rewards = np.zeros((len(baselines), N_TRAIN_EP))
     eval_joint_rewards = np.zeros((len(baselines), N_TRAIN_EP // testing_freq))
@@ -406,10 +424,10 @@ def plot_joint_reward(
 
     fig = plt.figure(figsize=(7, 4))
     train_x_axis = train_freq * np.arange(N_TRAIN_EP // train_freq)
-    for i in range(len(joint_rewards)):
-        mean_reward = mean_time_period(joint_rewards[i], train_freq)
+    for i, reward in enumerate(joint_rewards):
+        mean_reward = mean_time_period(reward, train_freq)
         plt.plot(train_x_axis, mean_reward, lw=2, alpha=ALPHAS[i], color=COLORS[i], label=BASELINES[baselines[i]])
-        plt.plot(train_x_axis, mean_time_period(joint_rewards[i], train_freq), "*", alpha=ALPHAS[i], color=COLORS[i])
+        plt.plot(train_x_axis, mean_time_period(reward, train_freq), "*", alpha=ALPHAS[i], color=COLORS[i])
     plt.xlabel("Training Episodes", fontsize=12)
     plt.ylabel("Training Joint Reward", fontsize=12)
     plt.grid(axis="y")
@@ -435,6 +453,7 @@ def plot_joint_reward(
 
 
 def plot_joint_reward_seeds(env_name: str, baseline: str, save_fig: bool = False):
+    """Plot joint reward Vs number of episodes with different random seeds"""
     n_seeds = 30
     train_freq = 100
     train_x_axis = train_freq * np.arange(N_TRAIN_EP // train_freq)
@@ -460,7 +479,9 @@ def plot_joint_reward_seeds(env_name: str, baseline: str, save_fig: bool = False
         fig.savefig("models/{}/{}/seeds_training_joint_reward.pdf".format(env_name, baseline), dpi=300)
 
 
+# pylint: disable=too-many-locals
 def plot_joint_reward_seeds_baselines(env_name: str, baselines: list, plot_mean: bool = False, save_fig: bool = False):
+    """Plot joint reward Vs number of episodes with different random seeds for Baselines"""
     n_seeds = 30
     train_freq = 500
     train_x_axis = train_freq * np.arange(N_TRAIN_EP // train_freq)
@@ -503,15 +524,16 @@ def plot_joint_reward_seeds_baselines(env_name: str, baselines: list, plot_mean:
         )
 
 
+# pylint: disable=too-many-arguments, too-many-locals
 def plot_train_joint_reward_timesteps(
-    env_id: str,
-    baselines: list,
-    n_seeds: int = 30,
-    timesteps_freq: int = 2500,
-    plot_mean: bool = False,
-    save_fig: bool = False,
+        env_id: str,
+        baselines: list,
+        n_seeds: int = 30,
+        timesteps_freq: int = 2500,
+        plot_mean: bool = False,
+        save_fig: bool = False,
 ) -> None:
-    train_timesteps = int(10000 * 50)
+    """Plot joint reward Vs number of timesteps with different random seeds"""
     fig = plt.figure(figsize=(7, 4))
     for i, baseline in enumerate(baselines):
         all_y_axis = []
@@ -542,8 +564,8 @@ def plot_train_joint_reward_timesteps(
             mean_reward = np.mean(np.array(all_y_axis), 0)
             confi_reward = calculate_confidence_interval(np.array(all_y_axis))
             plt.plot(x_axis, mean_reward, lw=3, c=COLORS[i], alpha=ALPHAS[i], label=BASELINES[baseline])
-            plt.scatter(x_axis, mean_reward, marker="*", s=20, c=COLORS[i], alpha=ALPHAS[i])
-            # plt.errorbar(x_axis, mean_reward, yerr=confi_reward, elinewidth=1, capsize=2, c=COLORS[i], alpha=ALPHAS[i])
+            # plt.scatter(x_axis, mean_reward, marker="*", s=20, c=COLORS[i], alpha=ALPHAS[i])
+            plt.errorbar(x_axis, mean_reward, yerr=confi_reward, elinewidth=1, capsize=2, c=COLORS[i], alpha=ALPHAS[i])
 
     plt.xlabel("Training Timesteps", fontsize=12)
     plt.ylabel("Episode Joint Reward", fontsize=12)
@@ -560,9 +582,10 @@ def plot_train_joint_reward_timesteps(
 
 
 def sum_ep_timesteps(ep_timesteps: np.ndarray) -> np.ndarray:
+    """add number of timesteps for each episode"""
     sum_timesteps = np.zeros(len(ep_timesteps))
     last_length = 0
-    for i in range(len(ep_timesteps)):
-        sum_timesteps[i] = last_length + ep_timesteps[i]
+    for i, timestep in enumerate(ep_timesteps):
+        sum_timesteps[i] = last_length + timestep
         last_length = sum_timesteps[i]
     return sum_timesteps
