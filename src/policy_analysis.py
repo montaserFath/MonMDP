@@ -83,7 +83,7 @@ ALPHAS = np.ones(len(COLORS))
 
 def plot_q_table_heatmap(log_dir: str, save_fig: bool = False) -> None:
     """Plot Monitor Q-Table for values as a heatmap"""
-    q_table = np.round(np.load(log_dir + "/critic_q_table.npy"), 2)
+    q_table = np.round(np.load(log_dir + "/critic_q_table_1.npy"), 2)
     y_sticks = JOINT_STATES if q_table.shape[0] == 18 else np.arange(q_table.shape[0])
 
     fig = plt.figure(figsize=(7, 8 if len(y_sticks) == 18 else 5))
@@ -100,8 +100,8 @@ def plot_q_table_heatmap(log_dir: str, save_fig: bool = False) -> None:
 
 def plot_mdp_mon_q_table_heatmap(log_dir: str, save_fig: bool = False) -> None:
     """Plot MDP and Monitor Q-Tables values as a heatmap"""
-    mdp_q_table = np.round(np.load(log_dir + "/mdp_q_table.npy"), 2)
-    mon_q_table = np.round(np.load(log_dir + "/monitor_q_table.npy"), 2)
+    mdp_q_table = np.round(np.load(log_dir + "/mdp_q_table_1.npy"), 2)
+    mon_q_table = np.round(np.load(log_dir + "/monitor_q_table_1.npy"), 2)
     y_sticks = JOINT_STATES if mon_q_table.shape[0] == 18 else np.arange(mon_q_table.shape[0])
 
     fig = plt.figure(figsize=(4, 5))
@@ -130,7 +130,7 @@ def plot_mdp_mon_q_table_heatmap(log_dir: str, save_fig: bool = False) -> None:
 def plot_reward_table_heatmap(log_dir: str, save_fig: bool = False) -> None:
     """Plot Predictive reward table values as a heatmap"""
     fig = plt.figure(figsize=(4, 5))
-    r_table = np.round(np.load(log_dir + "/reward_model_table.npy"), 2)
+    r_table = np.round(np.load(log_dir + "/reward_model_table_1.npy"), 2)
     ax_r = sns.heatmap(r_table, cmap="crest", annot=True, linewidth=0.1, fmt="g", annot_kws={"fontsize": 12})
     ax_r.set_xlabel("Actions", fontsize=15)
     ax_r.set_ylabel("States", fontsize=15)
@@ -147,7 +147,7 @@ def plot_policy_trajectory(
         env_name: str,
         cell_size: tuple = (3, 3),
         scale: float = 0.25,
-        traj_n: int = 0,
+        traj_n: int = 1,
         save_fig: bool = False,
 ) -> None:
     """
@@ -334,7 +334,7 @@ def plot_env_actions(env_id: str, states, actions, cell_size: tuple = (3, 3), sc
     if len(states) == 18:
         raise NotImplemented
     for i in range(len(states)):
-        if i == 2:  # skip the gaol state
+        if states[i, 0] == 2:  # skip the gaol state
             continue
         pos = np.array([states[i, 0] // cell_size[0], states[i, 0] % cell_size[0]])  # MDP state
         pos[0] = np.abs(pos[0] - cell_size[0] + 1)
@@ -529,7 +529,7 @@ def plot_train_joint_reward_timesteps(
         env_id: str,
         baselines: list,
         n_seeds: int = 30,
-        timesteps_freq: int = 2500,
+        timesteps_freq: int = 5000,
         plot_mean: bool = False,
         save_fig: bool = False,
 ) -> None:
