@@ -1,6 +1,6 @@
 critic:
   on_policy: True
-  q0: -1
+  q0: -10
   gamma: 1.0
   lr: 1.0
   unseen_r_value: 0.0
@@ -10,6 +10,6 @@ critic:
     lr: 1.
 
 actor:
-  init_eps: 0.8
+  init_eps: 1.0
   min_eps: 0.0
-  eps_decay: 0.0001
+  eps_decay: 4.5e-6
