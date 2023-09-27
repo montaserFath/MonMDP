@@ -549,6 +549,8 @@ def plot_train_joint_reward_timesteps(
             y_axis = np.ones(len(x_axis))
             count = 0
             for timestep in range(int(ep_length[0]), int(ep_timesteps_sum[-1]) + 1, timesteps_freq):
+                if timestep > 250000:
+                    break
                 y_axis[count] = ep_reward[np.where(ep_timesteps_sum > timestep)[0][0]]
                 count += 1
             y_axis[-1] = y_axis[-2]

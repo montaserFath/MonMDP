@@ -171,14 +171,13 @@ class MonExperiment(Experiment):
                     episode_loss_mon += step_loss_mon
 
                 ep_joint_reward.append(info['mdp_reward'] + reward['monitor'])
-
+                self._actor.update()
                 if term or trunc:
                     if not reward_seen:
                         episode_return_proxy = np.nan
                     break
 
                 obs = next_obs
-                self._actor.update()
             joint_reward.update({episode: ep_joint_reward})
             total_timesteps += episode_timesteps
             wandb.log(
