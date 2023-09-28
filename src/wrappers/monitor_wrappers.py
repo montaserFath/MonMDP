@@ -71,6 +71,7 @@ class StateMonitor(Monitor):
     def __init__(
         self,
         env,
+        full_monitor: bool,
         monitor_cost: float = 0.01,
         init_state_prob: float = 0.5,
         switch_state: int = 6,
@@ -78,6 +79,7 @@ class StateMonitor(Monitor):
         **kwargs
     ):
         gymnasium.Wrapper.__init__(self, env)
+        self.full_monitor = full_monitor
         self.action_space = spaces.Dict({"mdp": env.action_space, "monitor": spaces.Discrete(1)})
         self.observation_space = spaces.Dict({"mdp": env.observation_space, "monitor": spaces.Discrete(2)})
         self.monitor_cost = monitor_cost
@@ -96,6 +98,8 @@ class StateMonitor(Monitor):
         return {"mdp": mdp_obs, "monitor": self.monitor_state}, mdp_info
 
     def _monitor_step(self, action, mdp_reward, mdp_state=None):
+        if self.full_monitor:
+            return self.monitor_state, mdp_reward, - self.monitor_cost
         if self.prev_mdp_state == self.switch_state and action["mdp"] == self.switch_action:
             self.monitor_state = (self.monitor_state + 1) % 2  # flip the switch
         if self.monitor_state == 0:  # switch is off -> monitor is off
@@ -128,6 +132,7 @@ class BinaryMonitor(Monitor):
     def __init__(
         self,
         env,
+        full_monitor: bool,
         monitor_cost=0.01,
         monitor_reset_prob=0.5,
         init_monitor_state: int = 0,
@@ -136,10 +141,11 @@ class BinaryMonitor(Monitor):
         **kwargs
     ):
         gymnasium.Wrapper.__init__(self, env)
+        self.full_monitor = full_monitor
         self.action_space = spaces.Dict(
             {
                 "mdp": env.action_space,
-                "monitor": spaces.Discrete(2 if not empty_action_space else 1),
+                "monitor": spaces.Discrete(1 if self.full_monitor else 2),
             }
         )
         self.observation_space = spaces.Dict(
@@ -161,7 +167,7 @@ class BinaryMonitor(Monitor):
         return {'mdp': mdp_obs, 'monitor': self.monitor_state}, mdp_info
 
     def _monitor_step(self, action, mdp_reward, mdp_state=None):
-        if action['monitor'] == 1:
+        if self.full_monitor or action['monitor'] == 1:
             self.monitor_state = 1
             monitor_cost = - self.monitor_cost
             proxy_reward = mdp_reward
