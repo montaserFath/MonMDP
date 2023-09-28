@@ -370,7 +370,8 @@ def plot_env_actions(env_id: str, states, actions, cell_size: tuple = (3, 3), sc
         fire_2.axis("off")
 
     if env_id == "Switch":
-        switch = fig.add_axes([0.12, 0.1, 0.15, 0.15], anchor="NE", zorder=-1)
+        # switch = fig.add_axes([0.12, 0.1, 0.15, 0.15], anchor="NE", zorder=-1)  # cell 6
+        switch = fig.add_axes([0.44, 0.1, 0.15, 0.15], anchor="NE", zorder=-1)  # cell 7
         switch.imshow(switch_img)
         switch.axis("off")
 
