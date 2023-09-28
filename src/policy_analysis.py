@@ -189,10 +189,10 @@ def plot_policy_switch(baselines: list, cell_size: tuple = (3, 3), scale: float 
     for base in baselines:
         mdp_q_table = None
         if base in ["q_monitor_sequential", "q_monitor_joint"]:
-            mdp_q_table = np.load("models/Switch/{}/mdp_q_table.npy".format(base))
-            q_table = np.load("models/Switch/{}/monitor_q_table.npy".format(base))
+            mdp_q_table = np.load("models/Switch/{}/mdp_q_table_1.npy".format(base))
+            q_table = np.load("models/Switch/{}/monitor_q_table_1.npy".format(base))
         else:
-            q_table = np.load("models/Switch/{}/critic_q_table.npy".format(base))
+            q_table = np.load("models/Switch/{}/critic_q_table_1.npy".format(base))
         states = np.zeros((2 * n_states, 2))
         states[:n_states, 0], states[n_states:, 0] = np.arange(n_states), np.arange(n_states)
         states[n_states:, 1] = 1
