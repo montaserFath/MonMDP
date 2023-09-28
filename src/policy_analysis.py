@@ -160,11 +160,11 @@ def plot_policy_trajectory(
     traj = np.load(log_dir + "/trajectories.npy", allow_pickle=True)[()]
     if env_name == "TreasureHunt-Switch-v0":
         while monitor_on_ind is None:
-            for i in range(20):
+            for i in range(len(traj.keys())):
                 if traj[i]["states"][0, 1] == 1:
                     monitor_on_ind = i
         while monitor_off_ind is None:
-            for i in range(20):
+            for i in range(len(traj.keys())):
                 if traj[i]["states"][0, 1] == 0:
                     monitor_off_ind = i
         on_states, on_actions = traj[monitor_on_ind]["states"], traj[monitor_on_ind]["actions"]
