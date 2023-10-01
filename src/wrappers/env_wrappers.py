@@ -50,21 +50,7 @@ class TabularObservationsWrapper(gym.ObservationWrapper):
         self.env = env
         self.grid_size = grid_size
         max_obs = grid_size[0] * grid_size[1]
-        # self.observation_space = gym.spaces.Box(0, max_obs, (1,), dtype="uint8")
         self.observation_space = gym.spaces.Discrete(max_obs)
 
     def observation(self, obs):
         return np.where(obs == 1)[0]
-
-
-class StableBaselinesWrapper(gym.Wrapper):
-    def __int__(self, env):
-        super.__init__(env)
-
-    def step(self, action):
-        obs, reward, done, truncated, info = super().step(action)
-        return obs, reward, done, truncated, info
-
-    def reset(self, seed: int | None = None, **kwargs):
-        obs, info = super().reset(seed=seed, **kwargs)
-        return obs, info

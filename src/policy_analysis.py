@@ -29,10 +29,6 @@ JOINT_STATES = [
     "(7,1)",
     "(8,1)",
 ]
-# JOINT_STATES = [
-#     "(0,off)", "(1,off)", "(2,off)", "(3,off)", "(4,off)", "(5,off)", "(6,off)", "(7,off)", "(8,off)",
-#     "(0,on)", "(1,on)", "(2,on)", "(3,on)", "(4,on)", "(5,on)", "(6,on)", "(7,on)", "(8,on)",
-# ]
 MDP_ACTIONS = [r"$\leftarrow$", r"$\downarrow$", r"$\rightarrow$", r"$\uparrow$"]
 JOINT_ACTIONS = [
     r"($\leftarrow$,0)",
@@ -44,16 +40,7 @@ JOINT_ACTIONS = [
     r"($\rightarrow$,1)",
     r"($\uparrow$,1)",
 ]
-COLORS = [
-    "black",
-    "y",
-    "brown",
-    "g",
-    "b",
-    "r",
-]
-ALPHAS = [0.5, 0.9, 0.9, 0.6, 0.4, 0.4]
-N_TRAIN_EP = 10000
+N_TRAIN_TIMESTEPS = 250000
 BASELINES = {
     "q_learning": r"$Q_{Cheat}$",
     "reward_model": r"$Q_{Reward Model}$",
@@ -299,6 +286,24 @@ def get_policy_states_actions(
     return states, policy_actions
 
 
+def mean_time_period(vec: np.ndarray, period: int) -> np.ndarray:
+    """Calculate average reward over a period of time"""
+    mean_vec = np.zeros(len(vec) // period)
+    for i in range(len(vec) // period):
+        mean_vec[i] = np.mean(vec[i * period: i * period + period])
+    return mean_vec
+
+
+def discount_episode_reward(reward: dict, gamma: float = 0.99) -> (np.ndarray, np.ndarray):
+    """Calculate each episode discount reward and number of timesteps"""
+    discount = [gamma**i for i in range(100)]
+    discount_reward, length = np.zeros(len(reward)), np.zeros(len(reward))
+    for i, key in enumerate(reward.keys()):
+        length[i] = len(reward[key])
+        discount_reward[i] = np.sum(np.array(reward[key]) * np.array(discount[:len(reward[key])]))
+    return discount_reward, length
+
+
 def calculate_confidence_interval(vector: np.ndarray, confidence: float = 0.95) -> np.ndarray:
     """Calculate confidence interval for 2d numpy array"""
     if confidence > 1 or confidence < 0:
@@ -307,12 +312,6 @@ def calculate_confidence_interval(vector: np.ndarray, confidence: float = 0.95) 
     for i in range(vector.shape[1]):
         results[i] = scipy.stats.sem(vector[:, i]) * scipy.stats.t.ppf((1 + confidence) / 2.0, len(vector[:, i]) - 1)
     return results
-
-
-def get_action_ind(action: list, n_actions: int = 4) -> int:
-    """Transform MDP and Monitor actions to an index integer"""
-    mdp_action, mon_action = action[0], action[1]
-    return int(mon_action * n_actions + mdp_action)
 
 
 def ind_to_action(action_ind: int, n_actions: int = 4) -> tuple:
@@ -326,12 +325,14 @@ def get_state_ind(state: list, n_states: int) -> int:
     return int(state[1] * n_states + state[0])
 
 
-def ind_to_state(state_ind: int, n_states: int, n_mon_states: int = 2) -> tuple:
-    """Transform integer index to MDP and Monitor states"""
-    if state_ind >= n_states * n_mon_states:
-        raise ValueError("State index is larger than max Number of states")
-    mon_state, mdp_state = state_ind // n_states, state_ind % n_states
-    return mdp_state, mon_state
+def sum_ep_timesteps(ep_timesteps: np.ndarray) -> np.ndarray:
+    """add number of timesteps for each episode"""
+    sum_timesteps = np.zeros(len(ep_timesteps))
+    last_length = 0
+    for i, timestep in enumerate(ep_timesteps):
+        sum_timesteps[i] = last_length + timestep
+        last_length = sum_timesteps[i]
+    return sum_timesteps
 
 
 # pylint: disable=too-many-locals
@@ -404,145 +405,6 @@ def plot_env_actions(env_id: str, states, actions, cell_size: tuple = (3, 3), sc
     return fig
 
 
-def mean_time_period(vec: np.ndarray, period: int) -> np.ndarray:
-    """Calculate average reward over a period of time"""
-    mean_vec = np.zeros(len(vec) // period)
-    for i in range(len(vec) // period):
-        mean_vec[i] = np.mean(vec[i * period: i * period + period])
-    return mean_vec
-
-
-def discount_episode_reward(reward: dict, gamma: float = 0.99) -> (np.ndarray, np.ndarray):
-    """Calculate each episode discount reward and number of timesteps"""
-    discount = [gamma**i for i in range(100)]
-    discount_reward, length = np.zeros(len(reward)), np.zeros(len(reward))
-    for i, key in enumerate(reward.keys()):
-        length[i] = len(reward[key])
-        discount_reward[i] = np.sum(np.array(reward[key]) * np.array(discount[:len(reward[key])]))
-    return discount_reward, length
-
-
-# pylint: disable=too-many-locals
-def plot_joint_reward(
-        baselines: list,
-        env_name: str,
-        testing_freq: int = 10,
-        save_fig: bool = False,
-) -> None:
-    """Plot Episode joint reward per episode"""
-    train_freq = 100
-    joint_rewards = np.zeros((len(baselines), N_TRAIN_EP))
-    eval_joint_rewards = np.zeros((len(baselines), N_TRAIN_EP // testing_freq))
-    x_axis = testing_freq * np.arange(N_TRAIN_EP // testing_freq)
-    for i, base in enumerate(baselines):
-        joint_rewards[i], _ = discount_episode_reward(
-            np.load("models/{}/{}/training_joint_reward.npy".format(env_name, base), allow_pickle=True)[()]
-        )
-        eval_joint_rewards[i] = np.mean(np.load("models/{}/{}/evaluation_joint_reward.npy".format(env_name, base)), 1)
-        eval_joint_rewards[i, -1] = eval_joint_rewards[i, -2]
-
-    fig = plt.figure(figsize=(7, 4))
-    train_x_axis = train_freq * np.arange(N_TRAIN_EP // train_freq)
-    for i, reward in enumerate(joint_rewards):
-        mean_reward = mean_time_period(reward, train_freq)
-        plt.plot(train_x_axis, mean_reward, lw=2, alpha=ALPHAS[i], color=COLORS[i], label=BASELINES[baselines[i]])
-        plt.plot(train_x_axis, mean_time_period(reward, train_freq), "*", alpha=ALPHAS[i], color=COLORS[i])
-    plt.xlabel("Training Episodes", fontsize=12)
-    plt.ylabel("Training Joint Reward", fontsize=12)
-    plt.grid(axis="y")
-    plt.xticks(fontsize=12)
-    plt.yticks(fontsize=12)
-    plt.legend()
-    plt.tight_layout()
-
-    eval_fig = plt.figure(figsize=(7, 4))
-
-    for i in range(len(joint_rewards)):
-        plt.plot(x_axis, eval_joint_rewards[i], lw=2, alpha=ALPHAS[i], color=COLORS[i], label=BASELINES[baselines[i]])
-    plt.xlabel("Training Episodes", fontsize=12)
-    plt.ylabel("Testing Joint Reward", fontsize=12)
-    plt.grid(axis="y")
-    plt.xticks(fontsize=12)
-    plt.yticks(fontsize=12)
-    plt.legend()
-    plt.tight_layout()
-    if save_fig:
-        fig.savefig("models/{}/training_joint_reward.pdf".format(env_name), dpi=300)
-        eval_fig.savefig("models/{}/evaluation_joint_reward.pdf".format(env_name), dpi=300)
-
-
-def plot_joint_reward_seeds(env_name: str, baseline: str, save_fig: bool = False):
-    """Plot joint reward Vs number of episodes with different random seeds"""
-    n_seeds = 30
-    train_freq = 100
-    train_x_axis = train_freq * np.arange(N_TRAIN_EP // train_freq)
-    joint_reward = np.zeros((n_seeds, N_TRAIN_EP // train_freq))
-
-    fig = plt.figure(figsize=(7, 4))
-    for seed in range(n_seeds):
-        reward = np.load(
-            "models/{}/{}/training_joint_reward_{}.npy".format(env_name, baseline, seed),
-            allow_pickle=True,
-        )[()]
-        joint_reward[seed], _ = mean_time_period(discount_episode_reward(reward), train_freq)
-        plt.plot(train_x_axis, joint_reward[seed], lw=0.1)
-        plt.scatter(train_x_axis, joint_reward[seed], marker="*", s=1)
-
-    plt.xlabel("Training Episodes", fontsize=12)
-    plt.ylabel("Episode Joint Reward", fontsize=12)
-    plt.grid(axis="y")
-    plt.xticks(fontsize=12)
-    plt.yticks(fontsize=12)
-    plt.tight_layout()
-    if save_fig:
-        fig.savefig("models/{}/{}/seeds_training_joint_reward.pdf".format(env_name, baseline), dpi=300)
-
-
-# pylint: disable=too-many-locals
-def plot_joint_reward_seeds_baselines(env_name: str, baselines: list, plot_mean: bool = False, save_fig: bool = False):
-    """Plot joint reward Vs number of episodes with different random seeds for Baselines"""
-    n_seeds = 30
-    train_freq = 500
-    train_x_axis = train_freq * np.arange(N_TRAIN_EP // train_freq)
-
-    fig = plt.figure(figsize=(7, 4))
-    for i, baseline in enumerate(baselines):
-        all_rewards = []
-        for seed in range(n_seeds):
-            label = BASELINES[baselines[i]] if seed == 0 else None
-            ep_reward, _ = discount_episode_reward(
-                np.load(
-                    "models/{}/{}/training_joint_reward_{}.npy".format(env_name, baseline, seed),
-                    allow_pickle=True,
-                )[()]
-            )
-            reward = mean_time_period(ep_reward, train_freq)
-            all_rewards.append(reward)
-            if not plot_mean:
-                plt.plot(train_x_axis, reward, lw=1, c=COLORS[i], alpha=ALPHAS[i], label=label)
-                plt.scatter(train_x_axis, reward, marker="*", s=2, c=COLORS[i], alpha=ALPHAS[i])
-
-        if plot_mean:
-            mean_reward = np.mean(np.array(all_rewards), 0)
-            conf_reward = calculate_confidence_interval(np.array(all_rewards))
-            plt.plot(train_x_axis, mean_reward, lw=3, c=COLORS[i], alpha=ALPHAS[i], label=BASELINES[baseline])
-            # plt.scatter(train_x_axis, mean_reward, marker="*", s=20, c=COLORS[i], alpha=ALPHAS[i])
-            plt.errorbar(
-                train_x_axis, mean_reward, yerr=conf_reward, elinewidth=1, capsize=2, c=COLORS[i], alpha=ALPHAS[i]
-            )
-    plt.xlabel("Training Episodes", fontsize=12)
-    plt.ylabel("Episode Joint Reward", fontsize=12)
-    plt.grid(axis="y")
-    plt.xticks(fontsize=12)
-    plt.yticks(fontsize=12)
-    plt.legend()
-    plt.tight_layout()
-    if save_fig:
-        fig.savefig(
-            "models/{}/seeds_training_joint_rewar{}.pdf".format(env_name, "d_mean" if plot_mean else "d"), dpi=300
-        )
-
-
 # pylint: disable=too-many-arguments, too-many-locals
 def plot_train_joint_reward_timesteps(
         env_id: str,
@@ -568,7 +430,7 @@ def plot_train_joint_reward_timesteps(
             y_axis = np.ones(len(x_axis))
             count = 0
             for timestep in range(int(ep_length[0]), int(ep_timesteps_sum[-1]) + 1, timesteps_freq):
-                if timestep > 250000:
+                if timestep > N_TRAIN_TIMESTEPS:
                     break
                 y_axis[count] = ep_reward[np.where(ep_timesteps_sum > timestep)[0][0]]
                 count += 1
@@ -601,13 +463,3 @@ def plot_train_joint_reward_timesteps(
             "models/{}/timesteps_seeds_training_joint_rewar{}.pdf".format(env_id, "d_mean" if plot_mean else "d"),
             dpi=300,
         )
-
-
-def sum_ep_timesteps(ep_timesteps: np.ndarray) -> np.ndarray:
-    """add number of timesteps for each episode"""
-    sum_timesteps = np.zeros(len(ep_timesteps))
-    last_length = 0
-    for i, timestep in enumerate(ep_timesteps):
-        sum_timesteps[i] = last_length + timestep
-        last_length = sum_timesteps[i]
-    return sum_timesteps
