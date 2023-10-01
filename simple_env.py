@@ -14,7 +14,6 @@ from src.policy_analysis import (
     plot_q_table_heatmap,
     plot_mdp_mon_q_table_heatmap,
     plot_policy,
-    plot_policy_switch,
     plot_train_joint_reward_timesteps,
 )
 
@@ -83,6 +82,5 @@ def wrappe_env(env_id: str, train: bool, monitor_wrapper: bool = False, cfg: Dic
 if __name__ == "__main__":
     baselines = ["q_learning", "reward_model", "q_monitor_joint", "q_monitor_sequential", "q_mdp", "zero_reward"]
     # plot_train_joint_reward_timesteps("Switch", baselines[:], plot_mean=True, save_fig=True)
-    # plot_policy_switch(baselines[1:], save_fig=True)
-    # plot_policy(baselines[1:], "Fire", save_fig=True)
+    # plot_policy(baselines[1:], "Switch", save_fig=True)
     run_monitor()

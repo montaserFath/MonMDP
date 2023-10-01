@@ -228,19 +228,19 @@ def plot_policy_switch(baselines: list, cell_size: tuple = (3, 3), scale: float 
 def plot_policy(baselines: list, env_id: str, cell_size: tuple = (3, 3), scale: float = 0.25, save_fig: bool = False):
     """Plot policy actions for each state for Simple and Fire environments"""
     if env_id == "Switch":
-        raise NotImplemented
-
-    for i, base in enumerate(baselines):
-        mdp_q_table = None
-        if base in ["q_monitor_sequential", "q_monitor_joint"]:
-            mdp_q_table = np.load("models/{}/{}/mdp_q_table.npy".format(env_id, base))
-            q_table = np.load("models/{}/{}/monitor_q_table.npy".format(env_id, base))
-        else:
-            q_table = np.load("models/{}/{}/critic_q_table.npy".format(env_id, base))
-        policy_states, policy_actions = get_policy_states_actions(env_id, base, q_table, mdp_q_table)
-        fig = plot_env_actions(env_id, policy_states, policy_actions, cell_size, scale)
-        if save_fig:
-            fig.savefig("models/{}/{}/policy_actions.pdf".format(env_id, base), dpi=300)
+        plot_policy_switch(baselines, save_fig=save_fig)
+    else:
+        for i, base in enumerate(baselines):
+            mdp_q_table = None
+            if base in ["q_monitor_sequential", "q_monitor_joint"]:
+                mdp_q_table = np.load("models/{}/{}/mdp_q_table_1.npy".format(env_id, base))
+                q_table = np.load("models/{}/{}/monitor_q_table_1.npy".format(env_id, base))
+            else:
+                q_table = np.load("models/{}/{}/critic_q_table_1.npy".format(env_id, base))
+            policy_states, policy_actions = get_policy_states_actions(env_id, base, q_table, mdp_q_table)
+            fig = plot_env_actions(env_id, policy_states, policy_actions, cell_size, scale)
+            if save_fig:
+                fig.savefig("models/{}/{}/policy_actions.pdf".format(env_id, base), dpi=300)
 
 
 # pylint: disable=too-many-locals
@@ -349,12 +349,11 @@ def plot_env_actions(env_id: str, states, actions, cell_size: tuple = (3, 3), sc
     plt.hlines(np.arange(cell_size[1] + 1) - shift, -shift, cell_size[0] - shift, color="black")
     plt.vlines(np.arange(cell_size[0] + 1) - shift, -shift, cell_size[1] - shift, color="black")
 
-    if len(states) == 18:
-        raise NotImplemented
     for i in range(len(states)):
-        if states[i, 0] == 2:  # skip the gaol state
+        state = states[i, 0] if isinstance(states[i], np.ndarray) else states[i]
+        if state == 2:  # skip the gaol state
             continue
-        pos = np.array([states[i, 0] // cell_size[0], states[i, 0] % cell_size[0]])  # MDP state
+        pos = np.array([state // cell_size[0], state % cell_size[0]])  # MDP state
         pos[0] = np.abs(pos[0] - cell_size[0] + 1)
         if env_id == "Switch":
             line_c = "r" if states[i, 1] == 0 else "b"  # Monitor action
