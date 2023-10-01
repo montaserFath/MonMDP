@@ -55,8 +55,8 @@ COLORS = [
 ALPHAS = [0.5, 0.9, 0.9, 0.6, 0.4, 0.4]
 N_TRAIN_EP = 10000
 BASELINES = {
-    "q_learning": "Q-Learning in MDP",
-    "reward_model": "Reward Model",
+    "q_learning": r"$Q_{Cheat}$",
+    "reward_model": r"$Q_{Reward Model}$",
     "q_monitor_joint": r"$Q_{joint}$",
     "q_monitor_sequential": r"$Q_{Sequential}$",
     "q_mdp": r"$Q_{ignore}$",
@@ -78,7 +78,7 @@ def set_blind_colors() -> tuple:
 
 
 COLORS, _ = set_blind_colors()
-ALPHAS = np.ones(len(COLORS))
+ALPHAS = [1., 1., .4, .6, 1., 1.]  #np.ones(len(COLORS))
 
 
 def plot_q_table_heatmap(log_dir: str, save_fig: bool = False) -> None:
@@ -122,9 +122,26 @@ def plot_mdp_mon_q_table_heatmap(log_dir: str, save_fig: bool = False) -> None:
     axis_1.set_yticklabels(y_sticks, fontsize=10 if len(y_sticks) == 18 else 13)
     fig_1.tight_layout()
 
+    combined_q_table = np.zeros_like(mon_q_table)
+    if len(y_sticks) == 18:  # Switch env & StateMonitor
+        combined_q_table[:9] = mdp_q_table + mon_q_table[:9]
+        combined_q_table[9:] = mdp_q_table + mon_q_table[9:]
+    else:  # Simple/Fire & BinaryMonitor
+        combined_q_table[:, :4] = mdp_q_table + mon_q_table[:, :4]
+        combined_q_table[:, 4:] = mdp_q_table + mon_q_table[:, 4:]
+
+    fig_2 = plt.figure(figsize=(7, 8 if len(y_sticks) == 18 else 5))
+    axis_2 = sns.heatmap(combined_q_table, cmap="crest", annot=True, linewidth=0.1, fmt="g", annot_kws={"fontsize": 12})
+    axis_2.set_xlabel("Actions", fontsize=15)
+    axis_2.set_ylabel("States", fontsize=15)
+    axis_2.set_xticklabels(MDP_ACTIONS if combined_q_table.shape[1] == 4 else JOINT_ACTIONS, fontsize=13)
+    axis_2.set_yticks(0.5 + np.arange(len(y_sticks)))
+    axis_2.set_yticklabels(y_sticks, fontsize=10 if len(y_sticks) == 18 else 13)
+    fig_2.tight_layout()
     if save_fig:
         fig.savefig(log_dir + "/mdp_q_table_heatmap.pdf", dpi=300)
         fig_1.savefig(log_dir + "/monitor_q_table_heatmap.pdf", dpi=300)
+        fig_2.savefig(log_dir + "/combined_q_table_heatmap.pdf", dpi=300)
 
 
 def plot_reward_table_heatmap(log_dir: str, save_fig: bool = False) -> None:
@@ -371,7 +388,8 @@ def plot_env_actions(env_id: str, states, actions, cell_size: tuple = (3, 3), sc
 
     if env_id == "Switch":
         # switch = fig.add_axes([0.12, 0.1, 0.15, 0.15], anchor="NE", zorder=-1)  # cell 6
-        switch = fig.add_axes([0.44, 0.1, 0.15, 0.15], anchor="NE", zorder=-1)  # cell 7
+        # switch = fig.add_axes([0.44, 0.1, 0.15, 0.15], anchor="NE", zorder=-1)  # cell 7
+        switch = fig.add_axes([0.7, 0.1, 0.15, 0.15], anchor="NE", zorder=-1)  # cell 7
         switch.imshow(switch_img)
         switch.axis("off")
 
@@ -530,7 +548,7 @@ def plot_train_joint_reward_timesteps(
         env_id: str,
         baselines: list,
         n_seeds: int = 30,
-        timesteps_freq: int = 5000,
+        timesteps_freq: int = 10000,
         plot_mean: bool = False,
         save_fig: bool = False,
 ) -> None:
@@ -566,12 +584,13 @@ def plot_train_joint_reward_timesteps(
             x_axis = x_axis[:min_len]
             mean_reward = np.mean(np.array(all_y_axis), 0)
             confi_reward = calculate_confidence_interval(np.array(all_y_axis))
-            plt.plot(x_axis, mean_reward, lw=3, c=COLORS[i], alpha=ALPHAS[i], label=BASELINES[baseline])
+            plt.plot(x_axis, mean_reward, lw=2, c=COLORS[i], alpha=ALPHAS[i], label=BASELINES[baseline])
             # plt.scatter(x_axis, mean_reward, marker="*", s=20, c=COLORS[i], alpha=ALPHAS[i])
             plt.errorbar(x_axis, mean_reward, yerr=confi_reward, elinewidth=1, capsize=2, c=COLORS[i], alpha=ALPHAS[i])
 
     plt.xlabel("Training Timesteps", fontsize=12)
-    plt.ylabel("Episode Joint Reward", fontsize=12)
+    # plt.ylabel("Episode Joint Reward", fontsize=12)
+    plt.ticklabel_format(axis="x", style="sci", scilimits=(1, 4))
     plt.grid(axis="y")
     plt.xticks(fontsize=12)
     plt.yticks(fontsize=12)
