@@ -1,16 +1,27 @@
+# pylint: disable=too-many-locals, too-many-statements, too-many-instance-attributes, too-many-arguments
+"""Experiments wrapper for Training and evaluating algorithms in MDP and Monitor MDP """
 import gymnasium as gym
 import numpy as np
 import wandb
-from tqdm import tqdm
-
 from src.actor import Actor
 from src.critic import Critic
 from src.utils import set_rng_seed, cantor_pairing
 
 
 class Experiment:
-    def __init__(self, env: gym.Env, actor: Actor, critic: Critic,
-                 training_timesteps, testing_timesteps, testing_frequency, rng_seed, log_dir: str, save_log: bool = False):
+    """Run experiments for training and testing in MDP env"""
+    def __init__(
+            self,
+            env: gym.Env,
+            actor: Actor,
+            critic: Critic,
+            training_timesteps,
+            testing_timesteps,
+            testing_frequency,
+            rng_seed,
+            log_dir: str,
+            save_log: bool = False,
+    ):
         self._env = env
         self._actor = actor
         self._critic = critic
@@ -22,6 +33,7 @@ class Experiment:
         self._save_train_log = save_log
 
     def train(self):
+        """Train an algorithm in MDP env, logs and save results"""
         set_rng_seed(self._rng_seed)
         self._actor.reset()
         self._critic.reset()
@@ -33,18 +45,12 @@ class Experiment:
                 self._actor.eval()
                 episode_return = self.test()
                 self._actor.train()
-                wandb.log(
-                    {
-                        'test/environment_reward': episode_return.mean()
-                    },
-                    step=episode,
-                    commit=False
-                )
+                wandb.log({"test/environment_reward": episode_return.mean()}, step=episode, commit=False)
 
             ep_seed = cantor_pairing(self._rng_seed, episode)
             obs, _ = self._env.reset(seed=ep_seed)
-            episode_return = 0.
-            episode_loss = 0.
+            episode_return = 0.0
+            episode_loss = 0.0
             next_action = None
             ep_joint_reward = []
             episode_timesteps = 0
@@ -65,12 +71,7 @@ class Experiment:
             total_timesteps += episode_timesteps
             episode += 1
             wandb.log(
-                {
-                    'train/environment_reward': episode_return,
-                    'train/loss_mdp': episode_loss
-                },
-                step=episode,
-                commit=True
+                {"train/environment_reward": episode_return, "train/loss_mdp": episode_loss}, step=episode, commit=True
             )
         if self._save_train_log:
             np.save(self._log_dir + "/training_joint_reward_{}.npy".format(self._rng_seed), joint_reward)
@@ -79,7 +80,8 @@ class Experiment:
         wandb.finish()
         self._env.close()
 
-    def test(self, render: bool = False, save_results: bool = False):
+    def test(self, render: bool = False):
+        """Evaluate an algorithm in MDP env, logs and save results"""
         episode_return = []
         total_timesteps = 0
         episode = 0
@@ -105,7 +107,9 @@ class Experiment:
 
 
 class MonExperiment(Experiment):
+    """Run experiments for training and testing in Monitor MDP env"""
     def train(self):
+        """Train an algorithm in Monitor MDP env, logs and save results"""
         set_rng_seed(self._rng_seed)
         self._actor.reset()
         self._critic.reset()
@@ -125,25 +129,25 @@ class MonExperiment(Experiment):
                 self._actor.train()
                 wandb.log(
                     {
-                        'test/environment_reward': episode_return_true,
-                        'test/received_reward': episode_return_proxy,
-                        'test/monitor_reward': episode_return_cost,
+                        "test/environment_reward": episode_return_true,
+                        "test/received_reward": episode_return_proxy,
+                        "test/monitor_reward": episode_return_cost,
                         "test/monitor_action": np.mean(ep_monitor_action),
                         "test/number_of_timesteps": np.mean(ep_length),
                         "test/joint_reward": episode_return_true + episode_return_cost,
                     },
                     step=episode,
-                    commit=False
+                    commit=False,
                 )
                 eval_count += 1
 
             ep_seed = cantor_pairing(self._rng_seed, episode)
             obs, _ = self._env.reset(seed=ep_seed)
-            episode_return_true = 0.
-            episode_return_proxy = 0.
-            episode_return_cost = 0.
-            episode_loss_mdp = 0.
-            episode_loss_mon = 0.
+            episode_return_true = 0.0
+            episode_return_proxy = 0.0
+            episode_return_cost = 0.0
+            episode_loss_mdp = 0.0
+            episode_loss_mon = 0.0
             reward_seen = False
             episode_monitor_action_count, episode_timesteps = 0, 0
             next_action = None
@@ -157,20 +161,19 @@ class MonExperiment(Experiment):
                 next_obs, reward, term, trunc, info = self._env.step(action)
                 if self._critic._on_policy:
                     next_action = self._actor(next_obs)
-                step_loss_mdp, step_loss_mon = \
-                    self._critic.update(obs, action, reward, term, next_obs, next_action)
+                step_loss_mdp, step_loss_mon = self._critic.update(obs, action, reward, term, next_obs, next_action)
 
-                episode_return_true += info['mdp_reward']
-                episode_return_cost += reward['monitor']
-                if not np.isnan(reward['mdp']):
+                episode_return_true += info["mdp_reward"]
+                episode_return_cost += reward["monitor"]
+                if not np.isnan(reward["mdp"]):
                     reward_seen = True
-                    episode_return_proxy += reward['mdp']
+                    episode_return_proxy += reward["mdp"]
                 if not np.isnan(step_loss_mdp):
                     episode_loss_mdp += step_loss_mdp
                 if not np.isnan(step_loss_mon):
                     episode_loss_mon += step_loss_mon
 
-                ep_joint_reward.append(info['mdp_reward'] + reward['monitor'])
+                ep_joint_reward.append(info["mdp_reward"] + reward["monitor"])
                 self._actor.update()
                 if term or trunc:
                     if not reward_seen:
@@ -182,17 +185,17 @@ class MonExperiment(Experiment):
             total_timesteps += episode_timesteps
             wandb.log(
                 {
-                    'train/environment_reward': episode_return_true,
-                    'train/received_reward': episode_return_proxy,
-                    'train/monitor_reward': episode_return_cost,
-                    'train/loss_mdp': episode_loss_mdp,
-                    'train/loss_mon': episode_loss_mon,
+                    "train/environment_reward": episode_return_true,
+                    "train/received_reward": episode_return_proxy,
+                    "train/monitor_reward": episode_return_cost,
+                    "train/loss_mdp": episode_loss_mdp,
+                    "train/loss_mon": episode_loss_mon,
                     "train/monitor_action": episode_monitor_action_count,
                     "train/number_of_timesteps": episode_timesteps,
                     "train/joint_reward": episode_return_true + episode_return_cost,
                 },
                 step=episode,
-                commit=True
+                commit=True,
             )
             episode += 1
         # save Q-table as numpy array
@@ -200,12 +203,14 @@ class MonExperiment(Experiment):
         if self._save_train_log:
             np.save(self._log_dir + "/training_joint_reward_{}.npy".format(self._rng_seed), joint_reward)
             np.save(
-                self._log_dir + "/evaluation_joint_reward_{}.npy".format(self._rng_seed), np.array(eval_joint_reward),
+                self._log_dir + "/evaluation_joint_reward_{}.npy".format(self._rng_seed),
+                np.array(eval_joint_reward),
             )
         wandb.finish()
         self._env.close()
 
     def test(self, render: bool = False, save_results: bool = False):
+        """Evaluate an algorithm in Monitor MDP env, logs and save results"""
         episode_return_true = []
         episode_return_proxy = []
         episode_return_cost = []
@@ -231,11 +236,11 @@ class MonExperiment(Experiment):
                 if action["monitor"] == 1:
                     episode_monitor_action_count += 1
                 next_obs, reward, term, trunc, info = self._env.step(action)
-                return_true += info['mdp_reward']
-                return_cost += reward['monitor']
-                if not np.isnan(reward['mdp']):
+                return_true += info["mdp_reward"]
+                return_cost += reward["monitor"]
+                if not np.isnan(reward["mdp"]):
                     reward_seen = True
-                    return_proxy += reward['mdp']
+                    return_proxy += reward["mdp"]
                 if term or trunc:
                     if not reward_seen:
                         return_proxy = np.nan

@@ -49,6 +49,7 @@ BASELINES = {
     "q_mdp": r"$Q_{ignore}$",
     "zero_reward": r"$Q_{\bot=0}$",
 }
+CELL_SIZE = (3, 3)
 
 
 def set_blind_colors() -> tuple:
@@ -87,9 +88,11 @@ def plot_q_table_heatmap(log_dir: str, save_fig: bool = False) -> None:
 
 def plot_mdp_mon_q_table_heatmap(log_dir: str, save_fig: bool = False) -> None:
     """Plot MDP and Monitor Q-Tables values as a heatmap"""
+    n_states = int(CELL_SIZE[0] * CELL_SIZE[1])
+    n_actions = 4
     mdp_q_table = np.round(np.load(log_dir + "/mdp_q_table_1.npy"), 2)
     mon_q_table = np.round(np.load(log_dir + "/monitor_q_table_1.npy"), 2)
-    y_sticks = JOINT_STATES if mon_q_table.shape[0] == 18 else np.arange(mon_q_table.shape[0])
+    y_sticks = JOINT_STATES if mon_q_table.shape[0] == 2 * n_states else np.arange(mon_q_table.shape[0])
 
     fig = plt.figure(figsize=(4, 5))
     axis = sns.heatmap(mdp_q_table, cmap="crest", annot=True, linewidth=0.1, fmt="g", annot_kws={"fontsize": 12})
@@ -100,30 +103,30 @@ def plot_mdp_mon_q_table_heatmap(log_dir: str, save_fig: bool = False) -> None:
     axis.set_yticklabels(STATES, fontsize=13)
     fig.tight_layout()
 
-    fig_1 = plt.figure(figsize=(7, 8 if len(y_sticks) == 18 else 5))
+    fig_1 = plt.figure(figsize=(7, 8 if len(y_sticks) == 2 * n_states else 5))
     axis_1 = sns.heatmap(mon_q_table, cmap="crest", annot=True, linewidth=0.1, fmt="g", annot_kws={"fontsize": 12})
     axis_1.set_xlabel("Actions", fontsize=15)
     axis_1.set_ylabel("States", fontsize=15)
     axis_1.set_xticklabels(MDP_ACTIONS if mon_q_table.shape[1] == 4 else JOINT_ACTIONS, fontsize=13)
     axis_1.set_yticks(0.5 + np.arange(len(y_sticks)))
-    axis_1.set_yticklabels(y_sticks, fontsize=10 if len(y_sticks) == 18 else 13)
+    axis_1.set_yticklabels(y_sticks, fontsize=10 if len(y_sticks) == 2 * n_states else 13)
     fig_1.tight_layout()
 
     combined_q_table = np.zeros_like(mon_q_table)
-    if len(y_sticks) == 18:  # Switch env & StateMonitor
-        combined_q_table[:9] = mdp_q_table + mon_q_table[:9]
-        combined_q_table[9:] = mdp_q_table + mon_q_table[9:]
+    if len(y_sticks) == 2 * n_states:  # Switch env & StateMonitor
+        combined_q_table[:n_states] = mdp_q_table + mon_q_table[:n_states]
+        combined_q_table[n_states:] = mdp_q_table + mon_q_table[n_states:]
     else:  # Simple/Fire & BinaryMonitor
-        combined_q_table[:, :4] = mdp_q_table + mon_q_table[:, :4]
-        combined_q_table[:, 4:] = mdp_q_table + mon_q_table[:, 4:]
+        combined_q_table[:, :n_actions] = mdp_q_table + mon_q_table[:, :n_actions]
+        combined_q_table[:, n_actions:] = mdp_q_table + mon_q_table[:, n_actions:]
 
-    fig_2 = plt.figure(figsize=(7, 8 if len(y_sticks) == 18 else 5))
+    fig_2 = plt.figure(figsize=(7, 8 if len(y_sticks) == 2 * n_states else 5))
     axis_2 = sns.heatmap(combined_q_table, cmap="crest", annot=True, linewidth=0.1, fmt="g", annot_kws={"fontsize": 12})
     axis_2.set_xlabel("Actions", fontsize=15)
     axis_2.set_ylabel("States", fontsize=15)
-    axis_2.set_xticklabels(MDP_ACTIONS if combined_q_table.shape[1] == 4 else JOINT_ACTIONS, fontsize=13)
+    axis_2.set_xticklabels(MDP_ACTIONS if mon_q_table.shape[1] == 4 else JOINT_ACTIONS, fontsize=13)
     axis_2.set_yticks(0.5 + np.arange(len(y_sticks)))
-    axis_2.set_yticklabels(y_sticks, fontsize=10 if len(y_sticks) == 18 else 13)
+    axis_2.set_yticklabels(y_sticks, fontsize=10 if len(y_sticks) == 2 * n_states else 13)
     fig_2.tight_layout()
     if save_fig:
         fig.savefig(log_dir + "/mdp_q_table_heatmap.pdf", dpi=300)
@@ -145,11 +148,10 @@ def plot_reward_table_heatmap(log_dir: str, save_fig: bool = False) -> None:
         fig.savefig(log_dir + "/predictive_reward_table_heatmap.pdf", dpi=300)
 
 
-# pylint: disable=too-many-arguments, too-many-locals
+# pylint: disable=too-many-locals
 def plot_policy_trajectory(
         log_dir: str,
         env_name: str,
-        cell_size: tuple = (3, 3),
         scale: float = 0.25,
         traj_n: int = 1,
         save_fig: bool = False,
@@ -173,23 +175,23 @@ def plot_policy_trajectory(
                     monitor_off_ind = i
         on_states, on_actions = traj[monitor_on_ind]["states"], traj[monitor_on_ind]["actions"]
         off_states, off_actions = traj[monitor_off_ind]["states"], traj[monitor_off_ind]["actions"]
-        on_fig = plot_env_actions(env_name.split("-")[1], on_states, on_actions, cell_size, scale)
-        off_fig = plot_env_actions(env_name.split("-")[1], off_states, off_actions, cell_size, scale)
+        on_fig = plot_env_actions(env_name.split("-")[1], on_states, on_actions, scale)
+        off_fig = plot_env_actions(env_name.split("-")[1], off_states, off_actions, scale)
         if save_fig:
             on_fig.savefig(log_dir + "/final_policy_performance_on.pdf", dpi=300)
             off_fig.savefig(log_dir + "/final_policy_performance_off.pdf", dpi=300)
     else:
         states, actions = traj[traj_n]["states"], traj[traj_n]["actions"]
-        fig = plot_env_actions(env_name.split("-")[1], states, actions, cell_size, scale)
+        fig = plot_env_actions(env_name.split("-")[1], states, actions, scale)
         # fig.tight_layout()
         if save_fig:
             fig.savefig(log_dir + "/final_policy_performance.pdf", dpi=300)
 
 
 # pylint: disable=too-many-locals
-def plot_policy_switch(baselines: list, cell_size: tuple = (3, 3), scale: float = 0.25, save_fig: bool = False) -> None:
+def plot_policy_switch(baselines: list, scale: float = 0.25, save_fig: bool = False) -> None:
     """Plot policy actions for each state in switch environment"""
-    n_states = int(cell_size[0] * cell_size[1])
+    n_states = int(CELL_SIZE[0] * CELL_SIZE[1])
     for base in baselines:
         mdp_q_table = None
         if base in ["q_monitor_sequential", "q_monitor_joint"]:
@@ -218,19 +220,19 @@ def plot_policy_switch(baselines: list, cell_size: tuple = (3, 3), scale: float 
 
         on_actions = np.stack((on_actions, np.zeros(n_states)), 1)
         off_actions = np.stack((off_actions, np.zeros(n_states)), 1)
-        on_fig = plot_env_actions("Switch", states[n_states:], on_actions, cell_size, scale)
-        off_fig = plot_env_actions("Switch", states[:n_states], off_actions, cell_size, scale)
+        on_fig = plot_env_actions("Switch", states[n_states:], on_actions, scale)
+        off_fig = plot_env_actions("Switch", states[:n_states], off_actions, scale)
         if save_fig:
             on_fig.savefig("models/Switch/{}/policy_actions_on.pdf".format(base), dpi=300)
             off_fig.savefig("models/Switch/{}/policy_actions_off.pdf".format(base), dpi=300)
 
 
-def plot_policy(baselines: list, env_id: str, cell_size: tuple = (3, 3), scale: float = 0.25, save_fig: bool = False):
+def plot_policy(baselines: list, env_id: str, scale: float = 0.25, save_fig: bool = False):
     """Plot policy actions for each state for Simple and Fire environments"""
     if env_id == "Switch":
         plot_policy_switch(baselines, save_fig=save_fig)
     else:
-        for i, base in enumerate(baselines):
+        for base in baselines:
             mdp_q_table = None
             if base in ["q_monitor_sequential", "q_monitor_joint"]:
                 mdp_q_table = np.load("models/{}/{}/mdp_q_table_1.npy".format(env_id, base))
@@ -238,7 +240,7 @@ def plot_policy(baselines: list, env_id: str, cell_size: tuple = (3, 3), scale: 
             else:
                 q_table = np.load("models/{}/{}/critic_q_table_1.npy".format(env_id, base))
             policy_states, policy_actions = get_policy_states_actions(env_id, base, q_table, mdp_q_table)
-            fig = plot_env_actions(env_id, policy_states, policy_actions, cell_size, scale)
+            fig = plot_env_actions(env_id, policy_states, policy_actions, scale)
             if save_fig:
                 fig.savefig("models/{}/{}/policy_actions.pdf".format(env_id, base), dpi=300)
 
@@ -249,10 +251,9 @@ def get_policy_states_actions(
         baseline: str,
         q_table: np.ndarray,
         mdp_q_table: np.ndarray = None,
-        cell_size: tuple = (3, 3),
 ) -> tuple:
     """Get policy actions for each state from the q-table"""
-    n_states = int(cell_size[0] * cell_size[1])
+    n_states = int(CELL_SIZE[0] * CELL_SIZE[1])
     n_actions = 4
     if env_id == "Switch":
         states = np.zeros((n_states * 2, 2))
@@ -264,10 +265,7 @@ def get_policy_states_actions(
     policy_actions = np.zeros((states.shape[0], 2))
 
     for i in range(states.shape[0]):
-        if isinstance(states[i], np.ndarray):
-            state = get_state_ind(states[i], n_states)
-        else:
-            state = states[i]
+        state = get_state_ind(states[i], n_states) if isinstance(states[i], np.ndarray) else states[i]
         if q_table.shape[1] == n_actions:
             mdp_action = np.argmax(q_table[state])
             mon_action = 0
@@ -336,7 +334,7 @@ def sum_ep_timesteps(ep_timesteps: np.ndarray) -> np.ndarray:
 
 
 # pylint: disable=too-many-locals
-def plot_env_actions(env_id: str, states, actions, cell_size: tuple = (3, 3), scale: float = 0.25):
+def plot_env_actions(env_id: str, states, actions, scale: float = 0.25):
     """Plot Simple, Fire, and Switch env in grid world"""
     # load images
     fire_img = plt.imread("img/fire_img.png")
@@ -345,18 +343,18 @@ def plot_env_actions(env_id: str, states, actions, cell_size: tuple = (3, 3), sc
     switch_img = plt.imread("img/switch_img.png")
     shift = scale * 2
 
-    fig = plt.figure(figsize=cell_size)
-    plt.hlines(np.arange(cell_size[1] + 1) - shift, -shift, cell_size[0] - shift, color="black")
-    plt.vlines(np.arange(cell_size[0] + 1) - shift, -shift, cell_size[1] - shift, color="black")
+    fig = plt.figure(figsize=CELL_SIZE)
+    plt.hlines(np.arange(CELL_SIZE[1] + 1) - shift, -shift, CELL_SIZE[0] - shift, color="black")
+    plt.vlines(np.arange(CELL_SIZE[0] + 1) - shift, -shift, CELL_SIZE[1] - shift, color="black")
 
-    for i in range(len(states)):
-        state = states[i, 0] if isinstance(states[i], np.ndarray) else states[i]
+    for i, state_i in enumerate(states):
+        state = state_i[0] if isinstance(states[i], np.ndarray) else state_i
         if state == 2:  # skip the gaol state
             continue
-        pos = np.array([state // cell_size[0], state % cell_size[0]])  # MDP state
-        pos[0] = np.abs(pos[0] - cell_size[0] + 1)
+        pos = np.array([state // CELL_SIZE[0], state % CELL_SIZE[0]])  # MDP state
+        pos[0] = np.abs(pos[0] - CELL_SIZE[0] + 1)
         if env_id == "Switch":
-            line_c = "r" if states[i, 1] == 0 else "b"  # Monitor action
+            line_c = "r" if state_i[1] == 0 else "b"  # Monitor action
         else:
             line_c = "r" if actions[i, 1] == 0 else "b"  # Monitor action
         arrow = ARROWS[actions[i, 0]]
@@ -374,8 +372,8 @@ def plot_env_actions(env_id: str, states, actions, cell_size: tuple = (3, 3), sc
     mon_off = matplotlib.patches.Patch(color="r", label="Monitor Off")
     mon_on = matplotlib.patches.Patch(color="b", label="Monitor On")
     plt.legend(handles=[mon_off, mon_on], fontsize=7, loc=(0.28, 1.0))
-    plt.xlim(-shift, cell_size[0] - shift)
-    plt.ylim(-shift, cell_size[1] - shift)
+    plt.xlim(-shift, CELL_SIZE[0] - shift)
+    plt.ylim(-shift, CELL_SIZE[1] - shift)
     plt.axis("off")
     if env_id in ["Fire", "Switch"]:
         fire_1 = fig.add_axes([0.41, 0.67, 0.2, 0.2], anchor="NE", zorder=-1)

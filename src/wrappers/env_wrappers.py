@@ -1,9 +1,11 @@
+"""gym wrappers for MDP & monitor environments"""
 import numpy as np
 import gymnasium as gym
 from minigrid import wrappers as minigrid_wrappers
 
 
 def wrap_minigrid(env):
+    """Wrapper minigrid env"""
     env = minigrid_wrappers.FullyObsWrapper(env)
     env = minigrid_wrappers.ImgObsWrapper(env)
     env = gym.wrappers.FlattenObservation(env)
@@ -45,6 +47,7 @@ class TimeStepReward(gym.RewardWrapper):
 
 
 class TabularObservationsWrapper(gym.ObservationWrapper):
+    """Convert observations from a list to Tabular"""
     def __init__(self, env, grid_size: tuple = (3, 3)):
         super().__init__(env)
         self.env = env

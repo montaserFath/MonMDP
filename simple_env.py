@@ -1,3 +1,4 @@
+"""Train/evaluate/Plot in Simple/Fire/Switch environments"""
 import gymnasium as gym
 import hydra
 import wandb
@@ -17,13 +18,14 @@ from src.policy_analysis import (
     plot_train_joint_reward_timesteps,
 )
 
-
+BASELINES = ["q_learning", "reward_model", "q_monitor_joint", "q_monitor_sequential", "q_mdp", "zero_reward"]
 EVAL = True
 LOG_DIR = "models/Switch/reward_model/"
 
 
 @hydra.main(version_base=None, config_path="configs", config_name="switch_env")
 def run_monitor(cfg: DictConfig) -> None:
+    """Run Monitor Baseline on an env to train or evaluate"""
     group = cfg.environment.id + "\\" + dict_to_id(cfg.monitor)
     if not EVAL:
         wandb.init(
@@ -62,6 +64,7 @@ def run_monitor(cfg: DictConfig) -> None:
 
 
 def wrappe_env(env_id: str, train: bool, monitor_wrapper: bool = False, cfg: DictConfig = None):
+    """Wrapper Simple/Fire/Switch env in Monitor MDP or MDP"""
     env = gym.make(env_id, render_modes="human")
     env = TabularObservationsWrapper(env, grid_size=(3, 3))
     env = TimeStepReward(env, timestep_penalty=0.0, goal_reward=1, fire_reward=-10)
@@ -80,7 +83,6 @@ def wrappe_env(env_id: str, train: bool, monitor_wrapper: bool = False, cfg: Dic
 
 
 if __name__ == "__main__":
-    baselines = ["q_learning", "reward_model", "q_monitor_joint", "q_monitor_sequential", "q_mdp", "zero_reward"]
-    # plot_train_joint_reward_timesteps("Switch", baselines[:], plot_mean=True, save_fig=True)
-    # plot_policy(baselines[1:], "Switch", save_fig=True)
+    # plot_train_joint_reward_timesteps("Switch", BASELINES[:], plot_mean=True, save_fig=True)
+    # plot_policy(BASELINES[1:], "Switch", save_fig=True)
     run_monitor()
