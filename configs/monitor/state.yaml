@@ -1,5 +1,5 @@
 id: StateMonitor
 monitor_cost: 0.2
 init_state_prob: 0.5
-switch_state: 6
+switch_state: 8
 switch_action: 1

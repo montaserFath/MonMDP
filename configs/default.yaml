@@ -22,6 +22,7 @@ hydra:
   sweeper:
     params:
       experiment.rng_seed: range(0, 30)
+#      agent.critic.strategy: reward_model, q_monitor_joint
       # environment.id: MiniGrid-DoorKey-5x5-v0, Taxi-v3
       # monitor.id: BinaryMonitor
 #      monitor.monitor_reset_prob: 0., 0.1, 0.5, 1.
