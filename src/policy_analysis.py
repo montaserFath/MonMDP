@@ -379,26 +379,26 @@ def plot_env_actions(env_id: str, states, actions, scale: float = 0.25):
     plt.ylim(-shift, CELL_SIZE[1] - shift)
     plt.axis("off")
     if env_id in ["Fire", "Switch"]:
-        fire_1 = fig.add_axes([0.41, 0.67, 0.2, 0.2], anchor="NE", zorder=-1)
+        fire_1 = fig.add_axes([0.43, 0.71, 0.17, 0.17], anchor="NE", zorder=-1)
         fire_1.imshow(fire_img)
         fire_1.axis("off")
 
-        fire_2 = fig.add_axes([0.41, 0.41, 0.2, 0.2], anchor="NE", zorder=-1)
+        fire_2 = fig.add_axes([0.43, 0.45, 0.17, 0.17], anchor="NE", zorder=-1)
         fire_2.imshow(fire_img)
         fire_2.axis("off")
 
     if env_id == "Switch":
-        # switch = fig.add_axes([0.12, 0.1, 0.15, 0.15], anchor="NE", zorder=-1)  # cell 6
-        # switch = fig.add_axes([0.44, 0.1, 0.15, 0.15], anchor="NE", zorder=-1)  # cell 7
-        switch = fig.add_axes([0.7, 0.1, 0.15, 0.15], anchor="NE", zorder=-1)  # cell 7
+        # switch = fig.add_axes([0.69, -0.03, 0.22, 0.22], anchor="NE", zorder=-1)  # cell 6
+        # switch = fig.add_axes([0.45, -0.03, 0.22, 0.22], anchor="NE", zorder=-1)  # cell 7
+        switch = fig.add_axes([0.66, -0.03, 0.22, 0.22], anchor="NE", zorder=-1)  # cell 8
         switch.imshow(switch_img)
         switch.axis("off")
 
-    agent = fig.add_axes([0.14, 0.75, 0.12, 0.12], anchor="NE", zorder=-1)
+    agent = fig.add_axes([0.165, 0.69, 0.175, 0.175], anchor="NE", zorder=-1)
     agent.imshow(agent_img)
     agent.axis("off")
 
-    gold = fig.add_axes([0.7, 0.7, 0.15, 0.15], anchor="NE", zorder=-1)
+    gold = fig.add_axes([0.665, 0.65, 0.2, 0.2], anchor="NE", zorder=-1)
     gold.imshow(gold_img)
     gold.axis("off")
 
