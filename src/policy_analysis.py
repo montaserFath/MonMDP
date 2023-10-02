@@ -337,7 +337,7 @@ def sum_ep_timesteps(ep_timesteps: np.ndarray) -> np.ndarray:
 
 
 # pylint: disable=too-many-locals
-def plot_env_actions(env_id: str, states, actions, scale: float = 0.25):
+def plot_env_actions(env_id: str, states, actions, scale: float = 0.25, legend: bool = False):
     """Plot Simple, Fire, and Switch env in grid world"""
     # load images
     fire_img = plt.imread("img/fire_img.png")
@@ -371,10 +371,10 @@ def plot_env_actions(env_id: str, states, actions, scale: float = 0.25):
             head_width=0.15,
             color=line_c,
         )
-
-    mon_off = matplotlib.patches.Patch(color="r", label="Monitor Off")
-    mon_on = matplotlib.patches.Patch(color="b", label="Monitor On")
-    plt.legend(handles=[mon_off, mon_on], fontsize=7, loc=(0.28, 1.0))
+    if legend:
+        mon_off = matplotlib.patches.Patch(color="r", label="Monitor Off")
+        mon_on = matplotlib.patches.Patch(color="b", label="Monitor On")
+        plt.legend(handles=[mon_off, mon_on], fontsize=7, loc=(0.28, 1.0))
     plt.xlim(-shift, CELL_SIZE[0] - shift)
     plt.ylim(-shift, CELL_SIZE[1] - shift)
     plt.axis("off")
