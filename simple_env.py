@@ -18,7 +18,8 @@ from src.policy_analysis import (
     plot_train_joint_reward_timesteps,
 )
 
-BASELINES = ["q_learning", "reward_model", "q_monitor_joint", "q_monitor_sequential", "q_mdp", "zero_reward"]
+BASELINES = ["q_learning", "reward_model", "q_monitor_joint", "q_monitor_sequential", "q_mdp", "zero_reward_0"]
+ZERO_BASELINES = ["zero_reward_neg", "zero_reward_0", "zero_reward_pos"]
 EVAL = True
 LOG_DIR = "models/Switch/reward_model/"
 

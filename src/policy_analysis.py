@@ -48,6 +48,9 @@ BASELINES = {
     "q_monitor_sequential": r"$Q_{Sequential}$",
     "q_mdp": r"$Q_{ignore}$",
     "zero_reward": r"$Q_{\bot=0}$",
+    "zero_reward_0": r"$Q_{\bot=0}$",
+    "zero_reward_neg": r"$Q_{\bot=-10}$",
+    "zero_reward_pos": r"$Q_{\bot=1}$",
 }
 CELL_SIZE = (3, 3)
 
