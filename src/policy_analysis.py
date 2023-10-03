@@ -53,6 +53,7 @@ BASELINES = {
     "zero_reward_pos": r"$Q_{\bot=1}$",
 }
 CELL_SIZE = (3, 3)
+SCALE = 0.25
 
 
 def set_blind_colors() -> tuple:
@@ -155,7 +156,6 @@ def plot_reward_table_heatmap(log_dir: str, save_fig: bool = False) -> None:
 def plot_policy_trajectory(
         log_dir: str,
         env_name: str,
-        scale: float = 0.25,
         traj_n: int = 1,
         save_fig: bool = False,
 ) -> None:
@@ -178,21 +178,21 @@ def plot_policy_trajectory(
                     monitor_off_ind = i
         on_states, on_actions = traj[monitor_on_ind]["states"], traj[monitor_on_ind]["actions"]
         off_states, off_actions = traj[monitor_off_ind]["states"], traj[monitor_off_ind]["actions"]
-        on_fig = plot_env_actions(env_name.split("-")[1], on_states, on_actions, scale)
-        off_fig = plot_env_actions(env_name.split("-")[1], off_states, off_actions, scale)
+        on_fig = plot_env_actions(env_name.split("-")[1], on_states, on_actions)
+        off_fig = plot_env_actions(env_name.split("-")[1], off_states, off_actions)
         if save_fig:
             on_fig.savefig(log_dir + "/final_policy_performance_on.pdf", dpi=300)
             off_fig.savefig(log_dir + "/final_policy_performance_off.pdf", dpi=300)
     else:
         states, actions = traj[traj_n]["states"], traj[traj_n]["actions"]
-        fig = plot_env_actions(env_name.split("-")[1], states, actions, scale)
+        fig = plot_env_actions(env_name.split("-")[1], states, actions)
         # fig.tight_layout()
         if save_fig:
             fig.savefig(log_dir + "/final_policy_performance.pdf", dpi=300)
 
 
 # pylint: disable=too-many-locals
-def plot_policy_switch(baselines: list, scale: float = 0.25, save_fig: bool = False) -> None:
+def plot_policy_switch(baselines: list, save_fig: bool = False) -> None:
     """Plot policy actions for each state in switch environment"""
     n_states = int(CELL_SIZE[0] * CELL_SIZE[1])
     for base in baselines:
@@ -223,14 +223,17 @@ def plot_policy_switch(baselines: list, scale: float = 0.25, save_fig: bool = Fa
 
         on_actions = np.stack((on_actions, np.zeros(n_states)), 1)
         off_actions = np.stack((off_actions, np.zeros(n_states)), 1)
-        on_fig = plot_env_actions("Switch", states[n_states:], on_actions, scale)
-        off_fig = plot_env_actions("Switch", states[:n_states], off_actions, scale)
+        fig = plot_env_actions("Switch", states, {"on": on_actions, "off": off_actions}, plot_both=True)
+        # fig = plot_env_actions("Switch", states[:n_states], off_actions, shift_arrow=-1, input_fig=fig)
+        # on_fig = plot_env_actions("Switch", states[n_states:], on_actions)
+        # off_fig = plot_env_actions("Switch", states[:n_states], off_actions)
         if save_fig:
-            on_fig.savefig("models/Switch/{}/policy_actions_on.pdf".format(base), dpi=300)
-            off_fig.savefig("models/Switch/{}/policy_actions_off.pdf".format(base), dpi=300)
+            # on_fig.savefig("models/Switch/{}/policy_actions_on.pdf".format(base), dpi=300)
+            # off_fig.savefig("models/Switch/{}/policy_actions_off.pdf".format(base), dpi=300)
+            fig.savefig("models/Switch/{}/policy_actions.pdf".format(base), dpi=300)
 
 
-def plot_policy(baselines: list, env_id: str, scale: float = 0.25, save_fig: bool = False):
+def plot_policy(baselines: list, env_id: str, save_fig: bool = False):
     """Plot policy actions for each state for Simple and Fire environments"""
     if env_id == "Switch":
         plot_policy_switch(baselines, save_fig=save_fig)
@@ -243,7 +246,7 @@ def plot_policy(baselines: list, env_id: str, scale: float = 0.25, save_fig: boo
             else:
                 q_table = np.load("models/{}/{}/critic_q_table_1.npy".format(env_id, base))
             policy_states, policy_actions = get_policy_states_actions(env_id, base, q_table, mdp_q_table)
-            fig = plot_env_actions(env_id, policy_states, policy_actions, scale)
+            fig = plot_env_actions(env_id, policy_states, policy_actions)
             if save_fig:
                 fig.savefig("models/{}/{}/policy_actions.pdf".format(env_id, base), dpi=300)
 
@@ -336,26 +339,20 @@ def sum_ep_timesteps(ep_timesteps: np.ndarray) -> np.ndarray:
     return sum_timesteps
 
 
-# pylint: disable=too-many-locals
-def plot_env_actions(env_id: str, states, actions, scale: float = 0.25, legend: bool = False):
-    """Plot Simple, Fire, and Switch env in grid world"""
-    # load images
-    fire_img = plt.imread("img/fire_img.png")
-    agent_img = plt.imread("img/agent_img.png")
-    gold_img = plt.imread("img/gold_img.png")
-    switch_img = plt.imread("img/switch_img.png")
-    shift = scale * 2
-
-    fig = plt.figure(figsize=CELL_SIZE)
-    plt.hlines(np.arange(CELL_SIZE[1] + 1) - shift, -shift, CELL_SIZE[0] - shift, color="black")
-    plt.vlines(np.arange(CELL_SIZE[0] + 1) - shift, -shift, CELL_SIZE[1] - shift, color="black")
-
+def plot_arrows(env_id: str, states: np.ndarray, actions: np.ndarray, shift_arrow: int) -> None:
+    """Plot arrows in env"""
+    arrows_shift = shift_arrow * 0.2
     for i, state_i in enumerate(states):
         state = state_i[0] if isinstance(states[i], np.ndarray) else state_i
         if state == 2:  # skip the gaol state
             continue
         pos = np.array([state // CELL_SIZE[0], state % CELL_SIZE[0]])  # MDP state
         pos[0] = np.abs(pos[0] - CELL_SIZE[0] + 1)
+        if shift_arrow != 0:
+            if actions[i, 0] in [0, 2]:  # left and right MDP actions
+                pos[0] += arrows_shift
+            else:
+                pos[1] += arrows_shift
         if env_id == "Switch":
             line_c = "r" if state_i[1] == 0 else "b"  # Monitor action
         else:
@@ -364,13 +361,36 @@ def plot_env_actions(env_id: str, states, actions, scale: float = 0.25, legend: 
         plt.arrow(
             pos[1],
             pos[0],
-            scale * arrow[0],
-            scale * arrow[1],
-            lw=1.8,
+            SCALE * arrow[0],
+            SCALE * arrow[1],
+            lw=2.5,
             head_length=0.1,
             head_width=0.15,
             color=line_c,
+            linestyle="-" if shift_arrow == 0 else "--",
         )
+
+
+# pylint: disable=too-many-locals
+def plot_env_actions(env_id: str, states, actions, legend: bool = False, plot_both: bool = False):
+    """Plot Simple, Fire, and Switch env in grid world"""
+    # load images
+    fire_img = plt.imread("img/fire_img.png")
+    agent_img = plt.imread("img/agent_img.png")
+    gold_img = plt.imread("img/gold_img.png")
+    switch_img = plt.imread("img/switch_img.png")
+    shift = SCALE * 2
+    n_states = int(CELL_SIZE[0] * CELL_SIZE[1])
+    fig = plt.figure(figsize=CELL_SIZE)
+    plt.hlines(np.arange(CELL_SIZE[1] + 1) - shift, -shift, CELL_SIZE[0] - shift, color="black")
+    plt.vlines(np.arange(CELL_SIZE[0] + 1) - shift, -shift, CELL_SIZE[1] - shift, color="black")
+
+    if plot_both:
+        plot_arrows(env_id, states[:n_states], actions["off"], shift_arrow=-1)
+        plot_arrows(env_id, states[n_states:], actions["on"], shift_arrow=1)
+    else:
+        plot_arrows(env_id, states, actions, shift_arrow=0)
+
     if legend:
         mon_off = matplotlib.patches.Patch(color="r", label="Monitor Off")
         mon_on = matplotlib.patches.Patch(color="b", label="Monitor On")
@@ -379,29 +399,29 @@ def plot_env_actions(env_id: str, states, actions, scale: float = 0.25, legend: 
     plt.ylim(-shift, CELL_SIZE[1] - shift)
     plt.axis("off")
     if env_id in ["Fire", "Switch"]:
-        fire_1 = fig.add_axes([0.43, 0.71, 0.17, 0.17], anchor="NE", zorder=-1)
+        fire_1 = fig.add_axes([0.43, 0.75, 0.17, 0.17], anchor="NE", zorder=-1)
         fire_1.imshow(fire_img)
         fire_1.axis("off")
 
-        fire_2 = fig.add_axes([0.43, 0.45, 0.17, 0.17], anchor="NE", zorder=-1)
+        fire_2 = fig.add_axes([0.43, 0.48, 0.17, 0.17], anchor="NE", zorder=-1)
         fire_2.imshow(fire_img)
         fire_2.axis("off")
 
     if env_id == "Switch":
-        # switch = fig.add_axes([0.69, -0.03, 0.22, 0.22], anchor="NE", zorder=-1)  # cell 6
-        # switch = fig.add_axes([0.45, -0.03, 0.22, 0.22], anchor="NE", zorder=-1)  # cell 7
-        switch = fig.add_axes([0.66, -0.03, 0.22, 0.22], anchor="NE", zorder=-1)  # cell 8
+        # switch = fig.add_axes([0.69, -0.09, 0.22, 0.22], anchor="NE", zorder=-1)  # cell 6
+        # switch = fig.add_axes([0.45, -0.09, 0.22, 0.22], anchor="NE", zorder=-1)  # cell 7
+        switch = fig.add_axes([0.69, -0.09, 0.22, 0.22], anchor="NE", zorder=-1)  # cell 8
         switch.imshow(switch_img)
         switch.axis("off")
 
-    agent = fig.add_axes([0.165, 0.69, 0.175, 0.175], anchor="NE", zorder=-1)
+    agent = fig.add_axes([0.12, 0.77, 0.175, 0.175], anchor="NE", zorder=-1)
     agent.imshow(agent_img)
     agent.axis("off")
 
-    gold = fig.add_axes([0.665, 0.65, 0.2, 0.2], anchor="NE", zorder=-1)
+    gold = fig.add_axes([0.7, 0.75, 0.2, 0.2], anchor="NE", zorder=-1)
     gold.imshow(gold_img)
     gold.axis("off")
-
+    fig.tight_layout()
     return fig
 
 
