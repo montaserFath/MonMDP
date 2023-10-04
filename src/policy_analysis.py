@@ -41,9 +41,9 @@ JOINT_ACTIONS = [
 ]
 N_TRAIN_TIMESTEPS = 250000
 BASELINES = {
-    "q_learning": r"$Q_{Orical}$",
-    "q_learning_mon": r"$Q_{Cheat}$",
-    "reward_model": r"$Q_{Reward Model}$",
+    "q_learning": r"$Q_{Oracle}$",
+    "q_learning_mon": r"$Q_{Oracle}$",
+    "reward_model": r"$Q_{Reward\,Model}$",
     "q_monitor_joint": r"$Q_{Joint}$",
     "q_monitor_sequential": r"$Q_{Sequential}$",
     "q_mdp": r"$Q_{ignore}$",
@@ -544,12 +544,14 @@ def plot_train_joint_reward_timesteps(
             )
 
     plt.xlabel("Training Timesteps", fontsize=12)
-    plt.ylabel("Episode Joint Reward", fontsize=12)
+    if env_id == "Simple":
+        plt.ylabel("Episode Joint Reward", fontsize=12)
     plt.ticklabel_format(axis="x", style="sci", scilimits=(1, 4))
     plt.grid(axis="y")
     plt.xticks(fontsize=12)
     plt.yticks(fontsize=12)
-    plt.legend()
+    if env_id == "Button":
+        plt.legend(fontsize=12, loc="upper left")
     plt.tight_layout()
     if save_fig:
         fig.savefig(
