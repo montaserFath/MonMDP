@@ -1,4 +1,4 @@
-"""Train/evaluate/Plot in Simple/Fire/Switch environments"""
+"""Train/evaluate/Plot in Simple/Fire/Button environments"""
 import gymnasium as gym
 import hydra
 import wandb
@@ -21,10 +21,10 @@ from src.policy_analysis import (
 BASELINES = ["q_learning", "reward_model", "q_monitor_joint", "q_monitor_sequential", "q_mdp", "zero_reward_0"]
 ZERO_BASELINES = ["zero_reward_neg", "zero_reward_0", "zero_reward_pos"]
 EVAL = True
-LOG_DIR = "models/Switch/reward_model/"
+LOG_DIR = "models/Button/reward_model/"
 
 
-@hydra.main(version_base=None, config_path="configs", config_name="switch_env")
+@hydra.main(version_base=None, config_path="configs", config_name="button_env")
 def run_monitor(cfg: DictConfig) -> None:
     """Run Monitor Baseline on an env to train or evaluate"""
     group = cfg.environment.id + "\\" + dict_to_id(cfg.monitor)
@@ -42,7 +42,7 @@ def run_monitor(cfg: DictConfig) -> None:
     env_id = cfg["environment"]["id"]
     env = wrappe_env(env_id, train=not EVAL, monitor_wrapper=True, cfg=cfg)
 
-    if env_id.split("/")[1].split("-")[1] == "Switch":
+    if env_id.split("/")[1].split("-")[1] == "Button":
         critic = StateMonTable(env_id, env.observation_space, env.action_space, **cfg.agent.critic)
         actor = MonStateEpsilonGreedy(critic, train=not EVAL, **cfg.agent.actor)
     else:
@@ -65,7 +65,7 @@ def run_monitor(cfg: DictConfig) -> None:
 
 
 def wrappe_env(env_id: str, train: bool, monitor_wrapper: bool = False, cfg: DictConfig = None):
-    """Wrapper Simple/Fire/Switch env in Monitor MDP or MDP"""
+    """Wrapper Simple/Fire/Button env in Monitor MDP or MDP"""
     env = gym.make(env_id, render_modes="human")
     env = TabularObservationsWrapper(env, grid_size=(3, 3))
     env = TimeStepReward(env, timestep_penalty=0.0, goal_reward=1, fire_reward=-10)
@@ -74,9 +74,9 @@ def wrappe_env(env_id: str, train: bool, monitor_wrapper: bool = False, cfg: Dic
             full_monitor = cfg.agent.critic.strategy == "q_learning"
         else:
             full_monitor = LOG_DIR.split("/")[-2] == "q_learning"
-        if env_id.split("/")[1].split("-")[1] == "Switch":
+        if env_id.split("/")[1].split("-")[1] == "Button":
             if cfg.monitor.id != "StateMonitor":
-                raise ValueError("For Switch env the Monitor should be StateMonitor")
+                raise ValueError("For Button env the Monitor should be StateMonitor")
             env = StateMonitor(env, full_monitor, **cfg.monitor)
         else:
             env = BinaryMonitor(env, full_monitor, **cfg.monitor)
@@ -84,6 +84,6 @@ def wrappe_env(env_id: str, train: bool, monitor_wrapper: bool = False, cfg: Dic
 
 
 if __name__ == "__main__":
-    # plot_train_joint_reward_timesteps("Switch", BASELINES[:], plot_mean=True, save_fig=True)
-    # plot_policy(BASELINES[1:], "Switch", save_fig=True)
+    # plot_train_joint_reward_timesteps("Button", BASELINES[:], plot_mean=True, save_fig=True)
+    # plot_policy(BASELINES, "Penalty", save_fig=True)
     run_monitor()
