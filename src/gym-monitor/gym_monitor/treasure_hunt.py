@@ -17,7 +17,7 @@ CRSD_COIN = 3
 QCKSND = 4
 QCKSND_AGNT = 5
 MAP = 6
-SWITCH = 7
+BUTTON = 7
 
 INT_TO_ANSI = {
     EMPTY: b"E",
@@ -27,7 +27,7 @@ INT_TO_ANSI = {
     QCKSND: b"Q",
     QCKSND_AGNT: b"X",
     MAP: b"M",
-    SWITCH: b"S"
+    BUTTON: b"B"
 }
 
 GRIDS = {
@@ -42,15 +42,15 @@ GRIDS = {
         [EMPTY, EMPTY, EMPTY],
         [EMPTY, EMPTY, EMPTY],
     ],
-    "3x3 fire": [
+    "3x3 penalty": [
         [EMPTY, CRSD_COIN, GLD_COIN],
         [EMPTY, CRSD_COIN, EMPTY],
         [EMPTY, EMPTY, EMPTY],
     ],
-    "3x3 switch": [
+    "3x3 button": [
         [EMPTY, CRSD_COIN, GLD_COIN],
         [EMPTY, CRSD_COIN, EMPTY],
-        [SWITCH, EMPTY, EMPTY],
+        [EMPTY, EMPTY, BUTTON],
     ],
 }
 
@@ -316,7 +316,7 @@ class TreasureHunt(gym.Env):
         surf_gld_coin = pygame.transform.scale(pygame.image.load("img/gold_img.png"), (screen_w / 3, screen_h / 3))
         surf_crsd_coin = pygame.transform.scale(pygame.image.load("img/fire_img.png"), (screen_w / 3, screen_h / 3))
         surf_agent = pygame.transform.scale(pygame.image.load("img/agent_img.png"), (screen_w / 3, screen_h / 3))
-        surf_switch = pygame.transform.scale(pygame.image.load("img/switch_img.png"), (screen_w / 6, screen_h / 6))
+        surf_button = pygame.transform.scale(pygame.image.load("img/button_img.png"), (screen_w / 6, screen_h / 6))
 
         for y in range(self._n_rows):
             for x in range(self._n_cols):
@@ -332,8 +332,8 @@ class TreasureHunt(gym.Env):
                     self.window_surface.blit(surf_map, pos)
                 if grid[y][x] == QCKSND:  # or grid[y][x] == QCKSND_AGNT:
                     self.window_surface.blit(surf_qcksnd, pos)
-                if grid[y][x] == SWITCH:
-                    self.window_surface.blit(surf_switch, pos)
+                if grid[y][x] == BUTTON:
+                    self.window_surface.blit(surf_button, pos)
                 if grid[y][x] == AGENT or grid[y][x] == QCKSND_AGNT:
                     self.window_surface.blit(surf_agent, pos + (0.5, 0.5))
                     # pos = (

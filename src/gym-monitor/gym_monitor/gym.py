@@ -17,11 +17,11 @@ def register_envs():
     )
 
     register(
-        id="TreasureHunt-Fire-v0",
+        id="TreasureHunt-Penalty-v0",
         entry_point="gym_monitor.treasure_hunt:TreasureHunt",
         max_episode_steps=50,
         kwargs={
-            "grid": "3x3 fire",
+            "grid": "3x3 penalty",
             "enable_map": False,
             "enable_quicksand": False,
             "init_agent_pos": (0, 0),
@@ -30,11 +30,11 @@ def register_envs():
     )
 
     register(
-        id="TreasureHunt-Switch-v0",
+        id="TreasureHunt-Button-v0",
         entry_point="gym_monitor.treasure_hunt:TreasureHunt",
         max_episode_steps=50,
         kwargs={
-            "grid": "3x3 switch",
+            "grid": "3x3 button",
             "enable_map": False,
             "enable_quicksand": False,
             "init_agent_pos": (0, 0),
