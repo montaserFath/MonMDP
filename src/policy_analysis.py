@@ -49,7 +49,7 @@ BASELINES = {
     "reward_model_pos": r"$Q_{Reward\,Model}, r_0 = +1$",
     "q_monitor_joint": r"$Q_{Joint}$",
     "q_monitor_sequential": r"$Q_{Sequential}$",
-    "q_mdp": r"$Q_{ignore}$",
+    "q_mdp": r"$Q_{Ignore}$",
     "zero_reward": r"$Q_{\bot=0}$",
     "zero_reward_0": r"$Q_{\bot=0}$",
     "zero_reward_neg": r"$Q_{\bot=-10}$",
