@@ -1,32 +1,34 @@
-import numpy as np
+"""Predictive Reward Model"""
 from abc import ABC, abstractmethod
+import numpy as np
 
 
 class Reward(ABC):
+    """Generic reward class"""
+
     @abstractmethod
-    def __init__(self, **kwargs):
-        pass
+    def __init__(self, lr: float = 1.0, **kwargs):
+        self._lr = lr
 
     @abstractmethod
     def __call__(self, **kwargs):
-        pass
-
-    @abstractmethod
-    def update(self, **kwargs):
-        pass
+        return
 
     @abstractmethod
     def reset(self):
-        pass
+        """reset the reward model"""
+        return
 
     @abstractmethod
     def report(self):
-        pass
+        """get the reward model"""
+        return
 
     def update(self, state, action, reward):
+        """update the reward value for the state-action pair"""
         target = reward
         prediction = self(state, action)
-        new_value = (1. - self._lr) * prediction + self._lr * target
+        new_value = (1.0 - self._lr) * prediction + self._lr * target
         self._update(state, action, new_value)
         return 0.5 * (target - prediction) ** 2
 
@@ -36,7 +38,9 @@ class Reward(ABC):
 
 
 class RTable(Reward):
-    def __init__(self, observation_space, action_space, r0=0., lr=0.01, **kwargs):
+    """Reward table for Environment reward"""
+
+    def __init__(self, observation_space, action_space, r0=0.0, lr=0.01, **kwargs):
         self._n_states = observation_space.n
         self._n_actions = action_space.n
         self._r0 = r0
@@ -53,19 +57,24 @@ class RTable(Reward):
         self._r_table[state][action] = old_value + self._lr * (new_value - old_value)
 
     def reset(self):
+        """reset the reward table to the initialization value"""
         self._r_table = np.ones((self._n_states, self._n_actions)) * self._r0
 
     def report(self):
+        """get the reward table"""
         return self._r_table
 
     def save(self, log_dir: str = None, seed: int = 1):
+        """save the reward table as a numpy array"""
         if log_dir is None:
             raise ValueError("The log directory is empty")
         np.save(log_dir + "/reward_model_table_{}.npy".format(seed), self._r_table)
 
 
 class RDict(Reward):
-    def __init__(self, observation_space, action_space, r0=0., lr=0.01, **kwargs):
+    """Reward dictionary for Environment reward"""
+
+    def __init__(self, observation_space, action_space, r0=0.0, lr=0.01, **kwargs):
         self._n_actions = action_space.n
         self._r0 = r0
         self._lr = lr
@@ -78,7 +87,9 @@ class RDict(Reward):
         self._r_dict[action][tuple(state)] = new_value
 
     def reset(self):
+        """reset the reward dictionary to the initialization value"""
         self._r_dict = [dict() for _ in range(self._n_actions)]
 
     def report(self):
+        """get the reward dictionary"""
         return self._r_dict
