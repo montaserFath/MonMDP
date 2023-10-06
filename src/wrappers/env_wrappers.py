@@ -18,7 +18,7 @@ def wrap_minigrid(env):
 class ActiveActionsWrapper(gym.ActionWrapper):
     """
     Use active actions only
-    TODO(Monta): use dict
+    TODO: use dict
     """
 
     def __init__(self, env, n_active_actions: int = 3):
@@ -32,7 +32,7 @@ class ActiveActionsWrapper(gym.ActionWrapper):
 class TimeStepReward(gym.RewardWrapper):
     """Reward wrapper change goal reward to 0, fire to -50, and timestep penalty to the desired value"""
 
-    def __init__(self, env, goal_reward: float = 0, fire_reward: float = -50, timestep_penalty: float = 1.0):
+    def __init__(self, env, goal_reward: float = 0, fire_reward: float = -50, timestep_penalty: float = 0.0):
         super().__init__(env)
         self.timestep_penalty = timestep_penalty
         self.goal_reward = goal_reward
@@ -53,7 +53,7 @@ class TabularObservationsWrapper(gym.ObservationWrapper):
         super().__init__(env)
         self.env = env
         self.grid_size = grid_size
-        max_obs = grid_size[0] * grid_size[1]
+        max_obs = int(grid_size[0] * grid_size[1])
         self.observation_space = gym.spaces.Discrete(max_obs)
 
     def observation(self, obs):
