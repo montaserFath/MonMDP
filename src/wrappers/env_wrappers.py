@@ -48,6 +48,7 @@ class TimeStepReward(gym.RewardWrapper):
 
 class TabularObservationsWrapper(gym.ObservationWrapper):
     """Convert observations from a list to Tabular"""
+
     def __init__(self, env, grid_size: tuple = (3, 3)):
         super().__init__(env)
         self.env = env
