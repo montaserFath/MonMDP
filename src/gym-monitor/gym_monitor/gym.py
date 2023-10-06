@@ -1,8 +1,9 @@
+"""gym register for MDP and Monitored MDP environments"""
 from gymnasium.envs.registration import register
 
 
 def register_envs():
-
+    """gym register for MDP and Monitored MDP environments"""
     register(
         id="TreasureHunt-Simple-v0",
         entry_point="gym_monitor.treasure_hunt:TreasureHunt",

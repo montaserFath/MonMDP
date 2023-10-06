@@ -1,9 +1,12 @@
+# pylint: disable=no-member
+"""Genral Environmnet for MDP and Minotred MDP"""
 from contextlib import closing
-import pygame
-import numpy as np
-import gymnasium as gym
 from typing import Optional
 from io import StringIO
+import numpy as np
+import gymnasium as gym
+import pygame
+
 
 LEFT = 0
 DOWN = 1
@@ -27,7 +30,7 @@ INT_TO_ANSI = {
     QCKSND: b"Q",
     QCKSND_AGNT: b"X",
     MAP: b"M",
-    BUTTON: b"B"
+    BUTTON: b"B",
 }
 
 GRIDS = {
@@ -55,20 +58,21 @@ GRIDS = {
 }
 
 
-def _move(row, col, a, nrow, ncol):
-    if a == LEFT:
+def _move(row, col, action, nrow, ncol):
+    if action == LEFT:
         col = max(col - 1, 0)
-    elif a == DOWN:
+    elif action == DOWN:
         row = min(row + 1, nrow - 1)
-    elif a == RIGHT:
+    elif action == RIGHT:
         col = min(col + 1, ncol - 1)
-    elif a == UP:
+    elif action == UP:
         row = max(row - 1, 0)
     else:
         raise ValueError("illegal action")
     return (row, col)
 
 
+# pylint: disable=too-many-instance-attributes
 class TreasureHunt(gym.Env):
     """
     Gridworld where the agent has to find golden coins while avoiding cursed coins.
@@ -144,15 +148,16 @@ class TreasureHunt(gym.Env):
         "render_fps": 4,
     }
 
+    # pylint: disable=too-many-arguments
     def __init__(
-        self,
-        render_mode: Optional[str] = None,
-        grid: Optional[str] = "4x8",
-        enable_quicksand: Optional[bool] = False,
-        enable_map: Optional[bool] = False,
-        init_agent_pos: Optional[tuple] = None,
-        location_random: Optional[bool] = False,
-        **kwargs,
+            self,
+            render_mode: Optional[str] = None,
+            grid: Optional[str] = "4x8",
+            enable_quicksand: Optional[bool] = False,
+            enable_map: Optional[bool] = False,
+            init_agent_pos: Optional[tuple] = None,
+            location_random: Optional[bool] = False,
+            **kwargs,
     ):
         self._enable_quicksand = enable_quicksand
         self._enable_map = enable_map
@@ -163,12 +168,8 @@ class TreasureHunt(gym.Env):
         self._is_map = MAP in self._grid.flatten()
 
         self._n_rows, self._n_cols = self._grid.shape
-        self.observation_space = gym.spaces.Box(
-            low=0, high=6, shape=(self._n_rows * self._n_cols,), dtype=int
-        )
-        self.action_space = gym.spaces.Discrete(
-            5 if self._is_quicksand or self._is_map else 4
-        )
+        self.observation_space = gym.spaces.Box(low=0, high=6, shape=(self._n_rows * self._n_cols,), dtype=int)
+        self.action_space = gym.spaces.Discrete(5 if self._is_quicksand or self._is_map else 4)
         self._init_agent_pos = init_agent_pos
         self._agent_pos = None
         self._last_action = None
@@ -186,7 +187,8 @@ class TreasureHunt(gym.Env):
         self.info = {}
 
     @property
-    def grid(self):
+    def grid(self) -> np.ndarray:
+        """get the current grid status"""
         if self._has_map:
             return self._grid
 
@@ -196,7 +198,8 @@ class TreasureHunt(gym.Env):
 
         return grid
 
-    def reset(self, seed: int | None = None, **kwargs):
+    def reset(self, seed: int = None, **kwargs):
+        """reset the environment"""
         super().reset(seed=seed, **kwargs)
         self._grid = np.asarray(GRIDS[self._grid_key])
         if self._enable_map:
@@ -208,9 +211,7 @@ class TreasureHunt(gym.Env):
         if not self._enable_quicksand:
             self._grid[self._grid == QCKSND] = EMPTY
             self._agent_pos = (
-                (self.np_random.integers(self._n_rows), 0)
-                if self._init_agent_pos is None
-                else self._init_agent_pos
+                (self.np_random.integers(self._n_rows), 0) if self._init_agent_pos is None else self._init_agent_pos
             )
         self._grid[self._agent_pos] = AGENT
         self._last_action = None
@@ -219,9 +220,7 @@ class TreasureHunt(gym.Env):
         return self.grid.flatten(), {}
 
     def step(self, action: int):
-        add_random = (
-            True if self._location_random and self.np_random.random() < 0.05 else False
-        )
+        add_random = True if self._location_random and self.np_random.random() < 0.05 else False
         sand_map_env = self._is_quicksand or self._is_map
         if self._grid[self._agent_pos] != QCKSND_AGNT or add_random or not sand_map_env:
             if self._grid[self._agent_pos] == QCKSND_AGNT:
@@ -256,7 +255,7 @@ class TreasureHunt(gym.Env):
         self.info["agent_pos"] = self._agent_pos
         return self.grid.flatten(), reward, terminated, False, self.info
 
-    def reward(self):
+    def reward(self) -> float:
         """
         Reward function returns 1 if the agent collects gold coin, -1 if the agent collects cursed coin, otherwise 0
         """
@@ -277,9 +276,10 @@ class TreasureHunt(gym.Env):
             return
         if self.render_mode == "ansi":
             return self._render_text()
-        else:  # self.render_mode in {"human", "rgb_array"}:
-            return self._render_gui(self.render_mode)
+        # self.render_mode in {"human", "rgb_array"}:
+        return self._render_gui(self.render_mode)
 
+    # pylint: disable=too-many-branches
     def _render_gui(self, mode):
         if self.window_surface is None:
             pygame.init()
@@ -291,9 +291,7 @@ class TreasureHunt(gym.Env):
             elif mode == "rgb_array":
                 self.window_surface = pygame.Surface(self.window_size)
 
-        assert (
-            self.window_surface is not None
-        ), "Something went wrong with pygame. This should never happen."
+        assert self.window_surface is not None, "Something went wrong with pygame. This should never happen."
 
         if self.clock is None:
             self.clock = pygame.time.Clock()
@@ -318,31 +316,24 @@ class TreasureHunt(gym.Env):
         surf_agent = pygame.transform.scale(pygame.image.load("img/agent_img.png"), (screen_w / 3, screen_h / 3))
         surf_button = pygame.transform.scale(pygame.image.load("img/button_img.png"), (screen_w / 6, screen_h / 6))
 
-        for y in range(self._n_rows):
-            for x in range(self._n_cols):
-                pos = (x * self.cell_size[0], y * self.cell_size[1])
+        for y_pos in range(self._n_rows):
+            for x_pos in range(self._n_cols):
+                pos = (x_pos * self.cell_size[0], y_pos * self.cell_size[1])
 
-                if grid[y][x] == GLD_COIN:
+                if grid[y_pos][x_pos] == GLD_COIN:
                     self.window_surface.blit(surf_gld_coin, pos)
-                if grid[y][x] == CRSD_COIN:
+                if grid[y_pos][x_pos] == CRSD_COIN:
                     self.window_surface.blit(surf_crsd_coin, pos)
-                if grid[y][x] == EMPTY:  # or grid[y][x] == AGENT:
+                if grid[y_pos][x_pos] == EMPTY:  # or grid[y][x] == AGENT:
                     self.window_surface.blit(surf_empty, pos)
-                if grid[y][x] == MAP:
+                if grid[y_pos][x_pos] == MAP:
                     self.window_surface.blit(surf_map, pos)
-                if grid[y][x] == QCKSND:  # or grid[y][x] == QCKSND_AGNT:
+                if grid[y_pos][x_pos] == QCKSND:  # or grid[y][x] == QCKSND_AGNT:
                     self.window_surface.blit(surf_qcksnd, pos)
-                if grid[y][x] == BUTTON:
+                if grid[y_pos][x_pos] == BUTTON:
                     self.window_surface.blit(surf_button, pos)
-                if grid[y][x] == AGENT or grid[y][x] == QCKSND_AGNT:
+                if grid[y_pos][x_pos] == AGENT or grid[y_pos][x_pos] == QCKSND_AGNT:
                     self.window_surface.blit(surf_agent, pos + (0.5, 0.5))
-                    # pos = (
-                    #     x * self.cell_size[0] + self.cell_size[0] / 2,
-                    #     y * self.cell_size[1] + self.cell_size[1] / 2,
-                    # )
-                    # pygame.draw.circle(
-                    #     self.window_surface, (0, 0, 255), pos, self.cell_size[0] / 2.5
-                    # )
         # draw white lines between cells
         self._draw_white_lines()
 
@@ -351,9 +342,7 @@ class TreasureHunt(gym.Env):
             pygame.display.update()
             self.clock.tick(self.metadata["render_fps"])
         elif mode == "rgb_array":
-            return np.transpose(
-                np.array(pygame.surfarray.pixels3d(self.window_surface)), axes=(1, 0, 2)
-            )
+            return np.transpose(np.array(pygame.surfarray.pixels3d(self.window_surface)), axes=(1, 0, 2))
         else:
             raise NotImplementedError
 
@@ -380,17 +369,12 @@ class TreasureHunt(gym.Env):
         cell_x, cell_y = self.cell_size[0], self.cell_size[1]
         # horizontal lines
         for i in range(1, self._n_rows):
-            pygame.draw.line(
-                self.window_surface, w_c, (0, i * cell_x), (3 * cell_x, i * cell_y), 3
-            )
+            pygame.draw.line(self.window_surface, w_c, (0, i * cell_x), (3 * cell_x, i * cell_y), 3)
         # vertical lines
         for j in range(1, self._n_cols):
-            pygame.draw.line(
-                self.window_surface, w_c, (j * cell_y, 0), (j * cell_x, 3 * cell_y), 3
-            )
+            pygame.draw.line(self.window_surface, w_c, (j * cell_y, 0), (j * cell_x, 3 * cell_y), 3)
 
     def close(self):
         if self.window_surface is not None:
-
             pygame.display.quit()
             pygame.quit()
