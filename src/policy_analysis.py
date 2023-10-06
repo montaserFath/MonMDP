@@ -44,6 +44,9 @@ BASELINES = {
     "q_learning": r"$Q_{Oracle}$",
     "q_learning_mon": r"$Q_{Oracle}$",
     "reward_model": r"$Q_{Reward\,Model}$",
+    "reward_model_neg": r"$Q_{Reward\,Model}, r_0 = -1$",
+    "reward_model_0": r"$Q_{Reward\,Model}, r_0 = 0$",
+    "reward_model_pos": r"$Q_{Reward\,Model}, r_0 = +10$",
     "q_monitor_joint": r"$Q_{Joint}$",
     "q_monitor_sequential": r"$Q_{Sequential}$",
     "q_mdp": r"$Q_{ignore}$",
@@ -57,7 +60,7 @@ STATES = np.arange(int(CELL_SIZE[0] * CELL_SIZE[1]))
 SCALE = 0.25
 
 
-def set_blind_colors() -> tuple:
+def set_blind_colors() -> (list, list):
     """Get Blind colors friendly colors"""
     dark_hues = [0, 0.1, 0.4, 0.55, 0.65, 0.75, 0.9]
     dark_lightness = [0.4, 0.2, 0.15, 0.4, 0.4, 0.4, 0.4]
@@ -273,7 +276,7 @@ def plot_policy_button(baselines: list, save_fig: bool = False) -> None:
             fig.savefig("models/Button/{}/policy_actions.pdf".format(base), dpi=300)
 
 
-def plot_policy(baselines: list, env_id: str, save_fig: bool = False):
+def plot_policy(baselines: list, env_id: str, save_fig: bool = False) -> None:
     """Plot policy actions for each state for Simple and Penalty environments"""
     if env_id == "Button":
         plot_policy_button(baselines, save_fig=save_fig)
@@ -298,7 +301,7 @@ def get_policy_states_actions(
         baseline: str,
         q_table: np.ndarray,
         mdp_q_table: np.ndarray = None,
-) -> tuple:
+) -> (np.ndarray, np.ndarray):
     """Get policy actions for each state from the q-table"""
     n_states = int(CELL_SIZE[0] * CELL_SIZE[1])
     n_actions = 4
@@ -362,7 +365,7 @@ def calculate_confidence_interval(vector: np.ndarray, confidence: float = 0.95) 
     return results
 
 
-def ind_to_action(action_ind: int, n_actions: int = 4) -> tuple:
+def ind_to_action(action_ind: int, n_actions: int = 4) -> (int, int):
     """Transform integer index to MDP and Monitor actions"""
     mon_action, mdp_action = action_ind // n_actions, action_ind % n_actions
     return mdp_action, mon_action
@@ -389,7 +392,7 @@ def plot_arrows(env_id: str, states: np.ndarray, actions: np.ndarray, shift_arro
     for i, state_i in enumerate(states):
         x_shift, y_shift = 0, 0
         state = state_i[0] if isinstance(states[i], np.ndarray) else state_i
-        if state == 2:  # skip the gaol state
+        if state == 2:  # skip the goal state
             continue
         pos = np.array([state // CELL_SIZE[0], state % CELL_SIZE[0]])  # MDP state
         pos[0] = np.abs(pos[0] - CELL_SIZE[0] + 1)
@@ -524,24 +527,8 @@ def plot_train_joint_reward_timesteps(
             x_axis = x_axis[:min_len]
             mean_reward = np.mean(np.array(all_y_axis), 0)
             confi_reward = calculate_confidence_interval(np.array(all_y_axis))
-            plt.plot(
-                x_axis,
-                mean_reward,
-                lw=2,
-                c=COLORS[i],
-                alpha=ALPHAS[i],
-                label=BASELINES[baseline],
-            )
-            # plt.scatter(x_axis, mean_reward, marker="*", s=20, c=COLORS[i], alpha=ALPHAS[i])
-            plt.errorbar(
-                x_axis,
-                mean_reward,
-                yerr=confi_reward,
-                elinewidth=1,
-                capsize=2,
-                c=COLORS[i],
-                alpha=ALPHAS[i],
-            )
+            plt.plot(x_axis, mean_reward, lw=2, c=COLORS[i], alpha=ALPHAS[i], label=BASELINES[baseline])
+            plt.errorbar(x_axis, mean_reward, yerr=confi_reward, elinewidth=1, capsize=2, c=COLORS[i], alpha=ALPHAS[i])
 
     plt.xlabel("Training Timesteps", fontsize=12)
     if env_id == "Simple":
