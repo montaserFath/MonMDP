@@ -4,7 +4,7 @@ import hydra
 import wandb
 from omegaconf import DictConfig, OmegaConf
 from src.utils import dict_to_id
-from src.wrappers.env_wrappers import TimeStepReward, TabularObservationsWrapper
+from src.wrappers.env_wrappers import TimeStepReward, TabularObservationsWrapper, WindowViewObs
 from src.wrappers.monitor_wrappers import BinaryMonitor, StateMonitor
 from src.actor import MonEpsilonGreedyOneAction, MonStateEpsilonGreedy
 from src.critic import MonQTableOneAction, StateMonTable
@@ -21,10 +21,10 @@ from src.policy_analysis import (
 BASELINES = ["q_learning", "reward_model", "q_monitor_joint", "q_monitor_sequential", "q_mdp", "zero_reward_0"]
 ZERO_BASELINES = ["zero_reward_neg", "zero_reward_0", "zero_reward_pos"]
 EVAL = True
-LOG_DIR = "models/Button/reward_model/"
+LOG_DIR = "models/Penalty/reward_model/"
 
 
-@hydra.main(version_base=None, config_path="configs", config_name="button_env")
+@hydra.main(version_base=None, config_path="configs", config_name="penalty_env")
 def run_monitor(cfg: DictConfig) -> None:
     """Run Monitor Baseline on an env to train or evaluate"""
     group = cfg.environment.id + "\\" + dict_to_id(cfg.monitor)
@@ -52,7 +52,7 @@ def run_monitor(cfg: DictConfig) -> None:
     experiment = MonExperiment(env, actor, critic, log_dir=train_dir, **cfg.experiment)
     if EVAL:
         critic.load(LOG_DIR, seed=cfg.experiment.rng_seed)
-        _, _, _, _, _, _ = experiment.test(render=False, save_results=True)
+        _, _, _, _, _, _ = experiment.test(render=True, save_results=True)
         if LOG_DIR.split("/")[-2] in ["q_monitor_sequential", "q_monitor_joint"]:
             plot_mdp_mon_q_table_heatmap(log_dir=LOG_DIR, save_fig=True)
         else:
@@ -67,7 +67,8 @@ def run_monitor(cfg: DictConfig) -> None:
 def wrappe_env(env_id: str, train: bool, monitor_wrapper: bool = False, cfg: DictConfig = None):
     """Wrapper Simple/Fire/Button env in Monitor MDP or MDP"""
     env = gym.make(env_id, render_modes="human")
-    env = TabularObservationsWrapper(env, grid_size=(3, 3))
+    env = WindowViewObs(env, window_size=(3, 3), grid_size=(10, 10), image_obs=False)
+    # env = TabularObservationsWrapper(env, grid_size=(10, 10))
     env = TimeStepReward(env, timestep_penalty=0.0, goal_reward=1, fire_reward=-10)
     if monitor_wrapper:
         if train:
