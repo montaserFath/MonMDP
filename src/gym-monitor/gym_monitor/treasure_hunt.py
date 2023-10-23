@@ -21,6 +21,7 @@ QCKSND = 4
 QCKSND_AGNT = 5
 MAP = 6
 BUTTON = 7
+WALL = 8
 
 INT_TO_ANSI = {
     EMPTY: b"E",
@@ -31,6 +32,7 @@ INT_TO_ANSI = {
     QCKSND_AGNT: b"X",
     MAP: b"M",
     BUTTON: b"B",
+    WALL: b"w",
 }
 
 GRIDS = {
@@ -65,7 +67,7 @@ GRIDS = {
         [EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, CRSD_COIN, EMPTY, EMPTY, EMPTY, EMPTY],
         [EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, CRSD_COIN, EMPTY, EMPTY, EMPTY, EMPTY],
         [EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, CRSD_COIN, EMPTY, EMPTY, EMPTY, EMPTY],
-        [EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY],
+        [WALL, WALL, WALL, WALL, EMPTY, EMPTY, EMPTY, WALL, WALL, WALL],
     ],
     "10x10 button": [
         [EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, CRSD_COIN, EMPTY, EMPTY, EMPTY, GLD_COIN],
@@ -244,6 +246,7 @@ class TreasureHunt(gym.Env):
         return self.grid.flatten(), {}
 
     def step(self, action: int):
+        prev_agent_pos = self._agent_pos
         add_random = True if self._location_random and self.np_random.random() < 0.05 else False
         sand_map_env = self._is_quicksand or self._is_map
         if self._grid[self._agent_pos] != QCKSND_AGNT or add_random or not sand_map_env:
@@ -266,9 +269,12 @@ class TreasureHunt(gym.Env):
         if self._grid[self._agent_pos] == MAP:
             self._grid[self._agent_pos] = AGENT
             self._has_map = True
-
-        if self._grid[self._agent_pos] == QCKSND:
+        elif self._grid[self._agent_pos] == QCKSND:
             self._grid[self._agent_pos] = QCKSND_AGNT
+        # do nothing if the agent steps into a wall
+        elif self._grid[self._agent_pos] == WALL:
+            self._agent_pos = prev_agent_pos
+            self._grid[self._agent_pos] = AGENT
         else:
             self._grid[self._agent_pos] = AGENT
 
@@ -333,6 +339,8 @@ class TreasureHunt(gym.Env):
         surf_map.fill((255, 255, 255))
         surf_qcksnd = pygame.Surface(self.cell_size)
         surf_qcksnd.fill((204, 102, 0))
+        surf_wall = pygame.Surface(self.cell_size)
+        surf_wall.fill((255, 255, 0))
         # load images for the gold coin, fire and the agent
         screen_w, screen_h = pygame.display.get_surface().get_size()
         surf_gld_coin = pygame.transform.scale(pygame.image.load("img/gold_img.png"), (screen_w / 3, screen_h / 3))
@@ -358,6 +366,8 @@ class TreasureHunt(gym.Env):
                     self.window_surface.blit(surf_button, pos)
                 if grid[y_pos][x_pos] == AGENT or grid[y_pos][x_pos] == QCKSND_AGNT:
                     self.window_surface.blit(surf_agent, pos + (0.5, 0.5))
+                if grid[y_pos][x_pos] == WALL:
+                    self.window_surface.blit(surf_wall, pos)
         # draw white lines between cells
         self._draw_white_lines()
 
