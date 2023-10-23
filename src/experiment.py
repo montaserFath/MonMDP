@@ -114,7 +114,7 @@ class MonExperiment(Experiment):
         self._actor.reset()
         self._critic.reset()
         joint_reward = {}
-        eval_joint_reward = []
+        eval_joint_reward = {}
         eval_count = 0
         total_timesteps = 0
         episode = 0
@@ -122,7 +122,7 @@ class MonExperiment(Experiment):
             if episode > 0 and episode % self._testing_frequency == 0:
                 self._actor.eval()
                 ep_return_true, ep_return_proxy, ep_return_cost, ep_monitor_action, ep_length, _ = self.test()
-                eval_joint_reward.append(ep_return_true + ep_return_cost)
+                eval_joint_reward.update({episode: ep_return_true + ep_return_cost})
                 episode_return_true = ep_return_true.mean()
                 episode_return_proxy = np.nanmean(ep_return_proxy)
                 episode_return_cost = ep_return_cost.mean()
@@ -204,7 +204,7 @@ class MonExperiment(Experiment):
             np.save(self._log_dir + "/training_joint_reward_{}.npy".format(self._rng_seed), joint_reward)
             np.save(
                 self._log_dir + "/evaluation_joint_reward_{}.npy".format(self._rng_seed),
-                np.array(eval_joint_reward),
+                eval_joint_reward,
             )
         wandb.finish()
         self._env.close()
