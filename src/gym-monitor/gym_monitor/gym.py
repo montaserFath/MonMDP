@@ -44,6 +44,32 @@ def register_envs():
     )
 
     register(
+        id="TreasureHunt-Penalty-v1",
+        entry_point="gym_monitor.treasure_hunt:TreasureHunt",
+        max_episode_steps=500,
+        kwargs={
+            "grid": "10x10 penalty",
+            "enable_map": False,
+            "enable_quicksand": False,
+            "init_agent_pos": (0, 0),
+            "render_mode": "human",
+        },
+    )
+
+    register(
+        id="TreasureHunt-Button-v1",
+        entry_point="gym_monitor.treasure_hunt:TreasureHunt",
+        max_episode_steps=500,
+        kwargs={
+            "grid": "10x10 button",
+            "enable_map": False,
+            "enable_quicksand": False,
+            "init_agent_pos": (0, 0),
+            "render_mode": "human",
+        },
+    )
+
+    register(
         id="TreasureHunt-Easy-v0",
         entry_point="gym_monitor.treasure_hunt:TreasureHunt",
         max_episode_steps=100,

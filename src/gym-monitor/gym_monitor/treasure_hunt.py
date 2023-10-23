@@ -55,6 +55,30 @@ GRIDS = {
         [EMPTY, CRSD_COIN, EMPTY],
         [EMPTY, EMPTY, BUTTON],
     ],
+    "10x10 penalty": [
+        [EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, CRSD_COIN, EMPTY, EMPTY, EMPTY, GLD_COIN],
+        [EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, CRSD_COIN, EMPTY, EMPTY, EMPTY, EMPTY],
+        [EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, CRSD_COIN, EMPTY, EMPTY, EMPTY, EMPTY],
+        [EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, CRSD_COIN, EMPTY, EMPTY, EMPTY, EMPTY],
+        [EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, CRSD_COIN, EMPTY, EMPTY, EMPTY, EMPTY],
+        [EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, CRSD_COIN, EMPTY, EMPTY, EMPTY, EMPTY],
+        [EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, CRSD_COIN, EMPTY, EMPTY, EMPTY, EMPTY],
+        [EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, CRSD_COIN, EMPTY, EMPTY, EMPTY, EMPTY],
+        [EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, CRSD_COIN, EMPTY, EMPTY, EMPTY, EMPTY],
+        [EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY],
+    ],
+    "10x10 button": [
+        [EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, CRSD_COIN, EMPTY, EMPTY, EMPTY, GLD_COIN],
+        [EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, CRSD_COIN, EMPTY, EMPTY, EMPTY, EMPTY],
+        [EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, CRSD_COIN, EMPTY, EMPTY, EMPTY, EMPTY],
+        [EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, CRSD_COIN, EMPTY, EMPTY, EMPTY, EMPTY],
+        [EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, CRSD_COIN, EMPTY, EMPTY, EMPTY, EMPTY],
+        [EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, CRSD_COIN, EMPTY, EMPTY, EMPTY, EMPTY],
+        [EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, CRSD_COIN, EMPTY, EMPTY, EMPTY, EMPTY],
+        [EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, CRSD_COIN, EMPTY, EMPTY, EMPTY, EMPTY],
+        [EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, CRSD_COIN, EMPTY, EMPTY, EMPTY, EMPTY],
+        [EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, BUTTON],
+    ],
 }
 
 
@@ -369,10 +393,10 @@ class TreasureHunt(gym.Env):
         cell_x, cell_y = self.cell_size[0], self.cell_size[1]
         # horizontal lines
         for i in range(1, self._n_rows):
-            pygame.draw.line(self.window_surface, w_c, (0, i * cell_x), (3 * cell_x, i * cell_y), 3)
+            pygame.draw.line(self.window_surface, w_c, (0, i * cell_x), (self.cell_size[0] * cell_x, i * cell_y), 3)
         # vertical lines
         for j in range(1, self._n_cols):
-            pygame.draw.line(self.window_surface, w_c, (j * cell_y, 0), (j * cell_x, 3 * cell_y), 3)
+            pygame.draw.line(self.window_surface, w_c, (j * cell_y, 0), (j * cell_x, self.cell_size[1] * cell_y), 3)
 
     def close(self):
         if self.window_surface is not None:
