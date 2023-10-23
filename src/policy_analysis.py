@@ -55,7 +55,7 @@ BASELINES = {
     "zero_reward_neg": r"$Q_{\bot=-10}$",
     "zero_reward_pos": r"$Q_{\bot=1}$",
 }
-CELL_SIZE = (3, 3)
+CELL_SIZE = (10, 10)
 STATES = np.arange(int(CELL_SIZE[0] * CELL_SIZE[1]))
 SCALE = 0.25
 
@@ -185,7 +185,7 @@ def plot_reward_table_heatmap(log_dir: str, save_fig: bool = False) -> None:
     ax_r.set_xlabel("Actions", fontsize=15)
     ax_r.set_ylabel("States", fontsize=15)
     ax_r.set_xticklabels(MDP_ACTIONS, fontsize=15)
-    ax_r.set_yticklabels(np.arange(r_table.shape[0]), fontsize=15)
+    # ax_r.set_yticklabels(np.arange(r_table.shape[0]), fontsize=15 if CELL_SIZE == (3, 3) else 5)
     fig.tight_layout()
     if save_fig:
         fig.savefig(log_dir + "/predictive_reward_table_heatmap.pdf", dpi=300)
@@ -201,7 +201,9 @@ def plot_policy_trajectory(
     """
     plot final actions actions as arrows in grid environment
     """
-    if env_name not in ["TreasureHunt-Simple-v0", "TreasureHunt-Penalty-v0", "TreasureHunt-Button-v0"]:
+    if env_name not in [
+        "TreasureHunt-Simple-v0", "TreasureHunt-Penalty-v0", "TreasureHunt-Penalty-v1", "TreasureHunt-Button-v0", "TreasureHunt-Button-v1",
+    ]:
         raise NotImplemented
 
     monitor_on_ind, monitor_off_ind = None, None
