@@ -58,3 +58,23 @@ class TabularObservationsWrapper(gym.ObservationWrapper):
 
     def observation(self, obs):
         return np.where(obs == 1)[0]
+
+
+class WindowViewObs(gym.ObservationWrapper):
+    """Observation wrapper get a window view around the agent"""
+    def __init__(self, env, grid_size: tuple, window_size: tuple, image_obs: bool = False):
+        super().__init__(env)
+        self.env = env
+        self.window_size = window_size
+        self.grid_size = grid_size
+        self.image_obs = image_obs
+        # TODO: remove 9 with number of objects in the env
+        self.observation_space = gym.spaces.Box(0, 255 if image_obs else 9, window_size, dtype=np.int8)
+
+    def observation(self, obs):
+        agent_id = 1  # TODO remove hard coded value
+        obs = obs.reshape(self.grid_size[0], self.grid_size[1])
+        pos_x, pos_y = np.where(obs == agent_id)[0][0], np.where(obs == agent_id)[1][0]
+        min_x, max_x = max(0, pos_x - self.window_size[0]), min(self.grid_size[0] - 1, pos_x + self.window_size[0] - 1)
+        min_y, max_y = max(0, pos_y - self.window_size[1]), min(self.grid_size[1] - 1, pos_y + self.window_size[0] - 1)
+        return obs[min_x: max_x, min_y: max_y]
