@@ -1,5 +1,5 @@
 id: StateMonitor
 monitor_cost: 0.2
 init_state_prob: 0.5
-button_state: 8
+button_state: 99
 button_action: 1
