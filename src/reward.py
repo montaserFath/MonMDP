@@ -1,6 +1,7 @@
 """Predictive Reward Model"""
 from abc import ABC, abstractmethod
 import numpy as np
+from src.network import NeuralNetowrk
 
 
 class Reward(ABC):
@@ -93,3 +94,11 @@ class RDict(Reward):
     def report(self):
         """get the reward dictionary"""
         return self._r_dict
+
+
+class RNet(Reward):
+    def __init__(self, observation_space, action_space, lr: float = 0.01, **kwargs):
+        self._obs_size = observation_space.shape
+        self._n_actions = action_space.n
+        self._lr = lr
+        self.network = NeuralNetowrk(self._obs_size, self._n_actions)

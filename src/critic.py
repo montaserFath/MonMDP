@@ -4,6 +4,8 @@ from abc import ABC, abstractmethod
 import os
 import numpy as np
 from src.reward import RTable, RDict
+from src.replay_buffer import ReplayBuffer
+from src.network import NeuralNetowrk
 
 
 class Critic(ABC):
@@ -476,3 +478,36 @@ class MonQDict(MonQCritic):
     def report(self):
         """get the current values of Q-dictionary"""
         return self._q_dict, self._mdp_critic.report()
+
+
+class MonQNet(MonQCritic):
+    def __int__(
+            self, env_name, q0, gamma, lr, on_policy, strategy, unseen_r_value, observation_space, action_space,
+    ):
+        MonQCritic.__init__(self, env_name, q0, gamma, lr, on_policy, strategy=strategy, unseen_r_value=unseen_r_value)
+        self.replay_buffer = ReplayBuffer(observation_space.shape, action_space.shape)
+        self.network = NeuralNetowrk(observation_space.shape, action_space.n)
+
+    def reset(self):
+        NotImplemented
+
+    def train(self):
+        NotImplemented
+
+    def predict(self):
+        NotImplemented
+
+    def __call__(self, state, action=None):
+        NotImplemented
+
+    def save(self):
+        NotImplemented
+
+    def load(self):
+        NotImplemented
+
+    def update(self, state, action, reward, terminated, next_state, next_action=None):
+        NotImplemented
+
+
+
