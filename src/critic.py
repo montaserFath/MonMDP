@@ -5,7 +5,7 @@ import os
 import numpy as np
 from src.reward import RTable, RDict
 from src.replay_buffer import ReplayBuffer
-from src.network import NeuralNetowrk
+from src.network import NeuralNetwork
 
 
 class Critic(ABC):
@@ -486,7 +486,7 @@ class MonQNet(MonQCritic):
     ):
         MonQCritic.__init__(self, env_name, q0, gamma, lr, on_policy, strategy=strategy, unseen_r_value=unseen_r_value)
         self.replay_buffer = ReplayBuffer(observation_space.shape, action_space.shape)
-        self.network = NeuralNetowrk(observation_space.shape, action_space.n)
+        self.network = NeuralNetwork(observation_space.shape, action_space.n)
 
     def reset(self):
         NotImplemented

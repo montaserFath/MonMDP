@@ -3,7 +3,7 @@ import numpy as np
 import torch
 
 
-class NeuralNetowrk:
+class NeuralNetwork:
     def __init__(self, input_shape: tuple, n_outputs: int, lr: float = 0.001,):
         self._input_shape = input_shape
         self._n_outputs = n_outputs
@@ -21,4 +21,10 @@ class NeuralNetowrk:
         NotImplemented
 
     def reset(self):
+        NotImplemented
+
+    def save(self):
+        NotImplemented
+
+    def load(self):
         NotImplemented

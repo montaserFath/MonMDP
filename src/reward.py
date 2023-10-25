@@ -1,7 +1,7 @@
 """Predictive Reward Model"""
 from abc import ABC, abstractmethod
 import numpy as np
-from src.network import NeuralNetowrk
+from src.network import NeuralNetwork
 
 
 class Reward(ABC):
@@ -101,4 +101,13 @@ class RNet(Reward):
         self._obs_size = observation_space.shape
         self._n_actions = action_space.n
         self._lr = lr
-        self.network = NeuralNetowrk(self._obs_size, self._n_actions)
+        self.network = NeuralNetwork(self._obs_size, self._n_actions)
+
+    def reset(self):
+        NotImplemented
+
+    def save(self):
+        NotImplemented
+
+    def load(self):
+        NotImplemented
