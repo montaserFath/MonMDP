@@ -39,6 +39,10 @@ class ReplayBuffer:
         # if the buffer is full remove the first sample
         if len(self.buffer.keys()) == self.max_size:
             self.pop()
+        # termination state
+        if next_obs is None:
+            next_obs = np.array([None] * obs.shape[0])
+        # sample: obs, action, reward, next obs
         new_sample = np.concatenate((obs.reshape(-1), action, reward, next_obs.reshape(-1)))
         self.buffer.update({self.buffer_size: new_sample})
         self.buffer_size += 1
@@ -46,7 +50,7 @@ class ReplayBuffer:
     def size(self) -> int:
         return self.buffer_size
 
-    # remove he first item in the buffer
+    # remove the first item in the buffer
     def pop(self) -> None:
         self.buffer.pop(0)
         self.buffer_size -= 1
