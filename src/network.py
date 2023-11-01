@@ -1,4 +1,5 @@
 """Neural Network class"""
+from abc import abstractmethod
 import numpy as np
 import torch
 import torch.nn as nn
@@ -16,37 +17,34 @@ class NeuralNetwork:
         self._obs_size = obs_size
         self._n_actions = n_actions
         self._lr = lr
-        self._gamma = gamma
         self._device = device
-        self.loss = nn.L1Loss()
+        self.loss_fun = nn.SmoothL1Loss()
         self.optimizer = None
         self.model = None
         self.reset()
 
+    def __call__(self, data):
+        return self.model(data)
+
+    @abstractmethod
     def train(self, train_data, n_epochs: int, batch_size: int):
-        for epoch in range(n_epochs):
-            epoch_loss = 0
-            n_batches = 0
-            for batch in range(0, train_data.shape[0], batch_size):
-                batch_obs =
-                batch_reward =
-        NotImplemented
+        # for epoch in range(n_epochs):
+        #     epoch_loss = 0
+        #     n_batches = 0
+        #     for batch in range(0, train_data.shape[0], batch_size):
+        #         batch_obs =
+        #         batch_obs_reward =
+        return
 
-    def eval(self, test_obs):
-        if len(test_obs.shape) == 1:
-            test_obs = test_obs.reshape(1, test_obs.shape[1])
+    def eval(self, test: np.ndarray):
+        # if its 1d tensor/array convert it to 2d tensor/array
+        if len(test.shape) == 1:
+            test = test.reshape(1, test.shape[1])
+        # if numpy array convert it to tensor
+        if isinstance(test, np.ndarray):
+            test = torch.from_numpy(test)
         # with torch.no_grad():
-        return self.model(self.numpy_to_torch(test_obs)).detach().cpu().numpy()
-
-    # convert sample to pytorch format
-    def numpy_to_torch(self, obs: np.ndarray):
-        if obs.shape[1] != self._obs_size:
-            raise ValueError("Observations size does not match observation shape")
-        return torch.from_numpy(obs)
-
-    def process_batch(self, batch: np.ndarray):
-        terminal_idx = np.where()
-        expected_q = torch.zeros(batch.shape[0])
+        return self.model(test).detach().cpu().numpy()
 
     def reset(self):
         self.model = nn.Sequential(
@@ -56,7 +54,7 @@ class NeuralNetwork:
             nn.ReLU(),
             nn.Linear(64, self._n_actions),
         ).to(self._device)
-        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self._lr)
+        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self._lr, amsgrad=True)
 
     def save(self, log_dir: str = None):
         if log_dir is None:
@@ -67,3 +65,10 @@ class NeuralNetwork:
         if log_dir is None:
             raise ValueError("The log directory is empty")
         self.model = torch.load(log_dir)
+
+    def parameters(self):
+        pass
+
+    @property
+    def device(self):
+        return self._device
