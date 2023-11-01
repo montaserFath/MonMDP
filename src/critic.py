@@ -1,8 +1,10 @@
 # pylint: disable=no-member, too-many-arguments, arguments-differ, super-init-not-called
 """Critic for MDP and Monitored MDP"""
 from abc import ABC, abstractmethod
+from collections import namedtuple
 import os
 import numpy as np
+import torch
 from src.reward import RTable, RDict
 from src.replay_buffer import ReplayBuffer
 from src.network import NeuralNetwork
@@ -486,28 +488,59 @@ class MonQNet(MonQCritic):
     ):
         MonQCritic.__init__(self, env_name, q0, gamma, lr, on_policy, strategy=strategy, unseen_r_value=unseen_r_value)
         self.replay_buffer = ReplayBuffer(observation_space.shape, action_space.shape)
-        self.network = NeuralNetwork(observation_space.shape, action_space.n)
+        self.q_network = NeuralNetwork(observation_space.shape, action_space.n)
+        self.transition = namedtuple("Transition", ("obs", "action", "next_obs", "reward"))
+        self._dir_name = "models/{}/{}/".format(env_name, self._strategy)
 
     def reset(self):
-        NotImplemented
+        self.q_network.reset()
 
-    def train(self):
-        NotImplemented
-
-    def predict(self):
-        NotImplemented
+    # optimize the Q-network once
+    def train(self, batch):
+        q_values, expected_q_values = self.process_batch(batch)
+        loss = self.q_network.loss_fun(q_values, expected_q_values)
+        self.q_network.optimizer.zero_grad()
+        loss.backward()
+        # In-place gradient clipping
+        torch.nn.utils.clip_grad_value_(self.q_network.parameters(), 100)
+        self.q_network.optimizer.step()
 
     def __call__(self, state, action=None):
-        NotImplemented
+        state = state if torch.is_tensor(state) else torch.from_numpy(state)
+        state = state.reshape(1, state.shape[0]) if len(state.shape) == 1 else state
+        q_state = self.q_network(state).detach().numpy()
+        if action is None:
+            return q_state
+        return q_state[action]
 
-    def save(self):
-        NotImplemented
+    def save(self, seed: int = 1):
+        os.makedirs(self._dir_name, exist_ok=True)
+        self.q_network.save(log_dir=self._dir_name + "/q_network_{}".format(seed))
 
-    def load(self):
-        NotImplemented
+    def load(self, seed: int = 1):
+        self.q_network.load(log_dir=self._dir_name + "/q_network_{}".format(seed))
 
-    def update(self, state, action, reward, terminated, next_state, next_action=None):
-        NotImplemented
+    # def update(self, state, action, reward, terminated, next_state, next_action=None):
+    #     NotImplemented
 
+    # TODO: args types and return types
+    def process_batch(self, batch):
+        batch_size = batch.shape[0]
+        batch = self.transition(*zip(*batch))
 
+        # from DQN pytorch https://pytorch.org/tutorials/intermediate/reinforcement_q_learning.html
+        non_final_mask = torch.tensor(tuple(map(
+            lambda obs: obs is not None, batch.next_obs)), device=self.q_network.device, dtype=torch.bool,
+        )
+        non_final_next_states = torch.cat([obs for obs in batch.next_obs if obs is not None])
+        states_batch = torch.cat(batch.obs)
+        action_batch = torch.cat(batch.action)
+        reward_batch = torch.cat(batch.reward)
 
+        q_values = self.q_network(states_batch).gather(1, action_batch)
+        next_q_values = torch.zeros(batch_size)
+        with torch.no_grad():
+            next_q_values[non_final_mask] = self.q_network(non_final_next_states).max(1)[0]
+
+        expected_q_values = (self._gamma * next_q_values) + reward_batch
+        return q_values, expected_q_values.unsqueeze(1)
