@@ -329,10 +329,10 @@ class TreasureHunt(gym.Env):
         grid = self.grid.tolist()
         assert isinstance(grid, list), f"grid should be a list or an array, got {grid}"
 
-        # surf_gld_coin = pygame.Surface(self.cell_size)
-        # surf_gld_coin.fill((0, 255, 0))
-        # surf_crsd_coin = pygame.Surface(self.cell_size)
-        # surf_crsd_coin.fill((255, 0, 0))
+        surf_gld_coin = pygame.Surface(self.cell_size)
+        surf_gld_coin.fill((0, 255, 0))
+        surf_crsd_coin = pygame.Surface(self.cell_size)
+        surf_crsd_coin.fill((255, 0, 0))
         surf_empty = pygame.Surface(self.cell_size)
         surf_empty.fill((0, 0, 0))
         surf_map = pygame.Surface(self.cell_size)
@@ -341,11 +341,13 @@ class TreasureHunt(gym.Env):
         surf_qcksnd.fill((204, 102, 0))
         surf_wall = pygame.Surface(self.cell_size)
         surf_wall.fill((255, 255, 0))
+        surf_agent = pygame.Surface(self.cell_size)
+        surf_agent.fill((0, 0, 255))
         # load images for the gold coin, fire and the agent
         screen_w, screen_h = pygame.display.get_surface().get_size()
-        surf_gld_coin = pygame.transform.scale(pygame.image.load("img/gold_img.png"), (screen_w / 3, screen_h / 3))
-        surf_crsd_coin = pygame.transform.scale(pygame.image.load("img/fire_img.png"), (screen_w / 3, screen_h / 3))
-        surf_agent = pygame.transform.scale(pygame.image.load("img/agent_img.png"), (screen_w / 3, screen_h / 3))
+        # surf_gld_coin = pygame.transform.scale(pygame.image.load("img/gold_img.png"), (screen_w / 3, screen_h / 3))
+        # surf_crsd_coin = pygame.transform.scale(pygame.image.load("img/fire_img.png"), (screen_w / 3, screen_h / 3))
+        # surf_agent = pygame.transform.scale(pygame.image.load("img/agent_img.png"), (screen_w / 3, screen_h / 3))
         surf_button = pygame.transform.scale(pygame.image.load("img/button_img.png"), (screen_w / 6, screen_h / 6))
 
         for y_pos in range(self._n_rows):
