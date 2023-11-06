@@ -31,7 +31,7 @@ class ReplayBuffer:
             raise ValueError("The replay buffer is empty")
 
         # check if the number of sample is bigger than the buffer size
-        if len(self.buffer.keys()) <= n_samples:
+        if self.buffer_size <= n_samples:
             raise ValueError("the number of sample is bigger than the buffer size")
         return random.sample(self.buffer, n_samples)
 
@@ -66,13 +66,13 @@ class ReplayBuffer:
         self.buffer.pop()
         self.buffer_size -= 1
 
-    def save(self, log_dir: str = None):
+    def save(self, log_dir: str = None) -> None:
         if log_dir is None:
             raise ValueError("Empty log dir")
         pickle.dump(self.buffer, open(log_dir + "/replay_buffer.pkl", "wb"))
         # np.save(self.buffer, log_dir + "/replay_buffer.npy")
 
-    def load(self, log_dir: str = None):
+    def load(self, log_dir: str = None) -> None:
         if log_dir is None:
             raise ValueError("Empty log dir")
         self.buffer = pickle.load(open(log_dir + "/replay_buffer.npy", "rb"))

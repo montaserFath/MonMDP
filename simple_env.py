@@ -67,8 +67,8 @@ def run_monitor(cfg: DictConfig) -> None:
 def wrappe_env(env_id: str, train: bool, monitor_wrapper: bool = False, cfg: DictConfig = None):
     """Wrapper Simple/Fire/Button env in Monitor MDP or MDP"""
     env = gym.make(env_id, render_modes="human")
-    env = WindowViewObs(env, window_size=(3, 3), grid_size=(10, 10), image_obs=False)
-    # env = TabularObservationsWrapper(env, grid_size=(10, 10))
+    # env = WindowViewObs(env, window_size=(3, 3), grid_size=(10, 10), image_obs=False)
+    env = TabularObservationsWrapper(env, grid_size=(10, 10))
     env = TimeStepReward(env, timestep_penalty=0.0, goal_reward=1, fire_reward=-10)
     if monitor_wrapper:
         if train:

@@ -11,7 +11,6 @@ class NeuralNetwork:
             obs_size: int,
             n_actions: int,
             lr: float = 0.001,
-            gamma: float = 0.99,
             device: str = "cpu",
     ):
         self._obs_size = obs_size
