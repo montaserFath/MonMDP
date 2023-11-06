@@ -60,6 +60,24 @@ class TabularObservationsWrapper(gym.ObservationWrapper):
         return np.where(obs == 1)[0]
 
 
+class StochasticAction(gym.ActionWrapper):
+    """Add Stochastic to the action, with some probability take a random action"""
+    def __init__(self, env: gym.Env, random_prob: float = 0.05):
+        # for discrete actions only for now
+        super().__init__(env)
+        if not isinstance(env.action_space, gym.spaces.Discrete):
+            raise ValueError("The action space is not discrete")
+        self._random_prob = random_prob
+        self.env = env
+        if self._random_prob < 0 or random_prob > 1:
+            raise ValueError("The random probability should be in [0, 1]")
+
+    def action(self, action):
+        if np.random.random() < self._random_prob:
+            return self.env.action_space.sample()
+        return action
+
+
 class WindowViewObs(gym.ObservationWrapper):
     """Observation wrapper get a window view around the agent"""
     def __init__(self, env, grid_size: tuple, window_size: tuple, image_obs: bool = False, flatten_obs: bool = False):
