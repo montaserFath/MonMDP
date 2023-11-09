@@ -75,6 +75,7 @@ class QTable(QCritic):
             self,
             observation_space,
             action_space,
+            dir_name: str = None,
             q0: float = 0.0,
             gamma: float = 0.99,
             lr: float = 0.01,
@@ -87,7 +88,7 @@ class QTable(QCritic):
         self._n_actions = action_space.n
         self._q_table = None
         if env_name is not None:
-            self._dir_name = "models/{}/q_learning/".format(env_name.split("-")[1])
+            self._dir_name = "models/3_3/{}/q_learning/".format(env_name.split("-")[1]) if dir_name is None else dir_name
         self.reset()
 
     def __call__(self, state, action=None):
@@ -253,6 +254,7 @@ class MonQTable(MonQCritic):
             env_name,
             observation_space,
             action_space,
+            dir_name: str = None,
             q0=0.0,
             gamma=0.99,
             lr=0.01,
@@ -269,7 +271,7 @@ class MonQTable(MonQCritic):
         self._n_mon_actions = action_space["monitor"].n
         self._q_table = None
         env_name = self._env_name.split("/")[1].split("-")[1]
-        self._dir_name = "models/{}/{}/".format(env_name, self._strategy)
+        self._dir_name = "models/3_3/{}/{}/".format(env_name, self._strategy) if dir_name is None else dir_name
 
         if self._strategy == "reward_model":
             self._r_model = RTable(observation_space["mdp"], action_space["mdp"], **kwargs["reward_model"])
@@ -484,13 +486,13 @@ class MonQDict(MonQCritic):
 
 class MonQNet(MonQCritic):
     def __int__(
-            self, env_name, q0, gamma, lr, on_policy, strategy, unseen_r_value, observation_space, action_space,
+            self, env_name, q0, gamma, lr, on_policy, strategy, unseen_r_value, observation_space, action_space, dir_name: str = None,
     ):
         MonQCritic.__init__(self, env_name, q0, gamma, lr, on_policy, strategy=strategy, unseen_r_value=unseen_r_value)
         self.replay_buffer = ReplayBuffer(observation_space.shape, action_space.shape)
         self.q_network = NeuralNetwork(observation_space.shape, action_space.n)
         self.transition = namedtuple("Transition", ("obs", "action", "next_obs", "reward"))
-        self._dir_name = "models/{}/{}/".format(env_name, self._strategy)
+        self._dir_name = "models/3_3/{}/{}/".format(env_name, self._strategy) if dir_name is None else dir_name
 
     def reset(self):
         self.q_network.reset()

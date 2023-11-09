@@ -55,7 +55,7 @@ BASELINES = {
     "zero_reward_neg": r"$Q_{\bot=-10}$",
     "zero_reward_pos": r"$Q_{\bot=1}$",
 }
-CELL_SIZE = (10, 10)
+CELL_SIZE = (3, 3)
 STATES = np.arange(int(CELL_SIZE[0] * CELL_SIZE[1]))
 SCALE = 0.25
 

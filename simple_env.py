@@ -4,7 +4,7 @@ import hydra
 import wandb
 from omegaconf import DictConfig, OmegaConf
 from src.utils import dict_to_id
-from src.wrappers.env_wrappers import TimeStepReward, TabularObservationsWrapper, WindowViewObs
+from src.wrappers.env_wrappers import TimeStepReward, TabularObservationsWrapper, WindowViewObs, StochasticAction
 from src.wrappers.monitor_wrappers import BinaryMonitor, StateMonitor
 from src.actor import MonEpsilonGreedyOneAction, MonStateEpsilonGreedy
 from src.critic import MonQTableOneAction, StateMonTable
@@ -20,11 +20,11 @@ from src.policy_analysis import (
 
 BASELINES = ["q_learning", "reward_model", "q_monitor_joint", "q_monitor_sequential", "q_mdp", "zero_reward_0"]
 ZERO_BASELINES = ["zero_reward_neg", "zero_reward_0", "zero_reward_pos"]
-EVAL = True
-LOG_DIR = "models/Penalty/reward_model/"
+EVAL = False
+LOG_DIR = "models/3_3/Penalty/reward_model/"
 
 
-@hydra.main(version_base=None, config_path="configs", config_name="penalty_env")
+@hydra.main(version_base=None, config_path="configs", config_name="default")
 def run_monitor(cfg: DictConfig) -> None:
     """Run Monitor Baseline on an env to train or evaluate"""
     group = cfg.environment.id + "\\" + dict_to_id(cfg.monitor)
@@ -42,17 +42,24 @@ def run_monitor(cfg: DictConfig) -> None:
     env_id = cfg["environment"]["id"]
     env = wrappe_env(env_id, train=not EVAL, monitor_wrapper=True, cfg=cfg)
 
+    train_dir = "models/3_3/" + env_id.split("/")[1].split("-")[1] + "/" + str(cfg.agent.critic.strategy) + "/"
+    # for hyper-parameters tuning
+    if cfg.agent.actor.init_eps != cfg.agent.actor.min_eps:
+        raise ValueError("eps should be fixed")
+    q_lr, reward_lr, eps = cfg.agent.critic.lr, cfg.agent.critic.reward_model.lr, cfg.agent.actor.init_eps
+    train_dir += "eps_{}/q_lr_{}/reward_lr_{}/".format(eps, q_lr, reward_lr)
+
     if env_id.split("/")[1].split("-")[1] == "Button":
-        critic = StateMonTable(env_id, env.observation_space, env.action_space, **cfg.agent.critic)
+        critic = StateMonTable(env_id, env.observation_space, env.action_space, train_dir, **cfg.agent.critic)
         actor = MonStateEpsilonGreedy(critic, train=not EVAL, **cfg.agent.actor)
     else:
-        critic = MonQTableOneAction(env_id, env.observation_space, env.action_space, **cfg.agent.critic)
+        critic = MonQTableOneAction(env_id, env.observation_space, env.action_space, train_dir, **cfg.agent.critic)
         actor = MonEpsilonGreedyOneAction(critic, train=not EVAL, **cfg.agent.actor)
-    train_dir = "models/" + env_id.split("/")[1].split("-")[1] + "/" + str(cfg.agent.critic.strategy) + "/"
+
     experiment = MonExperiment(env, actor, critic, log_dir=train_dir, **cfg.experiment)
     if EVAL:
         critic.load(LOG_DIR, seed=cfg.experiment.rng_seed)
-        _, _, _, _, _, _ = experiment.test(render=True, save_results=True)
+        _, _, _, _, _, _ = experiment.test(render=False, save_results=True)
         if LOG_DIR.split("/")[-2] in ["q_monitor_sequential", "q_monitor_joint"]:
             plot_mdp_mon_q_table_heatmap(log_dir=LOG_DIR, save_fig=True)
         else:
@@ -68,8 +75,9 @@ def wrappe_env(env_id: str, train: bool, monitor_wrapper: bool = False, cfg: Dic
     """Wrapper Simple/Fire/Button env in Monitor MDP or MDP"""
     env = gym.make(env_id, render_modes="human")
     # env = WindowViewObs(env, window_size=(3, 3), grid_size=(10, 10), image_obs=False)
-    env = TabularObservationsWrapper(env, grid_size=(10, 10))
+    env = TabularObservationsWrapper(env, grid_size=(3, 3))
     env = TimeStepReward(env, timestep_penalty=0.0, goal_reward=1, fire_reward=-10)
+    env = StochasticAction(env, random_prob=cfg.environment.random_action_prob)
     if monitor_wrapper:
         if train:
             full_monitor = cfg.agent.critic.strategy == "q_learning"
