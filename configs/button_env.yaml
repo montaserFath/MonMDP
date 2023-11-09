@@ -4,7 +4,8 @@ defaults:
   - _self_
 
 environment:
-  id: gym_monitor/TreasureHunt-Button-v1
+  id: gym_monitor/TreasureHunt-Button-v0
+  random_action_prob: 0.05
 
 wandb:
   mode: offline
