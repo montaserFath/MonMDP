@@ -62,7 +62,7 @@ class TabularObservationsWrapper(gym.ObservationWrapper):
 
 class StochasticAction(gym.ActionWrapper):
     """Add Stochastic to the action, with some probability take a random action"""
-    def __init__(self, env: gym.Env, random_prob: float = 0.05):
+    def __init__(self, env: gym.Env, random_prob: float = 0.0):
         # for discrete actions only for now
         super().__init__(env)
         if not isinstance(env.action_space, gym.spaces.Discrete):
