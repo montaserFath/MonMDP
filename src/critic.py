@@ -354,7 +354,7 @@ class MonQTableOneAction(MonQTable):
         else:
             np.save(self._dir_name + "/critic_q_table_{}.npy".format(seed), self._q_table)
         if self._r_model is not None:
-            self._r_model.save(self._dir_name)
+            self._r_model.save(self._dir_name, seed)
 
     def load(self, log_dir: str = None, seed: int = 1):
         """Load a q-table which saved as a numpy array"""
