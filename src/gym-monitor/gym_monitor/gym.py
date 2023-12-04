@@ -48,7 +48,7 @@ def register_envs():
         entry_point="gym_monitor.treasure_hunt:TreasureHunt",
         max_episode_steps=500,
         kwargs={
-            "grid": "10x10 penalty",
+            "grid": "9x9 penalty",
             "enable_map": False,
             "enable_quicksand": False,
             "init_agent_pos": (0, 0),
@@ -61,7 +61,7 @@ def register_envs():
         entry_point="gym_monitor.treasure_hunt:TreasureHunt",
         max_episode_steps=500,
         kwargs={
-            "grid": "10x10 button",
+            "grid": "9x9 button",
             "enable_map": False,
             "enable_quicksand": False,
             "init_agent_pos": (0, 0),
