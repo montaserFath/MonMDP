@@ -21,10 +21,10 @@ from src.policy_analysis import (
 BASELINES = ["q_learning", "reward_model", "q_monitor_joint", "q_monitor_sequential", "q_mdp", "zero_reward_0"]
 ZERO_BASELINES = ["zero_reward_neg", "zero_reward_0", "zero_reward_pos"]
 EVAL = False
-LOG_DIR = "models/3_3/Penalty/reward_model/"
+LOG_DIR = "models/9_9_aamas/Penalty/reward_model/"
 
 
-@hydra.main(version_base=None, config_path="configs", config_name="default")
+@hydra.main(version_base=None, config_path="configs", config_name="penalty_env")
 def run_monitor(cfg: DictConfig) -> None:
     """Run Monitor Baseline on an env to train or evaluate"""
     group = cfg.environment.id + "\\" + dict_to_id(cfg.monitor)
@@ -41,13 +41,13 @@ def run_monitor(cfg: DictConfig) -> None:
         )
     env_id = cfg["environment"]["id"]
     env = wrappe_env(env_id, train=not EVAL, monitor_wrapper=True, cfg=cfg)
-
-    train_dir = "models/3_3/" + env_id.split("/")[1].split("-")[1] + "/" + str(cfg.agent.critic.strategy) + "/"
-    # for hyper-parameters tuning
-    if cfg.agent.actor.init_eps != cfg.agent.actor.min_eps:
-        raise ValueError("eps should be fixed")
-    q_lr, reward_lr, eps = cfg.agent.critic.lr, cfg.agent.critic.reward_model.lr, cfg.agent.actor.init_eps
-    train_dir += "eps_{}/q_lr_{}/reward_lr_{}/".format(eps, q_lr, reward_lr)
+    env_size = "3_3" if env_id.split("/")[1].split("-")[-1] == "v0" else "9_9"  # TODO change this
+    train_dir = "models/" + env_size + "/" + env_id.split("/")[1].split("-")[1] + "/" + str(cfg.agent.critic.strategy) + "/"
+    # # for hyper-parameters tuning
+    # if cfg.agent.actor.init_eps != cfg.agent.actor.min_eps:
+    #     raise ValueError("eps should be fixed")
+    # q_lr, reward_lr, eps = cfg.agent.critic.lr, cfg.agent.critic.reward_model.lr, cfg.agent.actor.init_eps
+    # train_dir += "eps_{}/q_lr_{}/reward_lr_{}/".format(eps, q_lr, reward_lr)
 
     if env_id.split("/")[1].split("-")[1] == "Button":
         critic = StateMonTable(env_id, env.observation_space, env.action_space, train_dir, **cfg.agent.critic)
@@ -75,7 +75,8 @@ def wrappe_env(env_id: str, train: bool, monitor_wrapper: bool = False, cfg: Dic
     """Wrapper Simple/Fire/Button env in Monitor MDP or MDP"""
     env = gym.make(env_id, render_modes="human")
     # env = WindowViewObs(env, window_size=(3, 3), grid_size=(10, 10), image_obs=False)
-    env = TabularObservationsWrapper(env, grid_size=(3, 3))
+    grid_size = (3, 3) if env_id.split("/")[1].split("-")[-1] == "v0" else (9, 9)  # TODO change this
+    env = TabularObservationsWrapper(env, grid_size=grid_size)
     env = TimeStepReward(env, timestep_penalty=0.0, goal_reward=1, fire_reward=-10)
     env = StochasticAction(env, random_prob=cfg.environment.random_action_prob)
     if monitor_wrapper:
@@ -93,6 +94,7 @@ def wrappe_env(env_id: str, train: bool, monitor_wrapper: bool = False, cfg: Dic
 
 
 if __name__ == "__main__":
+    # plot_train_joint_reward_timesteps("Penalty", ["reward_model"], plot_mean=True, save_fig=True)
     # plot_train_joint_reward_timesteps("Button", BASELINES[:], plot_mean=True, save_fig=True)
     # plot_policy(BASELINES, "Penalty", save_fig=True)
     run_monitor()

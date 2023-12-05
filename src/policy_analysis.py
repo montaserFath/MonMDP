@@ -193,16 +193,20 @@ def plot_reward_table_heatmap(log_dir: str, save_fig: bool = False) -> None:
 
 # pylint: disable=too-many-locals
 def plot_policy_trajectory(
-        log_dir: str,
-        env_name: str,
-        traj_n: int = 1,
-        save_fig: bool = False,
+    log_dir: str,
+    env_name: str,
+    traj_n: int = 1,
+    save_fig: bool = False,
 ) -> None:
     """
     plot final actions actions as arrows in grid environment
     """
     if env_name not in [
-        "TreasureHunt-Simple-v0", "TreasureHunt-Penalty-v0", "TreasureHunt-Penalty-v1", "TreasureHunt-Button-v0", "TreasureHunt-Button-v1",
+        "TreasureHunt-Simple-v0",
+        "TreasureHunt-Penalty-v0",
+        "TreasureHunt-Penalty-v1",
+        "TreasureHunt-Button-v0",
+        "TreasureHunt-Button-v1",
     ]:
         raise NotImplemented
 
@@ -299,10 +303,10 @@ def plot_policy(baselines: list, env_id: str, save_fig: bool = False) -> None:
 
 # pylint: disable=too-many-locals
 def get_policy_states_actions(
-        env_id: str,
-        baseline: str,
-        q_table: np.ndarray,
-        mdp_q_table: np.ndarray = None,
+    env_id: str,
+    baseline: str,
+    q_table: np.ndarray,
+    mdp_q_table: np.ndarray = None,
 ) -> (np.ndarray, np.ndarray):
     """Get policy actions for each state from the q-table"""
     n_states = int(CELL_SIZE[0] * CELL_SIZE[1])
@@ -423,12 +427,12 @@ def plot_arrows(env_id: str, states: np.ndarray, actions: np.ndarray, shift_arro
 
 # pylint: disable=too-many-arguments, too-many-locals
 def plot_env_actions(
-        env_id: str,
-        states,
-        actions,
-        legend: bool = False,
-        plot_both: bool = False,
-        boarder_color: str = "black",
+    env_id: str,
+    states,
+    actions,
+    legend: bool = False,
+    plot_both: bool = False,
+    boarder_color: str = "black",
 ):
     """Plot Simple, Penalty, and Button env in grid world"""
     # load images
@@ -488,14 +492,50 @@ def plot_env_actions(
     return fig
 
 
+def plot_policy_reward(
+        fig,
+        joint_reward: list,
+        timesteps_freq: int = 10000,
+        label: str = None,
+        color: str = "r",
+        alpha: float = 1.0,
+):
+    """Plot joint training reward Vs timesteps for a single policy with different seeds"""
+    n_seeds = len(joint_reward)
+    all_y_axis = []
+    for seed in range(n_seeds):
+        ep_reward, ep_length = discount_episode_reward(joint_reward[seed])
+        ep_timesteps_sum = sum_ep_timesteps(ep_length)
+        x_axis = np.arange(ep_length[0], int(ep_timesteps_sum[-1]), timesteps_freq)
+
+        y_axis = np.ones(len(x_axis))
+        count = 0
+        for timestep in range(int(ep_length[0]), int(ep_timesteps_sum[-1]) + 1, timesteps_freq):
+            if timestep > N_TRAIN_TIMESTEPS:
+                break
+            y_axis[count] = ep_reward[np.where(ep_timesteps_sum > timestep)[0][0]]
+            count += 1
+        y_axis[-1] = y_axis[-2]
+        all_y_axis.append(y_axis)
+
+    min_len = np.min([len(i) for i in all_y_axis])
+    all_y_axis = np.array([i[:min_len] for i in all_y_axis]).reshape(n_seeds, min_len)
+    x_axis = x_axis[:min_len]
+    mean_reward = np.mean(np.array(all_y_axis), 0)
+    confi_reward = calculate_confidence_interval(np.array(all_y_axis))
+    plt.plot(x_axis, mean_reward, lw=2, c=color, alpha=alpha, label=label)
+    plt.errorbar(x_axis, mean_reward, yerr=confi_reward, elinewidth=1, capsize=2, c=color, alpha=alpha)
+    return fig
+
+
 # pylint: disable=too-many-arguments, too-many-locals
 def plot_train_joint_reward_timesteps(
-        env_id: str,
-        baselines: list,
-        n_seeds: int = 30,
-        timesteps_freq: int = 10000,
-        plot_mean: bool = False,
-        save_fig: bool = False,
+    env_id: str,
+    baselines: list,
+    n_seeds: int = 30,
+    timesteps_freq: int = 10000,
+    plot_mean: bool = False,
+    save_fig: bool = False,
 ) -> None:
     """Plot joint reward Vs number of timesteps with different random seeds"""
     fig = plt.figure(figsize=(7, 4))

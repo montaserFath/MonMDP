@@ -88,13 +88,14 @@ class QTable(QCritic):
         self._n_actions = action_space.n
         self._q_table = None
         if env_name is not None:
-            self._dir_name = "models/3_3/{}/q_learning/".format(env_name.split("-")[1]) if dir_name is None else dir_name
+            self.env_size = "3_3" if env_name.split("/")[1].split("-")[-1] == "v0" else "9_9"  # TODO change this
+            self._dir_name = "models/{}/{}/q_learning/".format(self.env_size, env_name.split("-")[1]) if dir_name is None else dir_name
         self.reset()
 
     def __call__(self, state, action=None):
         state = state.item() if isinstance(state, np.ndarray) else state
         if action is None:
-            return self._q_table[state]
+                return self._q_table[state]
         return self._q_table[state][action]
 
     def _update(self, state, action, new_value):
@@ -270,8 +271,9 @@ class MonQTable(MonQCritic):
         self._n_mon_states = observation_space["monitor"].n
         self._n_mon_actions = action_space["monitor"].n
         self._q_table = None
+        self.env_size = "3_3" if env_name.split("/")[1].split("-")[-1] == "v0" else "9_9"  # TODO change this
         env_name = self._env_name.split("/")[1].split("-")[1]
-        self._dir_name = "models/3_3/{}/{}/".format(env_name, self._strategy) if dir_name is None else dir_name
+        self._dir_name = "models/{}/{}/{}/".format(self.env_size, env_name, self._strategy) if dir_name is None else dir_name
 
         if self._strategy == "reward_model":
             self._r_model = RTable(observation_space["mdp"], action_space["mdp"], **kwargs["reward_model"])
@@ -492,7 +494,8 @@ class MonQNet(MonQCritic):
         self.replay_buffer = ReplayBuffer(observation_space.shape, action_space.shape)
         self.q_network = NeuralNetwork(observation_space.shape, action_space.n)
         self.transition = namedtuple("Transition", ("obs", "action", "next_obs", "reward"))
-        self._dir_name = "models/3_3/{}/{}/".format(env_name, self._strategy) if dir_name is None else dir_name
+        env_size = "3_3" if env_name.split("/")[1].split("-")[-1] == "v0" else "9_9"  # TODO change this
+        self._dir_name = "models/{}/{}/{}/".format(env_size, env_name, self._strategy) if dir_name is None else dir_name
 
     def reset(self):
         self.q_network.reset()
