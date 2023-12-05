@@ -5,7 +5,7 @@ defaults:
 
 environment:
   id: gym_monitor/TreasureHunt-Penalty-v1
-  random_action_prob: 0.05
+  random_action_prob: 0.1
 
 wandb:
   mode: offline
@@ -14,7 +14,7 @@ wandb:
 
 experiment:
   training_timesteps: 250000
-  testing_timesteps: 100
+  testing_timesteps: 501
   testing_frequency: 10000
   rng_seed: 1
   save_log: True

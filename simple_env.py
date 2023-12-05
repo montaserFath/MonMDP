@@ -24,7 +24,7 @@ EVAL = False
 LOG_DIR = "models/9_9_aamas/Penalty/reward_model/"
 
 
-@hydra.main(version_base=None, config_path="configs", config_name="penalty_env")
+@hydra.main(version_base=None, config_path="configs", config_name="default")
 def run_monitor(cfg: DictConfig) -> None:
     """Run Monitor Baseline on an env to train or evaluate"""
     group = cfg.environment.id + "\\" + dict_to_id(cfg.monitor)
@@ -43,11 +43,11 @@ def run_monitor(cfg: DictConfig) -> None:
     env = wrappe_env(env_id, train=not EVAL, monitor_wrapper=True, cfg=cfg)
     env_size = "3_3" if env_id.split("/")[1].split("-")[-1] == "v0" else "9_9"  # TODO change this
     train_dir = "models/" + env_size + "/" + env_id.split("/")[1].split("-")[1] + "/" + str(cfg.agent.critic.strategy) + "/"
-    # # for hyper-parameters tuning
-    # if cfg.agent.actor.init_eps != cfg.agent.actor.min_eps:
-    #     raise ValueError("eps should be fixed")
-    # q_lr, reward_lr, eps = cfg.agent.critic.lr, cfg.agent.critic.reward_model.lr, cfg.agent.actor.init_eps
-    # train_dir += "eps_{}/q_lr_{}/reward_lr_{}/".format(eps, q_lr, reward_lr)
+    # for hyper-parameters tuning
+    if cfg.agent.actor.init_eps != cfg.agent.actor.min_eps:
+        raise ValueError("eps should be fixed")
+    q_lr, reward_lr, eps = cfg.agent.critic.lr, cfg.agent.critic.reward_model.lr, cfg.agent.actor.init_eps
+    train_dir += "eps_{}/q_lr_{}/reward_lr_{}/".format(eps, q_lr, reward_lr)
 
     if env_id.split("/")[1].split("-")[1] == "Button":
         critic = StateMonTable(env_id, env.observation_space, env.action_space, train_dir, **cfg.agent.critic)
