@@ -42,6 +42,7 @@ def run_monitor(cfg: DictConfig) -> None:
     env_id = cfg["environment"]["id"]
     env = wrappe_env(env_id, train=not EVAL, monitor_wrapper=True, cfg=cfg)
     env_size = "3_3" if env_id.split("/")[1].split("-")[-1] == "v0" else "9_9"  # TODO change this
+    grid_size = (3, 3) if env_id.split("/")[1].split("-")[-1] == "v0" else (9, 9)  # TODO change this
     train_dir = "models/" + env_size + "/" + env_id.split("/")[1].split("-")[1] + "/" + str(cfg.agent.critic.strategy) + "/"
     # for hyper-parameters tuning
     # if cfg.agent.actor.init_eps != cfg.agent.actor.min_eps:
@@ -58,15 +59,16 @@ def run_monitor(cfg: DictConfig) -> None:
 
     experiment = MonExperiment(env, actor, critic, log_dir=LOG_DIR if EVAL else train_dir, **cfg.experiment)
     if EVAL:
-        critic.load(LOG_DIR, seed=cfg.experiment.rng_seed)
-        _, _, _, _, _, _ = experiment.test(render=False, save_results=True)
-        if LOG_DIR.split("/")[3] in ["q_monitor_sequential", "q_monitor_joint"]:
-            plot_mdp_mon_q_table_heatmap(log_dir=LOG_DIR, save_fig=True)
-        else:
-            plot_q_table_heatmap(log_dir=LOG_DIR, save_fig=True)
-        if "reward_model" in LOG_DIR:
-            plot_reward_table_heatmap(log_dir=LOG_DIR, save_fig=True)
-        plot_policy_trajectory(log_dir=LOG_DIR, env_name=env_id.split("/")[1], save_fig=True)
+        for seed in range(30):
+            critic.load(LOG_DIR, seed=seed)
+            _, _, _, _, _, _ = experiment.test(render=False, seed=seed, save_results=True)
+            if LOG_DIR.split("/")[3] in ["q_monitor_sequential", "q_monitor_joint"]:
+                plot_mdp_mon_q_table_heatmap(log_dir=LOG_DIR, save_fig=True)
+            else:
+                plot_q_table_heatmap(log_dir=LOG_DIR, grid_size=grid_size, seed=seed, save_fig=True)
+            if "reward_model" in LOG_DIR:
+                plot_reward_table_heatmap(log_dir=LOG_DIR, save_fig=True)
+            plot_policy_trajectory(log_dir=LOG_DIR, env_name=env_id.split("/")[1], seed=seed, save_fig=True)
     else:
         experiment.train()
 

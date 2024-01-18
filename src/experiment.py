@@ -209,7 +209,7 @@ class MonExperiment(Experiment):
         wandb.finish()
         self._env.close()
 
-    def test(self, render: bool = False, save_results: bool = False):
+    def test(self, render: bool = False, seed: int = 1, save_results: bool = False):
         """Evaluate an algorithm in Monitor MDP env, logs and save results"""
         episode_return_true = []
         episode_return_proxy = []
@@ -265,7 +265,7 @@ class MonExperiment(Experiment):
             }
             episode += 1
         if save_results:
-            np.save(self._log_dir + "/trajectories_{}.npy".format(self._rng_seed), trajectories)
+            np.save(self._log_dir + "/trajectories_{}.npy".format(seed), trajectories)
         return (
             np.array(episode_return_true),
             np.array(episode_return_proxy),

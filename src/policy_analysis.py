@@ -77,9 +77,10 @@ COLORS, _ = set_blind_colors()
 ALPHAS = [1.0, 1.0, 0.4, 0.6, 1.0, 1.0]  # np.ones(len(COLORS))
 
 
-def plot_q_table_heatmap(log_dir: str, save_fig: bool = False) -> None:
+def plot_q_table_heatmap(log_dir: str, grid_size: tuple = (3, 3), seed: int = 1, save_fig: bool = False) -> None:
     """Plot Monitor Q-Table for values as a heatmap"""
-    q_table = np.round(np.load(log_dir + "/critic_q_table_1.npy"), 2)
+    q_table = np.load(log_dir + "/critic_q_table_{}.npy".format(seed))
+    n_states = int(grid_size[0] * grid_size[1])
     y_sticks = JOINT_STATES if q_table.shape[0] == 18 else np.arange(q_table.shape[0])
 
     fig = plt.figure(figsize=(7 if n_states == 9 else 100, 8 if len(y_sticks) == 18 else 5))
@@ -98,7 +99,7 @@ def plot_q_table_heatmap(log_dir: str, save_fig: bool = False) -> None:
     axis.set_yticklabels(y_sticks, fontsize=10 if len(y_sticks) == 18 else 13)
     plt.tight_layout()
     if save_fig:
-        fig.savefig(log_dir + "/q_table_heatmap.pdf", dpi=300)
+        fig.savefig(log_dir + "/q_table_heatmap_seed_{}.pdf".format(seed), dpi=300)
 
 
 def plot_mdp_mon_q_table_heatmap(log_dir: str, seed: int = 1, grid_size: tuple = (3, 3), save_fig: bool = False) -> None:
