@@ -14,7 +14,7 @@ wandb:
 
 experiment:
   training_timesteps: 250000
-  testing_timesteps: 100
+  testing_timesteps: 502
   testing_frequency: 10000
   rng_seed: 1
   save_log: True

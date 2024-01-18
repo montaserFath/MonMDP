@@ -20,11 +20,11 @@ from src.policy_analysis import (
 
 BASELINES = ["q_learning", "reward_model", "q_monitor_joint", "q_monitor_sequential", "q_mdp", "zero_reward_0"]
 ZERO_BASELINES = ["zero_reward_neg", "zero_reward_0", "zero_reward_pos"]
-EVAL = False
-LOG_DIR = "models/9_9_aamas/Penalty/reward_model/"
+EVAL = True
+LOG_DIR = "models/9_9/Penalty/reward_model/env_0.0/eps_1.0_25m/q_lr_0.1/reward_lr_0.1/"
 
 
-@hydra.main(version_base=None, config_path="configs", config_name="default")
+@hydra.main(version_base=None, config_path="configs", config_name="penalty_env")
 def run_monitor(cfg: DictConfig) -> None:
     """Run Monitor Baseline on an env to train or evaluate"""
     group = cfg.environment.id + "\\" + dict_to_id(cfg.monitor)
@@ -44,23 +44,23 @@ def run_monitor(cfg: DictConfig) -> None:
     env_size = "3_3" if env_id.split("/")[1].split("-")[-1] == "v0" else "9_9"  # TODO change this
     train_dir = "models/" + env_size + "/" + env_id.split("/")[1].split("-")[1] + "/" + str(cfg.agent.critic.strategy) + "/"
     # for hyper-parameters tuning
-    if cfg.agent.actor.init_eps != cfg.agent.actor.min_eps:
-        raise ValueError("eps should be fixed")
-    q_lr, reward_lr, eps = cfg.agent.critic.lr, cfg.agent.critic.reward_model.lr, cfg.agent.actor.init_eps
-    train_dir += "eps_{}/q_lr_{}/reward_lr_{}/".format(eps, q_lr, reward_lr)
+    # if cfg.agent.actor.init_eps != cfg.agent.actor.min_eps:
+    #     raise ValueError("eps should be fixed")
+    # q_lr, reward_lr, eps = cfg.agent.critic.lr, cfg.agent.critic.reward_model.lr, cfg.agent.actor.init_eps
+    # train_dir += "eps_{}/q_lr_{}/reward_lr_{}/".format(eps, q_lr, reward_lr)
 
-    if env_id.split("/")[1].split("-")[1] == "Button":
+    if env_id.split("/")[1].split("-")[2] == "Button":
         critic = StateMonTable(env_id, env.observation_space, env.action_space, train_dir, **cfg.agent.critic)
         actor = MonStateEpsilonGreedy(critic, train=not EVAL, **cfg.agent.actor)
     else:
         critic = MonQTableOneAction(env_id, env.observation_space, env.action_space, train_dir, **cfg.agent.critic)
         actor = MonEpsilonGreedyOneAction(critic, train=not EVAL, **cfg.agent.actor)
 
-    experiment = MonExperiment(env, actor, critic, log_dir=train_dir, **cfg.experiment)
+    experiment = MonExperiment(env, actor, critic, log_dir=LOG_DIR if EVAL else train_dir, **cfg.experiment)
     if EVAL:
         critic.load(LOG_DIR, seed=cfg.experiment.rng_seed)
         _, _, _, _, _, _ = experiment.test(render=False, save_results=True)
-        if LOG_DIR.split("/")[-2] in ["q_monitor_sequential", "q_monitor_joint"]:
+        if LOG_DIR.split("/")[3] in ["q_monitor_sequential", "q_monitor_joint"]:
             plot_mdp_mon_q_table_heatmap(log_dir=LOG_DIR, save_fig=True)
         else:
             plot_q_table_heatmap(log_dir=LOG_DIR, save_fig=True)
@@ -78,12 +78,13 @@ def wrappe_env(env_id: str, train: bool, monitor_wrapper: bool = False, cfg: Dic
     grid_size = (3, 3) if env_id.split("/")[1].split("-")[-1] == "v0" else (9, 9)  # TODO change this
     env = TabularObservationsWrapper(env, grid_size=grid_size)
     env = TimeStepReward(env, timestep_penalty=0.0, goal_reward=1, fire_reward=-10)
-    env = StochasticAction(env, random_prob=cfg.environment.random_action_prob)
+    env_random = cfg.environment.random_action_prob if not EVAL else float(LOG_DIR.split("/")[4].split("_")[-1])
+    env = StochasticAction(env, random_prob=env_random)
     if monitor_wrapper:
         if train:
             full_monitor = cfg.agent.critic.strategy == "q_learning"
         else:
-            full_monitor = LOG_DIR.split("/")[-2] == "q_learning"
+            full_monitor = LOG_DIR.split("/")[3] == "q_learning"
         if env_id.split("/")[1].split("-")[1] == "Button":
             if cfg.monitor.id != "StateMonitor":
                 raise ValueError("For Button env the Monitor should be StateMonitor")

@@ -7,7 +7,7 @@ import scipy
 import seaborn as sns
 
 
-ARROWS = {0: (-1.5, 0), 1: (0, -1.5), 2: (1.5, 0), 3: (0, 1.5)}
+ARROWS = {0: (-1.5, 0), 1: (0, -1.5), 2: (1.5, 0), 3: (0, 1.5), 4: (-1.5, 1.5)}
 JOINT_STATES = [
     "(0,0)",
     "(1,0)",
@@ -82,14 +82,14 @@ def plot_q_table_heatmap(log_dir: str, save_fig: bool = False) -> None:
     q_table = np.round(np.load(log_dir + "/critic_q_table_1.npy"), 2)
     y_sticks = JOINT_STATES if q_table.shape[0] == 18 else np.arange(q_table.shape[0])
 
-    fig = plt.figure(figsize=(7, 8 if len(y_sticks) == 18 else 5))
+    fig = plt.figure(figsize=(7 if n_states == 9 else 100, 8 if len(y_sticks) == 18 else 5))
     axis = sns.heatmap(
         q_table,
         cmap="crest",
         annot=True,
         linewidth=0.1,
         fmt="g",
-        annot_kws={"fontsize": 12},
+        annot_kws={"fontsize": 12 if n_states == 9 else 3},
     )
     axis.set_xlabel("Actions", fontsize=15)
     axis.set_ylabel("States", fontsize=15)
@@ -101,12 +101,12 @@ def plot_q_table_heatmap(log_dir: str, save_fig: bool = False) -> None:
         fig.savefig(log_dir + "/q_table_heatmap.pdf", dpi=300)
 
 
-def plot_mdp_mon_q_table_heatmap(log_dir: str, save_fig: bool = False) -> None:
+def plot_mdp_mon_q_table_heatmap(log_dir: str, seed: int = 1, grid_size: tuple = (3, 3), save_fig: bool = False) -> None:
     """Plot MDP and Monitor Q-Tables values as a heatmap"""
-    n_states = int(CELL_SIZE[0] * CELL_SIZE[1])
+    n_states = int(grid_size[0] * grid_size[1])
     n_actions = 4
-    mdp_q_table = np.round(np.load(log_dir + "/mdp_q_table_1.npy"), 2)
-    mon_q_table = np.round(np.load(log_dir + "/monitor_q_table_1.npy"), 2)
+    mdp_q_table = np.round(np.load(log_dir + "/mdp_q_table_{}.npy".format(seed)), 2)
+    mon_q_table = np.round(np.load(log_dir + "/monitor_q_table_{}.npy".format(seed)), 2)
     y_sticks = JOINT_STATES if mon_q_table.shape[0] == 2 * n_states else np.arange(mon_q_table.shape[0])
 
     fig = plt.figure(figsize=(4, 5))
@@ -165,15 +165,15 @@ def plot_mdp_mon_q_table_heatmap(log_dir: str, save_fig: bool = False) -> None:
     axis_2.set_yticklabels(y_sticks, fontsize=10 if len(y_sticks) == 2 * n_states else 13)
     fig_2.tight_layout()
     if save_fig:
-        fig.savefig(log_dir + "/mdp_q_table_heatmap.pdf", dpi=300)
-        fig_1.savefig(log_dir + "/monitor_q_table_heatmap.pdf", dpi=300)
-        fig_2.savefig(log_dir + "/combined_q_table_heatmap.pdf", dpi=300)
+        fig.savefig(log_dir + "/mdp_q_table_heatmap_{}.pdf".format(seed), dpi=300)
+        fig_1.savefig(log_dir + "/monitor_q_table_heatmap_{}.pdf".format(seed), dpi=300)
+        fig_2.savefig(log_dir + "/combined_q_table_heatmap_{}.pdf".format(seed), dpi=300)
 
 
-def plot_reward_table_heatmap(log_dir: str, save_fig: bool = False) -> None:
+def plot_reward_table_heatmap(log_dir: str, seed: int = 1, save_fig: bool = False) -> None:
     """Plot Predictive reward table values as a heatmap"""
     fig = plt.figure(figsize=(4, 5))
-    r_table = np.round(np.load(log_dir + "/reward_model_table_1.npy"), 2)
+    r_table = np.round(np.load(log_dir + "/reward_model_table_{}.npy".format(seed)), 2)
     ax_r = sns.heatmap(
         r_table,
         cmap="crest",
@@ -185,10 +185,10 @@ def plot_reward_table_heatmap(log_dir: str, save_fig: bool = False) -> None:
     ax_r.set_xlabel("Actions", fontsize=15)
     ax_r.set_ylabel("States", fontsize=15)
     ax_r.set_xticklabels(MDP_ACTIONS, fontsize=15)
-    # ax_r.set_yticklabels(np.arange(r_table.shape[0]), fontsize=15 if CELL_SIZE == (3, 3) else 5)
+    # ax_r.set_yticklabels(np.arange(r_table.shape[0]), fontsize=15 if grid_size == (3, 3) else 5)
     fig.tight_layout()
     if save_fig:
-        fig.savefig(log_dir + "/predictive_reward_table_heatmap.pdf", dpi=300)
+        fig.savefig(log_dir + "/predictive_reward_table_heatmap_{}.pdf".format(seed), dpi=300)
 
 
 # pylint: disable=too-many-locals
@@ -197,6 +197,7 @@ def plot_policy_trajectory(
     env_name: str,
     traj_n: int = 1,
     save_fig: bool = False,
+    seed: int = 1,
 ) -> None:
     """
     plot final actions actions as arrows in grid environment
@@ -209,10 +210,10 @@ def plot_policy_trajectory(
         "TreasureHunt-Button-v1",
     ]:
         raise NotImplemented
-
+    grid_size = (3, 3) if env_name.split("-")[-1] == "v0" else (9, 9)
     monitor_on_ind, monitor_off_ind = None, None
-    traj = np.load(log_dir + "/trajectories.npy", allow_pickle=True)[()]
-    if env_name == "TreasureHunt-Button-v0":
+    traj = np.load(log_dir + "/trajectories_{}.npy".format(seed), allow_pickle=True)[()]
+    if env_name in ["TreasureHunt-Button-v0", "TreasureHunt-Button-v1"]:
         while monitor_on_ind is None:
             for i in range(len(traj.keys())):
                 if traj[i]["states"][0, 1] == 1:
@@ -232,24 +233,24 @@ def plot_policy_trajectory(
         )
     else:
         states, actions = traj[traj_n]["states"], traj[traj_n]["actions"]
-        boarder_color = "r" if log_dir.split("/")[2] in ["q_mdp", "zero_reward", "zero_reward_0"] else "green"
-        fig = plot_env_actions(env_name.split("-")[1], states, actions, boarder_color=boarder_color)
+        boarder_color = "r" if log_dir.split("/")[3] in ["q_mdp", "zero_reward", "zero_reward_0"] else "green"
+        fig = plot_env_actions(env_name.split("-")[1], states, actions, grid_size=grid_size, boarder_color=boarder_color)
     if save_fig:
-        fig.savefig(log_dir + "/final_policy_performance.pdf", dpi=300)
+        fig.savefig(log_dir + "/final_policy_performance_{}.pdf".format(seed), dpi=300)
 
 
 # pylint: disable=too-many-locals
-def plot_policy_button(baselines: list, save_fig: bool = False) -> None:
+def plot_policy_button(baselines: list, seed: int = 1, grid_size: tuple = (3, 3), save_fig: bool = False) -> None:
     """Plot policy actions for each state in the button environment"""
-    n_states = int(CELL_SIZE[0] * CELL_SIZE[1])
+    n_states = int(grid_size[0] * grid_size[1])
     for base in baselines:
         boarder_color = "green" if base == "reward_model" else "r"
         mdp_q_table = None
         if base in ["q_monitor_sequential", "q_monitor_joint"]:
-            mdp_q_table = np.load("models/Button/{}/mdp_q_table_1.npy".format(base))
-            q_table = np.load("models/Button/{}/monitor_q_table_1.npy".format(base))
+            mdp_q_table = np.load("models/Button/{}/mdp_q_table_{}.npy".format(base, seed))
+            q_table = np.load("models/Button/{}/monitor_q_table_{}.npy".format(base, seed))
         else:
-            q_table = np.load("models/Button/{}/critic_q_table_1.npy".format(base))
+            q_table = np.load("models/Button/{}/critic_q_table_{}.npy".format(base, seed))
         states = np.zeros((2 * n_states, 2))
         states[:n_states, 0], states[n_states:, 0] = np.arange(n_states), np.arange(n_states)
         states[n_states:, 1] = 1
@@ -279,10 +280,10 @@ def plot_policy_button(baselines: list, save_fig: bool = False) -> None:
             boarder_color=boarder_color,
         )
         if save_fig:
-            fig.savefig("models/Button/{}/policy_actions.pdf".format(base), dpi=300)
+            fig.savefig("models/Button/{}/policy_actions_{}.pdf".format(base, seed), dpi=300)
 
 
-def plot_policy(baselines: list, env_id: str, save_fig: bool = False) -> None:
+def plot_policy(baselines: list, env_id: str, seed: int = 1, save_fig: bool = False) -> None:
     """Plot policy actions for each state for Simple and Penalty environments"""
     if env_id == "Button":
         plot_policy_button(baselines, save_fig=save_fig)
@@ -290,15 +291,15 @@ def plot_policy(baselines: list, env_id: str, save_fig: bool = False) -> None:
         for base in baselines:
             mdp_q_table = None
             if base in ["q_monitor_sequential", "q_monitor_joint"]:
-                mdp_q_table = np.load("models/{}/{}/mdp_q_table_1.npy".format(env_id, base))
-                q_table = np.load("models/{}/{}/monitor_q_table_1.npy".format(env_id, base))
+                mdp_q_table = np.load("models/{}/{}/mdp_q_table_{}.npy".format(env_id, base, seed))
+                q_table = np.load("models/{}/{}/monitor_q_table_{}.npy".format(env_id, base, seed))
             else:
-                q_table = np.load("models/{}/{}/critic_q_table_1.npy".format(env_id, base))
+                q_table = np.load("models/{}/{}/critic_q_table_{}.npy".format(env_id, base, seed))
             policy_states, policy_actions = get_policy_states_actions(env_id, base, q_table, mdp_q_table)
             boarder_color = "r" if base in ["q_mdp", "zero_reward", "zero_reward_0"] else "green"
             fig = plot_env_actions(env_id, policy_states, policy_actions, boarder_color=boarder_color)
             if save_fig:
-                fig.savefig("models/{}/{}/policy_actions.pdf".format(env_id, base), dpi=300)
+                fig.savefig("models/{}/{}/policy_actions_{}.pdf".format(env_id, base, seed), dpi=300)
 
 
 # pylint: disable=too-many-locals
@@ -307,9 +308,10 @@ def get_policy_states_actions(
     baseline: str,
     q_table: np.ndarray,
     mdp_q_table: np.ndarray = None,
+    grid_size: tuple = (3, 3),
 ) -> (np.ndarray, np.ndarray):
     """Get policy actions for each state from the q-table"""
-    n_states = int(CELL_SIZE[0] * CELL_SIZE[1])
+    n_states = int(grid_size[0] * grid_size[1])
     n_actions = 4
     if env_id == "Button":
         states = np.zeros((n_states * 2, 2))
@@ -323,13 +325,19 @@ def get_policy_states_actions(
     for i in range(states.shape[0]):
         state = get_state_ind(states[i], n_states) if isinstance(states[i], np.ndarray) else states[i]
         if q_table.shape[1] == n_actions:
-            mdp_action = np.argmax(q_table[state])
+            mdp_action = 4 if (q_table[state] == q_table[state, 0]).all() else np.argmax(q_table[state])
             mon_action = 0
         else:
             if mdp_q_table is None:
-                mdp_action, mon_action = ind_to_action(np.argmax(q_table[state]))
+                if (q_table[state, : 4] == q_table[state, 0]).all():
+                    # print(q_table[state])
+                    mdp_action, mon_action = 4, 0
+                elif (q_table[state, 4:] == q_table[state, -1]).all():
+                    mdp_action, mon_action = 4, 1
+                else:
+                    mdp_action, mon_action = ind_to_action(np.argmax(q_table[state]))
             else:
-                mdp_action = np.argmax(mdp_q_table[state])
+                mdp_action = 4 if (mdp_q_table[state] == mdp_q_table[state, 0]).all() else np.argmax(mdp_q_table[state])
                 if baseline == "q_monitor_sequential":
                     off_q, on_q = (
                         q_table[state, mdp_action],
@@ -392,16 +400,16 @@ def sum_ep_timesteps(ep_timesteps: np.ndarray) -> np.ndarray:
     return sum_timesteps
 
 
-def plot_arrows(env_id: str, states: np.ndarray, actions: np.ndarray, shift_arrow: int) -> None:
+def plot_arrows(env_id: str, states: np.ndarray, actions: np.ndarray, shift_arrow: int, grid_size: tuple = (3, 3)) -> None:
     """Plot arrows in env"""
     arrows_shift = shift_arrow * 0.2
     for i, state_i in enumerate(states):
         x_shift, y_shift = 0, 0
         state = state_i[0] if isinstance(states[i], np.ndarray) else state_i
-        if state == 2:  # skip the goal state
+        if state == grid_size[0] - 1:  # skip the goal state
             continue
-        pos = np.array([state // CELL_SIZE[0], state % CELL_SIZE[0]])  # MDP state
-        pos[0] = np.abs(pos[0] - CELL_SIZE[0] + 1)
+        pos = np.array([state // grid_size[0], state % grid_size[0]])  # MDP state
+        pos[0] = np.abs(pos[0] - grid_size[0] + 1)
         if shift_arrow != 0:
             if actions[i, 0] in [0, 2]:  # left and right MDP actions
                 x_shift = arrows_shift
@@ -425,71 +433,137 @@ def plot_arrows(env_id: str, states: np.ndarray, actions: np.ndarray, shift_arro
         )
 
 
-# pylint: disable=too-many-arguments, too-many-locals
+def plot_env(env_id: str, grid_size: tuple = (3, 3), legend: bool = False, boarder_color: str = "black"):
+    shift = 0.25 * 2
+    # objects index in the grid
+    fire_idx = grid_size[0] * np.arange(grid_size[0] - 1) + grid_size[0] // 2
+
+    fig = plt.figure(figsize=grid_size)
+    ax = fig.add_subplot(111)
+    # plot vertical and horizental lines divide the grid
+    plt.hlines(np.arange(grid_size[1] + 1) - shift, -shift, grid_size[0] - shift, color="black")
+    plt.vlines(np.arange(grid_size[0] + 1) - shift, -shift, grid_size[1] - shift, color="black")
+
+    # outboard color
+    if boarder_color != "black":
+        plt.hlines(-shift, -shift, grid_size[0] - shift + 1, lw=7, color=boarder_color)
+        plt.hlines(grid_size[1] - shift, -shift, grid_size[0] - shift + 1, lw=7, color=boarder_color)
+        plt.vlines(-shift, -shift, CELL_SIZE[1] - shift, lw=7, color=boarder_color)
+        plt.vlines(grid_size[0] - shift, -shift, grid_size[1] - shift, lw=7, color=boarder_color)
+
+    if legend:
+        mon_off = matplotlib.patches.Patch(color="r", label="Monitor Off")
+        mon_on = matplotlib.patches.Patch(color="b", label="Monitor On")
+        plt.legend(handles=[mon_off, mon_on], fontsize=12, loc=(grid_size[0] / 30, 1.01), ncol=2)
+
+    agent_cell = matplotlib.patches.Rectangle((-shift, grid_size[0] - shift - 1), 1, 1, color="blue", alpha=0.5)
+    ax.add_patch(agent_cell)
+    goal_cell = matplotlib.patches.Rectangle((grid_size[0] - shift - 1, grid_size[0] - shift - 1), 1, 1, color="green", alpha=0.5)
+    ax.add_patch(goal_cell)
+
+    if env_id in ["Penalty", "Button"]:
+        for idx in fire_idx:
+            x_idx, y_idx = idx // grid_size[0], idx % grid_size[0]
+            penalty_cell = matplotlib.patches.Rectangle((grid_size[0] - shift - y_idx - 1, x_idx - shift + 1), 1, 1, color="red", alpha=0.5)
+            ax.add_patch(penalty_cell)
+    if env_id == "Button":
+        button_cell = matplotlib.patches.Rectangle((grid_size[0] - shift - 1, - shift), 1, 0.5, color="y")
+        ax.add_patch(button_cell)
+    plt.xlim(-shift, grid_size[0] - shift)
+    plt.ylim(-shift, grid_size[1] - shift)
+    plt.axis("off")
+    # fig.tight_layout()
+    # plt.show()
+    return fig
+
+
 def plot_env_actions(
     env_id: str,
     states,
     actions,
+    grid_size: tuple = (3, 3),
     legend: bool = False,
     plot_both: bool = False,
     boarder_color: str = "black",
 ):
     """Plot Simple, Penalty, and Button env in grid world"""
-    # load images
-    fire_img = plt.imread("img/fire_img.png")
-    agent_img = plt.imread("img/agent_img.png")
-    gold_img = plt.imread("img/gold_img.png")
-    button_img = plt.imread("img/button_img.png")
-    shift = SCALE * 2
-    fig = plt.figure(figsize=CELL_SIZE)
-    plt.hlines(np.arange(CELL_SIZE[1] + 1) - shift, -shift, CELL_SIZE[0] - shift, color="black")
-    plt.vlines(np.arange(CELL_SIZE[0] + 1) - shift, -shift, CELL_SIZE[1] - shift, color="black")
-
-    # outboard color
-    if boarder_color != "black":
-        plt.hlines(-shift, -shift, CELL_SIZE[0] - shift + 1, lw=7, color=boarder_color)
-        plt.hlines(CELL_SIZE[1] - shift, -shift, CELL_SIZE[0] - shift + 1, lw=7, color=boarder_color)
-        plt.vlines(-shift, -shift, CELL_SIZE[1] - shift, lw=7, color=boarder_color)
-        plt.vlines(CELL_SIZE[0] - shift, -shift, CELL_SIZE[1] - shift, lw=7, color=boarder_color)
+    env_fig = plot_env(env_id, grid_size, legend, boarder_color)
 
     if plot_both:
-        plot_arrows(env_id, states["off"], actions["off"], shift_arrow=-1)
-        plot_arrows(env_id, states["on"], actions["on"], shift_arrow=1)
+        plot_arrows(env_id, states["off"], actions["off"], shift_arrow=-1, grid_size=grid_size)
+        plot_arrows(env_id, states["on"], actions["on"], shift_arrow=1, grid_size=grid_size)
     else:
-        plot_arrows(env_id, states, actions, shift_arrow=0)
+        plot_arrows(env_id, states, actions, shift_arrow=0, grid_size=grid_size)
 
-    if legend:
-        mon_off = matplotlib.patches.Patch(color="r", label="Monitor Off")
-        mon_on = matplotlib.patches.Patch(color="b", label="Monitor On")
-        plt.legend(handles=[mon_off, mon_on], fontsize=7, loc=(0.28, 1.0))
-    plt.xlim(-shift, CELL_SIZE[0] - shift)
-    plt.ylim(-shift, CELL_SIZE[1] - shift)
-    plt.axis("off")
-    if env_id in ["Penalty", "Button"]:
-        fire_1 = fig.add_axes([0.38, 0.7, 0.25, 0.25], anchor="NE", zorder=-1, alpha=0.2)
-        fire_1.imshow(fire_img)
-        fire_1.axis("off")
+    env_fig.tight_layout()
+    return env_fig
 
-        fire_2 = fig.add_axes([0.38, 0.4, 0.25, 0.25], anchor="NE", zorder=-1, alpha=0.2)
-        fire_2.imshow(fire_img)
-        fire_2.axis("off")
-
-    if env_id == "Button":
-        # button = fig.add_axes([0.69, -0.09, 0.22, 0.22], anchor="NE", zorder=-1)  # cell 6
-        # button = fig.add_axes([0.45, -0.09, 0.22, 0.22], anchor="NE", zorder=-1)  # cell 7
-        button = fig.add_axes([0.69, -0.09, 0.22, 0.22], anchor="NE", zorder=-1, alpha=0.2)  # cell 8
-        button.imshow(button_img)
-        button.axis("off")
-
-    agent = fig.add_axes([0.12, 0.77, 0.175, 0.175], anchor="NE", zorder=-1, alpha=0.2)
-    agent.imshow(agent_img)
-    agent.axis("off")
-
-    gold = fig.add_axes([0.7, 0.72, 0.2, 0.2], anchor="NE", zorder=-1, alpha=0.2)
-    gold.imshow(gold_img)
-    gold.axis("off")
-    fig.tight_layout()
-    return fig
+# pylint: disable=too-many-arguments, too-many-locals
+# def plot_env_actions(
+#     env_id: str,
+#     states,
+#     actions,
+#     grid_size: tuple = (3, 3),
+#     legend: bool = False,
+#     plot_both: bool = False,
+#     boarder_color: str = "black",
+# ):
+#     """Plot Simple, Penalty, and Button env in grid world"""
+#     # load images
+#     fire_img = plt.imread("img/fire_img.png")
+#     agent_img = plt.imread("img/agent_img.png")
+#     gold_img = plt.imread("img/gold_img.png")
+#     button_img = plt.imread("img/button_img.png")
+#     shift = SCALE * 2
+#     fig = plt.figure(figsize=grid_size)
+#     plt.hlines(np.arange(grid_size[1] + 1) - shift, -shift, grid_size[0] - shift, color="black")
+#     plt.vlines(np.arange(grid_size[0] + 1) - shift, -shift, grid_size[1] - shift, color="black")
+#
+#     # outboard color
+#     if boarder_color != "black":
+#         plt.hlines(-shift, -shift, grid_size[0] - shift + 1, lw=7, color=boarder_color)
+#         plt.hlines(grid_size[1] - shift, -shift, grid_size[0] - shift + 1, lw=7, color=boarder_color)
+#         plt.vlines(-shift, -shift, grid_size[1] - shift, lw=7, color=boarder_color)
+#         plt.vlines(grid_size[0] - shift, -shift, grid_size[1] - shift, lw=7, color=boarder_color)
+#
+#     if plot_both:
+#         plot_arrows(env_id, states["off"], actions["off"], shift_arrow=-1)
+#         plot_arrows(env_id, states["on"], actions["on"], shift_arrow=1)
+#     else:
+#         plot_arrows(env_id, states, actions, shift_arrow=0)
+#
+#     if legend:
+#         mon_off = matplotlib.patches.Patch(color="r", label="Monitor Off")
+#         mon_on = matplotlib.patches.Patch(color="b", label="Monitor On")
+#         plt.legend(handles=[mon_off, mon_on], fontsize=7, loc=(0.28, 1.0))
+#     plt.xlim(-shift, grid_size[0] - shift)
+#     plt.ylim(-shift, grid_size[1] - shift)
+#     plt.axis("off")
+#     if env_id in ["Penalty", "Button"]:
+#         fire_1 = fig.add_axes([0.38, 0.7, 0.25, 0.25], anchor="NE", zorder=-1, alpha=0.2)
+#         fire_1.imshow(fire_img)
+#         fire_1.axis("off")
+#
+#         fire_2 = fig.add_axes([0.38, 0.4, 0.25, 0.25], anchor="NE", zorder=-1, alpha=0.2)
+#         fire_2.imshow(fire_img)
+#         fire_2.axis("off")
+#
+#     if env_id == "Button":
+#         # button = fig.add_axes([0.69, -0.09, 0.22, 0.22], anchor="NE", zorder=-1)  # cell 6
+#         # button = fig.add_axes([0.45, -0.09, 0.22, 0.22], anchor="NE", zorder=-1)  # cell 7
+#         button = fig.add_axes([0.69, -0.09, 0.22, 0.22], anchor="NE", zorder=-1, alpha=0.2)  # cell 8
+#         button.imshow(button_img)
+#         button.axis("off")
+#
+#     agent = fig.add_axes([0.12, 0.77, 0.175, 0.175], anchor="NE", zorder=-1, alpha=0.2)
+#     agent.imshow(agent_img)
+#     agent.axis("off")
+#
+#     gold = fig.add_axes([0.7, 0.72, 0.2, 0.2], anchor="NE", zorder=-1, alpha=0.2)
+#     gold.imshow(gold_img)
+#     gold.axis("off")
+#     fig.tight_layout()
+#     return fig
 
 
 def plot_policy_reward(
@@ -499,6 +573,9 @@ def plot_policy_reward(
         label: str = None,
         color: str = "r",
         alpha: float = 1.0,
+        linestyle: str = "solid",
+        lw: float = 2,
+        marker: str = None,
 ):
     """Plot joint training reward Vs timesteps for a single policy with different seeds"""
     n_seeds = len(joint_reward)
@@ -523,7 +600,7 @@ def plot_policy_reward(
     x_axis = x_axis[:min_len]
     mean_reward = np.mean(np.array(all_y_axis), 0)
     confi_reward = calculate_confidence_interval(np.array(all_y_axis))
-    plt.plot(x_axis, mean_reward, lw=2, c=color, alpha=alpha, label=label)
+    plt.plot(x_axis, mean_reward, lw=lw, c=color, alpha=alpha, label=label, linestyle=linestyle, marker=marker, markersize=5)
     plt.errorbar(x_axis, mean_reward, yerr=confi_reward, elinewidth=1, capsize=2, c=color, alpha=alpha)
     return fig
 

@@ -224,7 +224,7 @@ class MonExperiment(Experiment):
             ep_seed = cantor_pairing(self._rng_seed, episode)
             obs, _ = self._env.reset(seed=ep_seed)
             episode_monitor_action_count, episode_timesteps = 0, 0
-            ep_states, ep_actions = [], []
+            ep_states, ep_actions, ep_joint_reward = [], [], []
             return_true, return_proxy, return_cost = 0, 0, 0
             while True:
                 ep_states.append([obs["mdp"].item(), obs["monitor"]])
@@ -238,6 +238,7 @@ class MonExperiment(Experiment):
                 next_obs, reward, term, trunc, info = self._env.step(action)
                 return_true += info["mdp_reward"]
                 return_cost += reward["monitor"]
+                ep_joint_reward.append(info["mdp_reward"] + reward["monitor"])
                 if not np.isnan(reward["mdp"]):
                     reward_seen = True
                     return_proxy += reward["mdp"]
@@ -259,10 +260,12 @@ class MonExperiment(Experiment):
                 "received_reward": np.array(episode_return_proxy),
                 "monitor_reward": np.array(episode_return_cost),
                 "joint_reward": np.array(episode_return_true) + np.array(episode_return_cost),
+                "length": np.array(episode_length),
+                "undiscounted_joint_reward": np.array(ep_joint_reward),
             }
             episode += 1
         if save_results:
-            np.save(self._log_dir + "/trajectories.npy", trajectories)
+            np.save(self._log_dir + "/trajectories_{}.npy".format(self._rng_seed), trajectories)
         return (
             np.array(episode_return_true),
             np.array(episode_return_proxy),
