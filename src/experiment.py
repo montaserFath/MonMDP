@@ -16,7 +16,7 @@ class Experiment:
             actor: Actor,
             critic: Critic,
             training_timesteps,
-            testing_timesteps,
+            testing_episodes,
             testing_frequency,
             rng_seed,
             log_dir: str,
@@ -26,7 +26,7 @@ class Experiment:
         self._actor = actor
         self._critic = critic
         self._training_timesteps = training_timesteps
-        self._testing_timesteps = testing_timesteps
+        self._testing_episodes = testing_episodes
         self._testing_frequency = testing_frequency
         self._rng_seed = rng_seed
         self._log_dir = log_dir
@@ -80,35 +80,35 @@ class Experiment:
         wandb.finish()
         self._env.close()
 
-    def test(self, render: bool = False):
+    def test(self, render: bool = False) -> dict:
         """Evaluate an algorithm in MDP env, logs and save results"""
-        episode_return = []
+        test_return = {}
         total_timesteps = 0
         episode = 0
-        while total_timesteps < self._testing_timesteps:
+        while episode < self._testing_episodes:
+            episode_return = []
             ep_seed = cantor_pairing(self._rng_seed, episode)
             obs, _ = self._env.reset(seed=ep_seed)
             episode_timesteps = 0
-            total_reward = 0
             while True:
                 episode_timesteps += 1
                 if render:
                     self._env.render()
                 action = self._actor(obs)
                 next_obs, reward, term, trunc, _ = self._env.step(action)
-                total_reward += reward
+                episode_return.append(reward)
                 if term or trunc:
                     break
                 obs = next_obs
-            episode_return.append(total_reward)
+            test_return.update({episode: np.array(episode_return)})
             episode += 1
             total_timesteps += episode_timesteps
-        return np.array(episode_return)
+        return test_return
 
 
 class MonExperiment(Experiment):
     """Run experiments for training and testing in Monitor MDP env"""
-    def train(self):
+    def train(self, checkpoint: bool = True):
         """Train an algorithm in Monitor MDP env, logs and save results"""
         set_rng_seed(self._rng_seed)
         self._actor.reset()
@@ -120,6 +120,9 @@ class MonExperiment(Experiment):
         episode = 0
         while total_timesteps < self._training_timesteps:
             if episode > 0 and episode % self._testing_frequency == 0:
+                # perform/save checkpoint
+                self.checkpoint(current_timestep=self._training_timesteps)
+
                 self._actor.eval()
                 ep_return_true, ep_return_proxy, ep_return_cost, ep_monitor_action, ep_length, _ = self.test()
                 eval_joint_reward.update({episode: ep_return_true + ep_return_cost})
@@ -219,7 +222,7 @@ class MonExperiment(Experiment):
         trajectories = {}
         total_timesteps = 0
         episode = 0
-        while total_timesteps < self._testing_timesteps:
+        while episode < self._testing_episodes:
             reward_seen = False
             ep_seed = cantor_pairing(self._rng_seed, episode)
             obs, _ = self._env.reset(seed=ep_seed)
@@ -274,3 +277,8 @@ class MonExperiment(Experiment):
             np.array(episode_length),
             trajectories,
         )
+
+    def checkpoint(self, current_timestep: int):
+        """save the model and statistic during the training process"""
+        checkpoint_dir = self._log_dir + "/checkpoints_{}".format(current_timestep)
+        self._critic.save(file_name=checkpoint_dir, seed=self._rng_seed)

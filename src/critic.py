@@ -111,16 +111,18 @@ class QTable(QCritic):
         """get the current q_table values"""
         return self._q_table
 
-    def save(self, seed: int = 1):
+    def save(self, seed: int = 1, file_name: str = None):
         """save q-table as a numpy array"""
-        os.makedirs(self._dir_name, exist_ok=True)
-        np.save(self._dir_name + "/critic_q_table_{}.npy".format(seed), self._q_table)
+        file_dir = self._dir_name if file_name is None else self._dir_name + "/" + file_name
+        os.makedirs(file_dir, exist_ok=True)
+        np.save(file_dir + "/critic_q_table_{}.npy".format(seed), self._q_table)
 
-    def load(self, log_dir: str = None, seed: int = 1):
-        """load the the q-table which saved as a numpy array"""
+    def load(self, log_dir: str = None, seed: int = 1, file_name: str = None):
+        """load the q-table which saved as a numpy array"""
         if log_dir is None:
             raise ValueError("No files to load Q-Table from it")
-        self._q_table = np.load(log_dir + "/critic_q_table_{}.npy".format(seed))
+        file_dir = log_dir if file_name is None else log_dir + "/" + file_name
+        self._q_table = np.load(file_dir + "/critic_q_table_{}.npy".format(seed))
 
 
 class QDict(QCritic):
@@ -347,28 +349,30 @@ class MonQTableOneAction(MonQTable):
         mon_action, mdp_action = action_ind // self._n_actions, action_ind % self._n_actions
         return {"mdp": mdp_action, "monitor": mon_action}
 
-    def save(self, seed: int = 1):
+    def save(self, seed: int = 1, file_name: str = None):
         """save the q-table as numpy array"""
-        os.makedirs(self._dir_name, exist_ok=True)
+        file_dir = self._dir_name if file_name is None else self._dir_name + "/" + file_name
+        os.makedirs(file_dir, exist_ok=True)
         if self._strategy in ["q_monitor_sequential", "q_monitor_joint"]:
-            np.save(self._dir_name + "/mdp_q_table_{}.npy".format(seed), self._mdp_q)
-            np.save(self._dir_name + "/monitor_q_table_{}.npy".format(seed), self._mon_q)
+            np.save(file_dir + "/mdp_q_table_{}.npy".format(seed), self._mdp_q)
+            np.save(file_dir + "/monitor_q_table_{}.npy".format(seed), self._mon_q)
         else:
-            np.save(self._dir_name + "/critic_q_table_{}.npy".format(seed), self._q_table)
+            np.save(file_dir + "/critic_q_table_{}.npy".format(seed), self._q_table)
         if self._r_model is not None:
-            self._r_model.save(self._dir_name, seed)
+            self._r_model.save(file_dir, seed)
 
-    def load(self, log_dir: str = None, seed: int = 1):
+    def load(self, log_dir: str = None, seed: int = 1, file_name: str = None) -> None:
         """Load a q-table which saved as a numpy array"""
         if log_dir is None:
             raise ValueError("No files to load Q-Table from it")
+        file_dir = self._dir_name if file_name is None else self._dir_name + "/" + file_name
         if self._strategy in ["q_monitor_sequential", "q_monitor_joint"]:
-            self._mdp_q = np.load(self._dir_name + "/mdp_q_table_{}.npy".format(seed))
-            self._mon_q = np.load(self._dir_name + "/monitor_q_table_{}.npy".format(seed))
+            self._mdp_q = np.load(file_dir + "/mdp_q_table_{}.npy".format(seed))
+            self._mon_q = np.load(file_dir + "/monitor_q_table_{}.npy".format(seed))
         else:
-            self._q_table = np.load(log_dir + "/critic_q_table_{}.npy".format(seed))
+            self._q_table = np.load(file_dir + "/critic_q_table_{}.npy".format(seed))
         if self._r_model is not None:
-            self._r_model = np.load(log_dir + "/reward_model_table_{}.npy".format(seed))
+            self._r_model = np.load(file_dir + "/reward_model_table_{}.npy".format(seed))
 
     def expand_mdp_q(self):
         """Expand Q-table for MDP"""
@@ -518,12 +522,14 @@ class MonQNet(MonQCritic):
             return q_state
         return q_state[action]
 
-    def save(self, seed: int = 1):
-        os.makedirs(self._dir_name, exist_ok=True)
-        self.q_network.save(log_dir=self._dir_name + "/q_network_{}".format(seed))
+    def save(self, seed: int = 1, file_name: str = None):
+        file_dir = self._dir_name if file_name is None else self._dir_name + "/" + file_name
+        os.makedirs(file_dir, exist_ok=True)
+        self.q_network.save(log_dir=file_dir + "/q_network_{}".format(seed))
 
-    def load(self, seed: int = 1):
-        self.q_network.load(log_dir=self._dir_name + "/q_network_{}".format(seed))
+    def load(self, seed: int = 1, file_name: str = None):
+        file_dir = self._dir_name if file_name is None else self._dir_name + "/" + file_name
+        self.q_network.load(log_dir=file_dir + "/q_network_{}".format(seed))
 
     # def update(self, state, action, reward, terminated, next_state, next_action=None):
     #     NotImplemented
