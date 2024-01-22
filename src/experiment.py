@@ -1,5 +1,6 @@
 # pylint: disable=too-many-locals, too-many-statements, too-many-instance-attributes, too-many-arguments
 """Experiments wrapper for Training and evaluating algorithms in MDP and Monitor MDP """
+import os
 import gymnasium as gym
 import numpy as np
 import wandb
@@ -31,6 +32,8 @@ class Experiment:
         self._rng_seed = rng_seed
         self._log_dir = log_dir
         self._save_train_log = save_log
+        self._visit_table = None
+        self._checkpoint_count = 0
 
     def train(self):
         """Train an algorithm in MDP env, logs and save results"""
@@ -41,7 +44,7 @@ class Experiment:
         total_timesteps = 0
         episode = 0
         while total_timesteps < self._training_timesteps:
-            if episode % self._testing_frequency == 1:
+            if total_timesteps > self._testing_frequency * self._checkpoint_count:
                 self._actor.eval()
                 episode_return = self.test()
                 self._actor.train()
@@ -108,6 +111,11 @@ class Experiment:
 
 class MonExperiment(Experiment):
     """Run experiments for training and testing in Monitor MDP env"""
+    def reset_visit_table(self):
+        mdp_obs_n, mdp_action_n = self._env.observation_space["mdp"].n, self._env.action_space["mdp"].n
+        mon_obs_n, mon_action_n = self._env.observation_space["monitor"].n, self._env.action_space["monitor"].n
+        self._visit_table = np.zeros((mdp_obs_n * mon_obs_n, mdp_action_n * mon_action_n))
+
     def train(self, checkpoint: bool = True):
         """Train an algorithm in Monitor MDP env, logs and save results"""
         set_rng_seed(self._rng_seed)
@@ -118,10 +126,12 @@ class MonExperiment(Experiment):
         eval_count = 0
         total_timesteps = 0
         episode = 0
+        # reset visit table
+        self.reset_visit_table()
         while total_timesteps < self._training_timesteps:
-            if episode > 0 and episode % self._testing_frequency == 0:
+            if total_timesteps > self._testing_frequency * self._checkpoint_count:
                 # perform/save checkpoint
-                self.checkpoint(current_timestep=self._training_timesteps)
+                self.checkpoint()
 
                 self._actor.eval()
                 ep_return_true, ep_return_proxy, ep_return_cost, ep_monitor_action, ep_length, _ = self.test()
@@ -158,7 +168,7 @@ class MonExperiment(Experiment):
             while True:
                 episode_timesteps += 1
                 action = self._actor(obs) if next_action is None else next_action
-
+                self._visit_table[obs["mdp"], self._critic.get_action_ind(action)] += 1  # fix for stateMonMDP
                 if action["monitor"] == 1:
                     episode_monitor_action_count += 1
                 next_obs, reward, term, trunc, info = self._env.step(action)
@@ -204,6 +214,7 @@ class MonExperiment(Experiment):
         # save Q-table as numpy array
         self._critic.save(seed=self._rng_seed)
         if self._save_train_log:
+            np.save(self._log_dir + "/visit_table_{}.npy".format(self._rng_seed), self._visit_table)
             np.save(self._log_dir + "/training_joint_reward_{}.npy".format(self._rng_seed), joint_reward)
             np.save(
                 self._log_dir + "/evaluation_joint_reward_{}.npy".format(self._rng_seed),
@@ -278,7 +289,10 @@ class MonExperiment(Experiment):
             trajectories,
         )
 
-    def checkpoint(self, current_timestep: int):
+    def checkpoint(self):
         """save the model and statistic during the training process"""
-        checkpoint_dir = self._log_dir + "/checkpoints_{}".format(current_timestep)
-        self._critic.save(file_name=checkpoint_dir, seed=self._rng_seed)
+        checkpoint_dir = self._log_dir + "/checkpoints_{}/".format(self._checkpoint_count)
+        os.makedirs(checkpoint_dir, exist_ok=True)
+        self._critic.save(file_name="/checkpoints_{}/".format(self._checkpoint_count), seed=self._rng_seed)
+        np.save(checkpoint_dir + "/visit_table_{}.npy".format(self._rng_seed), self._visit_table)
+        self._checkpoint_count += 1

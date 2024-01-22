@@ -365,7 +365,7 @@ class MonQTableOneAction(MonQTable):
         """Load a q-table which saved as a numpy array"""
         if log_dir is None:
             raise ValueError("No files to load Q-Table from it")
-        file_dir = self._dir_name if file_name is None else self._dir_name + "/" + file_name
+        file_dir = log_dir if file_name is None else log_dir + "/" + file_name
         if self._strategy in ["q_monitor_sequential", "q_monitor_joint"]:
             self._mdp_q = np.load(file_dir + "/mdp_q_table_{}.npy".format(seed))
             self._mon_q = np.load(file_dir + "/monitor_q_table_{}.npy".format(seed))
