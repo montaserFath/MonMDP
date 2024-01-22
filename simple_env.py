@@ -20,8 +20,8 @@ from src.policy_analysis import (
 
 BASELINES = ["q_learning", "reward_model", "q_monitor_joint", "q_monitor_sequential", "q_mdp", "zero_reward_0"]
 ZERO_BASELINES = ["zero_reward_neg", "zero_reward_0", "zero_reward_pos"]
-EVAL = True
-LOG_DIR = "models/9_9/Penalty/reward_model/env_0.0/eps_1.0_25m/q_lr_0.1/reward_lr_0.1/"
+EVAL = False
+LOG_DIR = "models/9_9/Penalty/reward_model/env_0.1/eps_dec/q_lr_1.0/reward_lr_1.0/"
 
 
 @hydra.main(version_base=None, config_path="configs", config_name="penalty_env")
@@ -45,10 +45,10 @@ def run_monitor(cfg: DictConfig) -> None:
     grid_size = (3, 3) if env_id.split("/")[1].split("-")[-1] == "v0" else (9, 9)  # TODO change this
     train_dir = "models/" + env_size + "/" + env_id.split("/")[1].split("-")[1] + "/" + str(cfg.agent.critic.strategy) + "/"
     # for hyper-parameters tuning
-    # if cfg.agent.actor.init_eps != cfg.agent.actor.min_eps:
-    #     raise ValueError("eps should be fixed")
-    # q_lr, reward_lr, eps = cfg.agent.critic.lr, cfg.agent.critic.reward_model.lr, cfg.agent.actor.init_eps
-    # train_dir += "eps_{}/q_lr_{}/reward_lr_{}/".format(eps, q_lr, reward_lr)
+    if cfg.agent.actor.init_eps != cfg.agent.actor.min_eps:
+        raise ValueError("eps should be fixed")
+    q_lr, reward_lr, eps = cfg.agent.critic.lr, cfg.agent.critic.reward_model.lr, cfg.agent.actor.init_eps
+    train_dir += "env_{}/eps_{}/q_lr_{}/reward_lr_{}/".format(cfg["environment"]["random_action_prob"], eps, q_lr, reward_lr)
 
     if env_id.split("/")[1].split("-")[2] == "Button":
         critic = StateMonTable(env_id, env.observation_space, env.action_space, train_dir, **cfg.agent.critic)
@@ -59,7 +59,7 @@ def run_monitor(cfg: DictConfig) -> None:
 
     experiment = MonExperiment(env, actor, critic, log_dir=LOG_DIR if EVAL else train_dir, **cfg.experiment)
     if EVAL:
-        for seed in range(30):
+        for seed in range(3):
             critic.load(LOG_DIR, seed=seed)
             _, _, _, _, _, _ = experiment.test(render=False, seed=seed, save_results=True)
             if LOG_DIR.split("/")[3] in ["q_monitor_sequential", "q_monitor_joint"]:

@@ -10,6 +10,6 @@ critic:
     lr: 1.0
 
 actor:
-  init_eps: 0.4
-  min_eps: 0.4
+  init_eps: 1.0
+  min_eps: 1.0
   eps_decay: 0 # 4.5e-6

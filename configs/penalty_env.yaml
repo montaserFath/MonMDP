@@ -13,8 +13,8 @@ wandb:
   project: MonMDP
 
 experiment:
-  training_timesteps: 25e6
+  training_timesteps: 1e6
   testing_episodes: 50
-  testing_frequency: 1e6
+  testing_frequency: 1e5
   rng_seed: 1
   save_log: True
