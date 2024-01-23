@@ -26,8 +26,6 @@ def run(cfg : DictConfig) -> None:
     )
 
     env = gymnasium.make(**cfg.environment)
-    if 'MiniGrid' in cfg.environment.id:
-        env = env_wrappers.wrap_minigrid(env)
     env = getattr(monitor_wrappers, cfg.monitor.id)(env, **cfg.monitor)
 
     if isinstance(env.env.observation_space, Discrete):
