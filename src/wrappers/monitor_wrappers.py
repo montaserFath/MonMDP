@@ -20,7 +20,6 @@ class Monitor(gymnasium.Wrapper):
 
     def step(self, action):
         mdp_obs, mdp_reward, mdp_terminated, mdp_truncated, mdp_info = self.env.step(action["mdp"])
-
         monitor_obs, proxy_reward, monitor_cost = self._monitor_step(action, mdp_reward, mdp_obs)
 
         obs = {"mdp": mdp_obs, "monitor": monitor_obs}
@@ -207,6 +206,7 @@ class NMonitor(Monitor):
         monitor_cost (float): cost for monitor request.
 
     """
+
     def __init__(self, env, n_monitors=1, monitor_cost=0.01, **kwargs):
         """initialization function"""
         gymnasium.Wrapper.__init__(self, env)

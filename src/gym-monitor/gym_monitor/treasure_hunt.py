@@ -17,36 +17,19 @@ EMPTY = 0
 AGENT = 1
 GLD_COIN = 2
 CRSD_COIN = 3
-QCKSND = 4
-QCKSND_AGNT = 5
-MAP = 6
-BUTTON = 7
-WALL = 8
+BUTTON = 4  # 7
+WALL = 5  # 8
 
 INT_TO_ANSI = {
     EMPTY: b"E",
     AGENT: b"A",
     GLD_COIN: b"G",
     CRSD_COIN: b"C",
-    QCKSND: b"Q",
-    QCKSND_AGNT: b"X",
-    MAP: b"M",
     BUTTON: b"B",
     WALL: b"W",
 }
 
 GRIDS = {
-    "4x8": [
-        [EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY],
-        [EMPTY, CRSD_COIN, GLD_COIN, CRSD_COIN, EMPTY, GLD_COIN, EMPTY, EMPTY],
-        [EMPTY, CRSD_COIN, EMPTY, EMPTY, EMPTY, CRSD_COIN, GLD_COIN, EMPTY],
-        [EMPTY, EMPTY, EMPTY, QCKSND, MAP, EMPTY, EMPTY, EMPTY],
-    ],
-    "3x3": [
-        [EMPTY, EMPTY, GLD_COIN],
-        [EMPTY, EMPTY, EMPTY],
-        [EMPTY, EMPTY, EMPTY],
-    ],
     "3x3 penalty": [
         [EMPTY, CRSD_COIN, GLD_COIN],
         [EMPTY, CRSD_COIN, EMPTY],
@@ -174,47 +157,35 @@ class TreasureHunt(gym.Env):
 
     # pylint: disable=too-many-arguments
     def __init__(
-            self,
-            render_mode: Optional[str] = None,
-            grid: Optional[str] = "4x8",
-            enable_quicksand: Optional[bool] = False,
-            enable_map: Optional[bool] = False,
-            init_agent_pos: Optional[tuple] = None,
-            location_random: Optional[bool] = False,
-            **kwargs,
+        self,
+        render_mode: Optional[str] = None,
+        grid: Optional[str] = "4x8",
+        init_agent_pos: Optional[tuple] = None,
+        location_random: Optional[bool] = False,
+        **kwargs,
     ):
-        self._enable_quicksand = enable_quicksand
-        self._enable_map = enable_map
         self._location_random = location_random
         self._grid_key = grid
         self._grid = np.asarray(GRIDS[self._grid_key])
-        self._is_quicksand = QCKSND in self._grid.flatten()
-        self._is_map = MAP in self._grid.flatten()
 
         self._n_rows, self._n_cols = self._grid.shape
-        self.observation_space = gym.spaces.Box(low=0, high=6, shape=(self._n_rows * self._n_cols,), dtype=int)
-        self.action_space = gym.spaces.Discrete(5 if self._is_quicksand or self._is_map else 4)
+        self.observation_space = gym.spaces.Box(low=0, high=5, shape=(self._n_rows * self._n_cols,), dtype=int)
+        self.action_space = gym.spaces.Discrete(4)
         self._init_agent_pos = init_agent_pos
         self._agent_pos = None
         self._last_action = None
-        self._has_map = None
 
         self.render_mode = render_mode
         self.window_surface = None
         self.clock = None
         self.window_size = (min(64 * self._n_cols, 512), min(64 * self._n_rows, 512))
-        self.cell_size = (
-            self.window_size[0] // self._n_cols,
-            self.window_size[1] // self._n_rows,
-        )
+        self.cell_size = (self.window_size[0] // self._n_cols, self.window_size[1] // self._n_rows)
         self._current_timestep = 0
         self.info = {}
 
     @property
     def grid(self) -> np.ndarray:
         """get the current grid status"""
-        if self._has_map:
-            return self._grid
 
         grid = self._grid.copy()
         grid[grid == GLD_COIN] = EMPTY
@@ -222,22 +193,18 @@ class TreasureHunt(gym.Env):
 
         return grid
 
+    def reset_grid(self) -> None:
+        """reset the gird & add current agent position"""
+        self._grid = np.asarray(GRIDS[self._grid_key])
+        self._grid[self._agent_pos] = AGENT
+
     def reset(self, seed: int = None, **kwargs):
         """reset the environment"""
         super().reset(seed=seed, **kwargs)
-        self._grid = np.asarray(GRIDS[self._grid_key])
-        if self._enable_map:
-            self._has_map = False
-        else:
-            self._has_map = True
-            self._grid[self._grid == MAP] = EMPTY
-
-        if not self._enable_quicksand:
-            self._grid[self._grid == QCKSND] = EMPTY
-            self._agent_pos = (
-                (self.np_random.integers(self._n_rows), 0) if self._init_agent_pos is None else self._init_agent_pos
-            )
-        self._grid[self._agent_pos] = AGENT
+        self._agent_pos = (
+            (self.np_random.integers(self._n_rows), 0) if self._init_agent_pos is None else self._init_agent_pos
+        )
+        self.reset_grid()
         self._last_action = None
         self._current_timestep = 0
         self.info = {}
@@ -245,36 +212,18 @@ class TreasureHunt(gym.Env):
 
     def step(self, action: int):
         prev_agent_pos = self._agent_pos
-        add_random = True if self._location_random and self.np_random.random() < 0.05 else False
-        sand_map_env = self._is_quicksand or self._is_map
-        if self._grid[self._agent_pos] != QCKSND_AGNT or add_random or not sand_map_env:
-            if self._grid[self._agent_pos] == QCKSND_AGNT:
-                self._grid[self._agent_pos] = QCKSND
-            else:
-                self._grid[self._agent_pos] = EMPTY
-            self._agent_pos = _move(
-                self._agent_pos[0],
-                self._agent_pos[1],
-                action,
-                self._n_rows,
-                self._n_cols,
-            )
-            reward = self.reward()
-        else:
-            self._current_timestep += 1
-            return self.grid.flatten(), self.reward(), False, False, {}
-
-        if self._grid[self._agent_pos] == MAP:
-            self._grid[self._agent_pos] = AGENT
-            self._has_map = True
-        elif self._grid[self._agent_pos] == QCKSND:
-            self._grid[self._agent_pos] = QCKSND_AGNT
+        self._agent_pos = _move(
+            self._agent_pos[0],
+            self._agent_pos[1],
+            action,
+            self._n_rows,
+            self._n_cols,
+        )
+        reward = self.reward()
         # do nothing if the agent steps into a wall
-        elif self._grid[self._agent_pos] == WALL:
+        if self._grid[self._agent_pos] == WALL:
             self._agent_pos = prev_agent_pos
-            self._grid[self._agent_pos] = AGENT
-        else:
-            self._grid[self._agent_pos] = AGENT
+        self.reset_grid()
 
         terminated = (self._grid != GLD_COIN).all()
 
@@ -287,9 +236,9 @@ class TreasureHunt(gym.Env):
         """
         Reward function returns 1 if the agent collects gold coin, -1 if the agent collects cursed coin, otherwise 0
         """
-        if self._grid[self._agent_pos] == GLD_COIN and self._has_map:
+        if self._agent_pos in list(zip(*np.where(np.asarray(GRIDS[self._grid_key]) == GLD_COIN))):
             return 1.0
-        if self._grid[self._agent_pos] == CRSD_COIN and self._has_map:
+        if self._agent_pos in list(zip(*np.where(np.asarray(GRIDS[self._grid_key]) == CRSD_COIN))):
             return -1.0
         return 0.0
 
@@ -335,8 +284,6 @@ class TreasureHunt(gym.Env):
         surf_empty.fill((0, 0, 0))
         surf_map = pygame.Surface(self.cell_size)
         surf_map.fill((255, 255, 255))
-        surf_qcksnd = pygame.Surface(self.cell_size)
-        surf_qcksnd.fill((204, 102, 0))
         surf_wall = pygame.Surface(self.cell_size)
         surf_wall.fill((255, 255, 0))
         surf_agent = pygame.Surface(self.cell_size)
@@ -358,13 +305,9 @@ class TreasureHunt(gym.Env):
                     self.window_surface.blit(surf_crsd_coin, pos)
                 if grid[y_pos][x_pos] == EMPTY:  # or grid[y][x] == AGENT:
                     self.window_surface.blit(surf_empty, pos)
-                if grid[y_pos][x_pos] == MAP:
-                    self.window_surface.blit(surf_map, pos)
-                if grid[y_pos][x_pos] == QCKSND:  # or grid[y][x] == QCKSND_AGNT:
-                    self.window_surface.blit(surf_qcksnd, pos)
                 if grid[y_pos][x_pos] == BUTTON:
                     self.window_surface.blit(surf_button, pos)
-                if grid[y_pos][x_pos] == AGENT or grid[y_pos][x_pos] == QCKSND_AGNT:
+                if grid[y_pos][x_pos] == AGENT:
                     self.window_surface.blit(surf_agent, pos + (0.5, 0.5))
                 if grid[y_pos][x_pos] == WALL:
                     self.window_surface.blit(surf_wall, pos)

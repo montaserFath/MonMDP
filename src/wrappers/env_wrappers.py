@@ -45,14 +45,6 @@ class TimeStepReward(gym.RewardWrapper):
             reward = self.fire_reward
         return reward - self.timestep_penalty
 
-    def step(self, action):
-        next_obs, reward, done, trunc, info = self.env.step(action)
-        if next_obs in [4, 13, 22, 31, 40, 49, 58, 67]:  # fire states
-            reward = self.fire_reward - self.timestep_penalty
-        if next_obs == 8:  # goal state
-            reward = self.goal_reward - self.timestep_penalty
-        return next_obs, reward, done, trunc, info
-
 
 class TabularObservationsWrapper(gym.ObservationWrapper):
     """Convert observations from a list to Tabular"""
@@ -70,6 +62,7 @@ class TabularObservationsWrapper(gym.ObservationWrapper):
 
 class StochasticAction(gym.ActionWrapper):
     """Add Stochastic to the action, with some probability take a random action"""
+
     def __init__(self, env: gym.Env, random_prob: float = 0.0):
         # for discrete actions only for now
         super().__init__(env)
@@ -88,6 +81,7 @@ class StochasticAction(gym.ActionWrapper):
 
 class WindowViewObs(gym.ObservationWrapper):
     """Observation wrapper get a window view around the agent"""
+
     def __init__(self, env, grid_size: tuple, window_size: tuple, image_obs: bool = False, flatten_obs: bool = False):
         super().__init__(env)
         self.env = env
@@ -104,5 +98,5 @@ class WindowViewObs(gym.ObservationWrapper):
         pos_x, pos_y = np.where(obs == agent_id)[0][0], np.where(obs == agent_id)[1][0]
         min_x, max_x = max(0, pos_x - self.window_size[0]), min(self.grid_size[0] - 1, pos_x + self.window_size[0] - 1)
         min_y, max_y = max(0, pos_y - self.window_size[1]), min(self.grid_size[1] - 1, pos_y + self.window_size[0] - 1)
-        window_obs = obs[min_x: max_x, min_y: max_y]
+        window_obs = obs[min_x:max_x, min_y:max_y]
         return window_obs.reshape(-1) if self.self.flatten_obs else window_obs
