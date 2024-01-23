@@ -169,9 +169,15 @@ class MonExperiment(Experiment):
                 episode_timesteps += 1
                 action = self._actor(obs) if next_action is None else next_action
                 self._visit_table[obs["mdp"], self._critic.get_action_ind(action)] += 1  # fix for stateMonMDP
-                if action["monitor"] == 1:
-                    episode_monitor_action_count += 1
+
                 next_obs, reward, term, trunc, info = self._env.step(action)
+
+                if action["monitor"] == 1:
+                    # Monta: fix this issue
+                    if next_obs["mdp"].item() in [4, 13, 22, 31, 40, 49, 58, 67]:
+                        reward = {"mdp": -10, "monitor": -10.2}
+                    episode_monitor_action_count += 1
+
                 if self._critic._on_policy:
                     next_action = self._actor(next_obs)
                 step_loss_mdp, step_loss_mon = self._critic.update(obs, action, reward, term, next_obs, next_action)
