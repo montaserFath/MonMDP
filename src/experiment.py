@@ -173,9 +173,6 @@ class MonExperiment(Experiment):
                 next_obs, reward, term, trunc, info = self._env.step(action)
 
                 if action["monitor"] == 1:
-                    # Monta: fix this issue
-                    if next_obs["mdp"].item() in [4, 13, 22, 31, 40, 49, 58, 67]:
-                        reward = {"mdp": -10, "monitor": -10.2}
                     episode_monitor_action_count += 1
 
                 if self._critic._on_policy:

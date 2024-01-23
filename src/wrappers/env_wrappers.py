@@ -45,6 +45,14 @@ class TimeStepReward(gym.RewardWrapper):
             reward = self.fire_reward
         return reward - self.timestep_penalty
 
+    def step(self, action):
+        next_obs, reward, done, trunc, info = self.env.step(action)
+        if next_obs in [4, 13, 22, 31, 40, 49, 58, 67]:  # fire states
+            reward = self.fire_reward - self.timestep_penalty
+        if next_obs == 8:  # goal state
+            reward = self.goal_reward - self.timestep_penalty
+        return next_obs, reward, done, trunc, info
+
 
 class TabularObservationsWrapper(gym.ObservationWrapper):
     """Convert observations from a list to Tabular"""
