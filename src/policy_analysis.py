@@ -730,4 +730,5 @@ def plot_visit_table_counts(log_dir: str, seed: int = 1, save_fig: bool = False)
                 plt.text(pos[1] + x_shift, pos[0] + y_shift, visit_count, fontsize=10)
         fig.tight_layout()
         if save_fig:
-            fig.savefig(log_dir + "/visit_table_count_monitor_{}_{}.pdf".format(mon_action, seed), dpi=300)
+            mon_label = "on" if mon_action == 1 else "off"
+            fig.savefig(log_dir + "/visit_table_count_monitor_{}_{}.pdf".format(mon_label, seed), dpi=300)
