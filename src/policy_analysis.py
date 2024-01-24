@@ -8,6 +8,8 @@ import seaborn as sns
 
 
 ARROWS = {0: (-1.5, 0), 1: (0, -1.5), 2: (1.5, 0), 3: (0, 1.5), 4: (-1.5, 1.5)}
+CROSS_ARROWS = {0: (-1.75, 1.75), 1: (-1.75, -1.75), 2: (1.75, -1.75), 3: (1.75, 1.75)}
+
 JOINT_STATES = [
     "(0,0)",
     "(1,0)",
@@ -665,3 +667,67 @@ def plot_train_joint_reward_timesteps(
             "models/{}/cheat_timesteps_seeds_training_joint_rewar{}.pdf".format(env_id, "d_mean" if plot_mean else "d"),
             dpi=300,
         )
+
+
+def plot_visit_table_heatmap(log_dir: str, seed: int = 1, save_fig: bool = False):
+    """plot heatmap for the visit table per action"""
+    visit_table = np.load(log_dir + "/visit_table_{}.npy".format(seed))
+    n_actions = visit_table.shape[1]
+    grid_size = int(np.sqrt(visit_table.shape[0]))
+    fig = plt.figure(figsize=(n_actions * 2, grid_size))
+    for action in range(n_actions):
+        plt.subplot(2, 4, action + 1)
+        sns.heatmap(
+            visit_table[:, action].reshape(grid_size, grid_size),
+            cmap="crest",
+            annot=True,
+            linewidth=0.1,
+            fmt="g",
+            annot_kws={"fontsize": 8},
+        )
+        plt.title("{}".format(
+            MDP_ACTIONS[action] if action < 4 else MDP_ACTIONS[action - 4]), c="r" if action < 4 else "b", fontsize=20,
+        )
+        plt.xticks([], fontsize=13)
+        plt.yticks([], fontsize=13)
+    fig.tight_layout()
+    if save_fig:
+        fig.savefig(log_dir + "/visit_table_heatmap_{}.pdf".format(seed), dpi=300)
+
+
+def plot_visit_table_counts(log_dir: str, seed: int = 1, save_fig: bool = False):
+    """Plot visit tabel count distribution per monitor action"""
+    visit_table = np.load(log_dir + "/visit_table_{}.npy".format(seed))
+    grid_size = int(np.sqrt(visit_table.shape[0]))
+    states = np.arange(visit_table.shape[0])
+
+    for mon_action in [0, 1]:
+        fig = plot_env("Penalty", grid_size=(grid_size, grid_size))
+        for i, state_i in enumerate(states):
+            state = state_i[0] if isinstance(states[i], np.ndarray) else state_i
+            if state == grid_size - 1:  # skip the goal state
+                continue
+            pos = np.array([state // grid_size, state % grid_size])  # MDP state
+            pos[0] = np.abs(pos[0] - grid_size + 1)
+            for action in np.array([[0, mon_action], [1, mon_action], [2, mon_action], [3, mon_action]]):
+                if action[0] in [0, 2]:  # left and right MDP actions
+                    x_shift = - 0.45 if action[0] == 0 else 0.12
+                    y_shift = 0.0
+                else:
+                    x_shift = - 0.1
+                    y_shift = - 0.4 if action[0] == 1 else 0.35
+                plt.arrow(
+                    pos[1],
+                    pos[0],
+                    SCALE * CROSS_ARROWS[action[0]][0],
+                    SCALE * CROSS_ARROWS[action[0]][1],
+                    lw=1.0,
+                    head_length=0.0,
+                    head_width=0.0,
+                    color="r" if action[1] == 0 else "b",
+                )
+                visit_count = int(visit_table[state_i, action[0]])
+                plt.text(pos[1] + x_shift, pos[0] + y_shift, visit_count, fontsize=10)
+        fig.tight_layout()
+        if save_fig:
+            fig.savefig(log_dir + "/visit_table_count_monitor_{}_{}.pdf".format(mon_action, seed), dpi=300)
