@@ -134,8 +134,8 @@ class MonExperiment(Experiment):
                 self.checkpoint()
 
                 self._actor.eval()
-                ep_return_true, ep_return_proxy, ep_return_cost, ep_monitor_action, ep_length, _ = self.test()
-                eval_joint_reward.update({episode: ep_return_true + ep_return_cost})
+                ep_return_true, ep_return_proxy, ep_return_cost, ep_monitor_action, ep_length, ep_discount_reward, _ = self.test()
+                eval_joint_reward.update({episode: ep_discount_reward})
                 episode_return_true = ep_return_true.mean()
                 episode_return_proxy = np.nanmean(ep_return_proxy)
                 episode_return_cost = ep_return_cost.mean()
@@ -233,6 +233,7 @@ class MonExperiment(Experiment):
         episode_return_cost = []
         episode_monitor_action = []
         episode_length = []
+        episode_discount_reward = []
         trajectories = {}
         total_timesteps = 0
         episode = 0
@@ -242,10 +243,9 @@ class MonExperiment(Experiment):
             obs, _ = self._env.reset(seed=ep_seed)
             episode_monitor_action_count, episode_timesteps = 0, 0
             ep_states, ep_actions, ep_joint_reward = [], [], []
-            return_true, return_proxy, return_cost = 0, 0, 0
+            return_true, return_proxy, return_cost, ep_discount_reward = 0, 0, 0, 0
             while True:
                 ep_states.append([obs["mdp"].item(), obs["monitor"]])
-                episode_timesteps += 1
                 if render:
                     self._env.render()
                 action = self._actor(obs)
@@ -256,6 +256,7 @@ class MonExperiment(Experiment):
                 return_true += info["mdp_reward"]
                 return_cost += reward["monitor"]
                 ep_joint_reward.append(info["mdp_reward"] + reward["monitor"])
+                ep_discount_reward += (self._critic._gamma ** episode_timesteps) * (info["mdp_reward"] + reward["monitor"])
                 if not np.isnan(reward["mdp"]):
                     reward_seen = True
                     return_proxy += reward["mdp"]
@@ -264,12 +265,15 @@ class MonExperiment(Experiment):
                         return_proxy = np.nan
                     break
                 obs = next_obs
+                episode_timesteps += 1
+
             episode_return_true.append(return_true)
             episode_return_cost.append(return_cost)
             episode_return_proxy.append(return_proxy)
             episode_monitor_action.append(episode_monitor_action_count)
             episode_length.append(episode_timesteps)
             total_timesteps += episode_timesteps
+            episode_discount_reward.append(ep_discount_reward)
             trajectories[episode] = {
                 "states": np.array(ep_states),
                 "actions": np.array(ep_actions),
@@ -289,6 +293,7 @@ class MonExperiment(Experiment):
             np.array(episode_return_cost),
             np.array(episode_monitor_action),
             np.array(episode_length),
+            np.array(episode_discount_reward),
             trajectories,
         )
 
