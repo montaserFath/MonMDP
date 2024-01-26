@@ -1,4 +1,6 @@
 module load scipy-stack/2023b
-pip install --no-index minigrid gymnasium hydra_core wandb submitit seaborn torch==1.9.1
-pip install --no-index hydra-submitit-launcher --upgrade
+pip install minigrid gymnasium hydra_core wandb submitit seaborn torch scipy pygame==2.5.0
+pip install hydra-submitit-launcher --upgrade
 pip install --no-index src/gym-monitor/.
+screen
+# maybe uninstall then install numpy
