@@ -286,23 +286,25 @@ def plot_policy_button(baselines: list, seed: int = 1, grid_size: tuple = (3, 3)
             fig.savefig("models/Button/{}/policy_actions_{}.pdf".format(base, seed), dpi=300)
 
 
-def plot_policy(baselines: list, env_id: str, seed: int = 1, save_fig: bool = False) -> None:
+def plot_policy(log_dir: str, env_name: str, baselines: list, seed: int = 1, save_fig: bool = False) -> None:
     """Plot policy actions for each state for Simple and Penalty environments"""
+    grid_size = (3, 3) if env_name.split("-")[-1] == "v0" else (9, 9)
+    env_id = env_name.split("-")[1]
     if env_id == "Button":
         plot_policy_button(baselines, save_fig=save_fig)
     else:
         for base in baselines:
             mdp_q_table = None
             if base in ["q_monitor_sequential", "q_monitor_joint"]:
-                mdp_q_table = np.load("models/{}/{}/mdp_q_table_{}.npy".format(env_id, base, seed))
-                q_table = np.load("models/{}/{}/monitor_q_table_{}.npy".format(env_id, base, seed))
+                mdp_q_table = np.load(log_dir + "/mdp_q_table_{}.npy".format(seed))
+                q_table = np.load(log_dir + "/monitor_q_table_{}.npy".format(seed))
             else:
-                q_table = np.load("models/{}/{}/critic_q_table_{}.npy".format(env_id, base, seed))
-            policy_states, policy_actions = get_policy_states_actions(env_id, base, q_table, mdp_q_table)
+                q_table = np.load(log_dir + "/critic_q_table_{}.npy".format(seed))
+            policy_states, policy_actions = get_policy_states_actions(env_name, base, q_table, mdp_q_table, grid_size=grid_size)
             boarder_color = "r" if base in ["q_mdp", "zero_reward", "zero_reward_0"] else "green"
-            fig = plot_env_actions(env_id, policy_states, policy_actions, boarder_color=boarder_color)
+            fig = plot_env_actions(env_id, policy_states, policy_actions, grid_size=grid_size, boarder_color=boarder_color)
             if save_fig:
-                fig.savefig("models/{}/{}/policy_actions_{}.pdf".format(env_id, base, seed), dpi=300)
+                fig.savefig(log_dir + "/policy_actions_{}.pdf".format(seed), dpi=300)
 
 
 # pylint: disable=too-many-locals
@@ -683,7 +685,7 @@ def plot_visit_table_heatmap(log_dir: str, seed: int = 1, save_fig: bool = False
             annot=True,
             linewidth=0.1,
             fmt="g",
-            annot_kws={"fontsize": 8},
+            annot_kws={"fontsize": 6},
         )
         plt.title("{}".format(
             MDP_ACTIONS[action] if action < 4 else MDP_ACTIONS[action - 4]), c="r" if action < 4 else "b", fontsize=20,
@@ -726,8 +728,9 @@ def plot_visit_table_counts(log_dir: str, seed: int = 1, save_fig: bool = False)
                     head_width=0.0,
                     color="r" if action[1] == 0 else "b",
                 )
-                visit_count = int(visit_table[state_i, action[0]])
-                plt.text(pos[1] + x_shift, pos[0] + y_shift, visit_count, fontsize=10)
+                action_idx = action[0] + 4 if mon_action == 1 else action[0]
+                visit_count = int(visit_table[state_i, action_idx])
+                plt.text(pos[1] + x_shift, pos[0] + y_shift, visit_count, fontsize=8)
         fig.tight_layout()
         if save_fig:
             mon_label = "on" if mon_action == 1 else "off"
