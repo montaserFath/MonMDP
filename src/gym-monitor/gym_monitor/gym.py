@@ -40,7 +40,7 @@ def register_envs():
     register(
         id="TreasureHunt-Penalty-v1",
         entry_point="gym_monitor.treasure_hunt:TreasureHunt",
-        max_episode_steps=500,
+        max_episode_steps=5000,
         kwargs={
             "grid": "9x9 penalty",
             "init_agent_pos": (0, 0),
@@ -51,7 +51,7 @@ def register_envs():
     register(
         id="TreasureHunt-Button-v1",
         entry_point="gym_monitor.treasure_hunt:TreasureHunt",
-        max_episode_steps=500,
+        max_episode_steps=5000,
         kwargs={
             "grid": "9x9 button",
             "init_agent_pos": (0, 0),
