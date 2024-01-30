@@ -61,7 +61,7 @@ def run_monitor(cfg: DictConfig) -> None:
     if EVAL:
         for seed in range(3):
             critic.load(LOG_DIR, seed=seed)
-            _, _, _, _, _, _ = experiment.test(render=False, seed=seed, save_results=True)
+            _, _, _, _, _, _, _ = experiment.test(render=False, seed=seed, save_results=True)
             if LOG_DIR.split("/")[3] in ["q_monitor_sequential", "q_monitor_joint"]:
                 plot_mdp_mon_q_table_heatmap(log_dir=LOG_DIR, save_fig=True)
             else:
