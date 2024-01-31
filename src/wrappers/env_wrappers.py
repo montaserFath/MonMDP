@@ -88,3 +88,33 @@ class WindowViewObs(gym.ObservationWrapper):
         min_y, max_y = max(0, pos_y - self.window_size[1]), min(self.grid_size[1] - 1, pos_y + self.window_size[0] - 1)
         window_obs = obs[min_x:max_x, min_y:max_y]
         return window_obs.reshape(-1) if self.self.flatten_obs else window_obs
+
+
+class ChannelsObs(gym.ObservationWrapper):
+    def __init__(self, env, n_objects: int, grid_size: tuple):
+        super().__init__(env)
+        self.env = env
+        self.n_objects = n_objects
+        self.grid_size = grid_size
+        self.observation_space = gym.spaces.Box(
+            0, self.n_objects, shape=(self.n_objects, self.grid_size[0], self.grid_size[1]), dtype=np.uint8,
+        )
+
+    def observation(self, obs):
+        """
+        AGENT = channel 0
+        GOAL = channel 1
+        FIRE = channel 2
+        BUTTON = channel 3
+        WALL = channel 4
+        """
+        agent_position = list(self.env.get_agent_pos())
+        grid = self.env.get_grid()
+        observation = np.zeros((self.n_objects, self.grid_size[0], self.grid_size[1]))
+        for obj_id in range(1, self.n_objects + 1):
+            if obj_id == 1:  # agent
+                observation[0, agent_position[0], agent_position[1]] = 1
+            else:
+                idx = np.argwhere(grid == obj_id)
+                observation[obj_id - 1, idx[:, 0], idx[:, 1]] = 1
+        return observation
