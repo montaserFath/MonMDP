@@ -1,5 +1,7 @@
 # pylint: disable=no-member
 """Genral Environmnet for MDP and Minotred MDP"""
+from os import environ
+environ['PYGAME_HIDE_SUPPORT_PROMPT'] = '1'
 from contextlib import closing
 from typing import Optional
 from io import StringIO
@@ -15,51 +17,51 @@ UP = 3
 
 EMPTY = 0
 AGENT = 1
-GLD_COIN = 2
-CRSD_COIN = 3
+GOAL = 2
+FIRE = 3
 BUTTON = 4  # 7
 WALL = 5  # 8
 
 INT_TO_ANSI = {
     EMPTY: b"E",
     AGENT: b"A",
-    GLD_COIN: b"G",
-    CRSD_COIN: b"C",
+    GOAL: b"G",
+    FIRE: b"F",
     BUTTON: b"B",
     WALL: b"W",
 }
 
 GRIDS = {
     "3x3 penalty": [
-        [EMPTY, CRSD_COIN, GLD_COIN],
-        [EMPTY, CRSD_COIN, EMPTY],
+        [EMPTY, FIRE, GOAL],
+        [EMPTY, FIRE, EMPTY],
         [EMPTY, EMPTY, EMPTY],
     ],
     "3x3 button": [
-        [EMPTY, CRSD_COIN, GLD_COIN],
-        [EMPTY, CRSD_COIN, EMPTY],
+        [EMPTY, FIRE, GOAL],
+        [EMPTY, FIRE, EMPTY],
         [EMPTY, EMPTY, BUTTON],
     ],
     "9x9 penalty": [
-        [EMPTY, EMPTY, EMPTY, EMPTY, CRSD_COIN, EMPTY, EMPTY, EMPTY, GLD_COIN],
-        [EMPTY, EMPTY, EMPTY, EMPTY, CRSD_COIN, EMPTY, EMPTY, EMPTY, EMPTY],
-        [EMPTY, EMPTY, EMPTY, EMPTY, CRSD_COIN, EMPTY, EMPTY, EMPTY, EMPTY],
-        [EMPTY, EMPTY, EMPTY, EMPTY, CRSD_COIN, EMPTY, EMPTY, EMPTY, EMPTY],
-        [EMPTY, EMPTY, EMPTY, EMPTY, CRSD_COIN, EMPTY, EMPTY, EMPTY, EMPTY],
-        [EMPTY, EMPTY, EMPTY, EMPTY, CRSD_COIN, EMPTY, EMPTY, EMPTY, EMPTY],
-        [EMPTY, EMPTY, EMPTY, EMPTY, CRSD_COIN, EMPTY, EMPTY, EMPTY, EMPTY],
-        [EMPTY, EMPTY, EMPTY, EMPTY, CRSD_COIN, EMPTY, EMPTY, EMPTY, EMPTY],
+        [EMPTY, EMPTY, EMPTY, EMPTY, FIRE, EMPTY, EMPTY, EMPTY, GOAL],
+        [EMPTY, EMPTY, EMPTY, EMPTY, FIRE, EMPTY, EMPTY, EMPTY, EMPTY],
+        [EMPTY, EMPTY, EMPTY, EMPTY, FIRE, EMPTY, EMPTY, EMPTY, EMPTY],
+        [EMPTY, EMPTY, EMPTY, EMPTY, FIRE, EMPTY, EMPTY, EMPTY, EMPTY],
+        [EMPTY, EMPTY, EMPTY, EMPTY, FIRE, EMPTY, EMPTY, EMPTY, EMPTY],
+        [EMPTY, EMPTY, EMPTY, EMPTY, FIRE, EMPTY, EMPTY, EMPTY, EMPTY],
+        [EMPTY, EMPTY, EMPTY, EMPTY, FIRE, EMPTY, EMPTY, EMPTY, EMPTY],
+        [EMPTY, EMPTY, EMPTY, EMPTY, FIRE, EMPTY, EMPTY, EMPTY, EMPTY],
         [EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY],
     ],
     "9x9 button": [
-        [EMPTY, EMPTY, EMPTY, EMPTY, CRSD_COIN, EMPTY, EMPTY, EMPTY, GLD_COIN],
-        [EMPTY, EMPTY, EMPTY, EMPTY, CRSD_COIN, EMPTY, EMPTY, EMPTY, EMPTY],
-        [EMPTY, EMPTY, EMPTY, EMPTY, CRSD_COIN, EMPTY, EMPTY, EMPTY, EMPTY],
-        [EMPTY, EMPTY, EMPTY, EMPTY, CRSD_COIN, EMPTY, EMPTY, EMPTY, EMPTY],
-        [EMPTY, EMPTY, EMPTY, EMPTY, CRSD_COIN, EMPTY, EMPTY, EMPTY, EMPTY],
-        [EMPTY, EMPTY, EMPTY, EMPTY, CRSD_COIN, EMPTY, EMPTY, EMPTY, EMPTY],
-        [EMPTY, EMPTY, EMPTY, EMPTY, CRSD_COIN, EMPTY, EMPTY, EMPTY, EMPTY],
-        [EMPTY, EMPTY, EMPTY, EMPTY, CRSD_COIN, EMPTY, EMPTY, EMPTY, EMPTY],
+        [EMPTY, EMPTY, EMPTY, EMPTY, FIRE, EMPTY, EMPTY, EMPTY, GOAL],
+        [EMPTY, EMPTY, EMPTY, EMPTY, FIRE, EMPTY, EMPTY, EMPTY, EMPTY],
+        [EMPTY, EMPTY, EMPTY, EMPTY, FIRE, EMPTY, EMPTY, EMPTY, EMPTY],
+        [EMPTY, EMPTY, EMPTY, EMPTY, FIRE, EMPTY, EMPTY, EMPTY, EMPTY],
+        [EMPTY, EMPTY, EMPTY, EMPTY, FIRE, EMPTY, EMPTY, EMPTY, EMPTY],
+        [EMPTY, EMPTY, EMPTY, EMPTY, FIRE, EMPTY, EMPTY, EMPTY, EMPTY],
+        [EMPTY, EMPTY, EMPTY, EMPTY, FIRE, EMPTY, EMPTY, EMPTY, EMPTY],
+        [EMPTY, EMPTY, EMPTY, EMPTY, FIRE, EMPTY, EMPTY, EMPTY, EMPTY],
         [EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, EMPTY, BUTTON],
     ],
 }
@@ -112,11 +114,10 @@ class TreasureHunt(gym.Env):
 
     - 0: Empty
     - 1: Agent
-    - 2: Golden coin (reward)
-    - 3: Cursed coin (penalty)
-    - 4: Quicksand
-    - 5: Quicksand with agent in it
-    - 6: Map
+    - 2: Goal
+    - 3: Fire
+    - 4: BUTTON
+    - 5: WALL
 
     ## Starting State
     The game starts with the agent at any of the leftmost cells.
@@ -140,11 +141,11 @@ class TreasureHunt(gym.Env):
     ## Rendering
     Human mode renders the environment as a grid with colored cells.
 
-    - Black: empty cells
-    - Green: golden coins
-    - Red: cursed coins
-    - Orange: quicksand
-    - White: map
+    - White: empty cells
+    - Green: Goal
+    - Red: Fire
+    - yellow: Button
+    - Black: Wall
 
     The agent is the blue circle.
 
@@ -188,15 +189,15 @@ class TreasureHunt(gym.Env):
         """get the current grid status"""
 
         grid = self._grid.copy()
-        grid[grid == GLD_COIN] = EMPTY
-        grid[grid == CRSD_COIN] = EMPTY
+        grid[grid == GOAL] = EMPTY
+        grid[grid == FIRE] = EMPTY
 
         return grid
 
     def reset_grid(self) -> None:
         """reset the gird & add current agent position"""
         self._grid = np.asarray(GRIDS[self._grid_key])
-        self._grid[self._agent_pos] = AGENT
+        # self._grid[self._agent_pos] = AGENT
 
     def reset(self, seed: int = None, **kwargs):
         """reset the environment"""
@@ -225,20 +226,22 @@ class TreasureHunt(gym.Env):
             self._agent_pos = prev_agent_pos
         self.reset_grid()
 
-        terminated = (self._grid != GLD_COIN).all()
+        terminated = self._agent_pos in list(zip(*np.where(np.asarray(GRIDS[self._grid_key]) == GOAL)))
+        # terminated = (self._grid != GOAL).all()
 
         self._last_action = action
         self._current_timestep += 1
         self.info["agent_pos"] = self._agent_pos
+        self.info["grid"] = np.asarray(GRIDS[self._grid_key])
         return self.grid.flatten(), reward, terminated, False, self.info
 
     def reward(self) -> float:
         """
         Reward function returns 1 if the agent collects gold coin, -1 if the agent collects cursed coin, otherwise 0
         """
-        if self._agent_pos in list(zip(*np.where(np.asarray(GRIDS[self._grid_key]) == GLD_COIN))):
+        if self._agent_pos in list(zip(*np.where(np.asarray(GRIDS[self._grid_key]) == GOAL))):
             return 1.0
-        if self._agent_pos in list(zip(*np.where(np.asarray(GRIDS[self._grid_key]) == CRSD_COIN))):
+        if self._agent_pos in list(zip(*np.where(np.asarray(GRIDS[self._grid_key]) == FIRE))):
             return -1.0
         return 0.0
 
@@ -276,14 +279,12 @@ class TreasureHunt(gym.Env):
         grid = self.grid.tolist()
         assert isinstance(grid, list), f"grid should be a list or an array, got {grid}"
 
-        surf_gld_coin = pygame.Surface(self.cell_size)
-        surf_gld_coin.fill((0, 255, 0))
-        surf_crsd_coin = pygame.Surface(self.cell_size)
-        surf_crsd_coin.fill((255, 0, 0))
+        surf_goal = pygame.Surface(self.cell_size)
+        surf_goal.fill((0, 255, 0))
+        surf_fire = pygame.Surface(self.cell_size)
+        surf_fire.fill((255, 0, 0))
         surf_empty = pygame.Surface(self.cell_size)
         surf_empty.fill((0, 0, 0))
-        surf_map = pygame.Surface(self.cell_size)
-        surf_map.fill((255, 255, 255))
         surf_wall = pygame.Surface(self.cell_size)
         surf_wall.fill((255, 255, 0))
         surf_agent = pygame.Surface(self.cell_size)
@@ -299,10 +300,10 @@ class TreasureHunt(gym.Env):
             for x_pos in range(self._n_cols):
                 pos = (x_pos * self.cell_size[0], y_pos * self.cell_size[1])
 
-                if grid[y_pos][x_pos] == GLD_COIN:
-                    self.window_surface.blit(surf_gld_coin, pos)
-                if grid[y_pos][x_pos] == CRSD_COIN:
-                    self.window_surface.blit(surf_crsd_coin, pos)
+                if grid[y_pos][x_pos] == GOAL:
+                    self.window_surface.blit(surf_goal, pos)
+                if grid[y_pos][x_pos] == FIRE:
+                    self.window_surface.blit(surf_fire, pos)
                 if grid[y_pos][x_pos] == EMPTY:  # or grid[y][x] == AGENT:
                     self.window_surface.blit(surf_empty, pos)
                 if grid[y_pos][x_pos] == BUTTON:
@@ -355,3 +356,9 @@ class TreasureHunt(gym.Env):
         if self.window_surface is not None:
             pygame.display.quit()
             pygame.quit()
+
+    def get_agent_pos(self):
+        return self._agent_pos
+
+    def get_grid(self):
+        return self._grid.copy()
