@@ -209,7 +209,9 @@ class TreasureHunt(gym.Env):
         self._last_action = None
         self._current_timestep = 0
         self.info = {}
-        return self.grid.flatten(), {}
+        obs = np.zeros_like(GRIDS[self._grid_key])
+        obs[self._agent_pos] = AGENT
+        return obs.flatten(), {}
 
     def step(self, action: int):
         prev_agent_pos = self._agent_pos
@@ -233,7 +235,9 @@ class TreasureHunt(gym.Env):
         self._current_timestep += 1
         self.info["agent_pos"] = self._agent_pos
         self.info["grid"] = np.asarray(GRIDS[self._grid_key])
-        return self.grid.flatten(), reward, terminated, False, self.info
+        obs = np.zeros_like(GRIDS[self._grid_key])
+        obs[self._agent_pos] = AGENT
+        return obs.flatten(), reward, terminated, False, self.info
 
     def reward(self) -> float:
         """

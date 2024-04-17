@@ -91,7 +91,7 @@ class WindowViewObs(gym.ObservationWrapper):
 
 
 class ChannelsObs(gym.ObservationWrapper):
-    def __init__(self, env, n_objects: int, grid_size: tuple):
+    def __init__(self, env, grid_size: tuple, n_objects: int):
         super().__init__(env)
         self.env = env
         self.n_objects = n_objects
