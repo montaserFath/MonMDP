@@ -7,6 +7,8 @@ import wandb
 from src.actor import Actor
 from src.critic import Critic
 from src.utils import set_rng_seed, cantor_pairing
+from src.replay_buffer import TorchReplayMemory
+from src.policy_analysis import get_action_ind
 
 
 class Experiment:
@@ -22,6 +24,7 @@ class Experiment:
             rng_seed,
             log_dir: str,
             save_log: bool = False,
+            replay_buffer: bool = False,
     ):
         self._env = env
         self._actor = actor
@@ -34,6 +37,7 @@ class Experiment:
         self._save_train_log = save_log
         self._visit_table = None
         self._checkpoint_count = 0
+        self.buffer = TorchReplayMemory(max_size=int(self._training_timesteps)) if replay_buffer else None
 
     def train(self):
         """Train an algorithm in MDP env, logs and save results"""
@@ -112,9 +116,14 @@ class Experiment:
 class MonExperiment(Experiment):
     """Run experiments for training and testing in Monitor MDP env"""
     def reset_visit_table(self):
-        mdp_obs_n, mdp_action_n = self._env.observation_space["mdp"].n, self._env.action_space["mdp"].n
+        if isinstance(self._env.observation_space["mdp"], gym.spaces.Discrete):
+            mdp_obs_n = self._env.observation_space["mdp"].n
+        else:
+            mdp_obs_n = 81  # fix this
+        mdp_action_n = self._env.action_space["mdp"].n
         mon_obs_n, mon_action_n = self._env.observation_space["monitor"].n, self._env.action_space["monitor"].n
         self._visit_table = np.zeros((mdp_obs_n * mon_obs_n, mdp_action_n * mon_action_n))
+        isinstance(self._env.observation_space["mdp"], gym.spaces.Discrete)
 
     def train(self, checkpoint: bool = True):
         """Train an algorithm in Monitor MDP env, logs and save results"""
@@ -126,6 +135,7 @@ class MonExperiment(Experiment):
         eval_count = 0
         total_timesteps = 0
         episode = 0
+        batch_size = 128
         # reset visit table
         self.reset_visit_table()
         while total_timesteps < self._training_timesteps:
@@ -165,19 +175,34 @@ class MonExperiment(Experiment):
             episode_monitor_action_count, episode_timesteps = 0, 0
             next_action = None
             ep_joint_reward = []
+            agent_pos, grid_size = (0, 0), (9, 9)  # bug if (3, 3) fix this
             while True:
                 episode_timesteps += 1
                 action = self._actor(obs) if next_action is None else next_action
-                self._visit_table[obs["mdp"], self._critic.get_action_ind(action)] += 1  # fix for stateMonMDP
+                self._visit_table[self.get_obs_from_agent_pos(self, grid_size, agent_pos), get_action_ind(action)] += 1  # fix for stateMonMDP
 
                 next_obs, reward, term, trunc, info = self._env.step(action)
+                agent_pos = info["agent_pos"]
+                grid_size = info["grid"].shape
+                if self.buffer is not None:
+                    self.buffer.push(obs, action, {"mdp": None, "monitor": None} if term else next_obs, reward)
 
                 if action["monitor"] == 1:
                     episode_monitor_action_count += 1
 
                 if self._critic._on_policy:
                     next_action = self._actor(next_obs)
-                step_loss_mdp, step_loss_mon = self._critic.update(obs, action, reward, term, next_obs, next_action)
+                if self.buffer is None:
+                    step_loss_mdp, step_loss_mon = self._critic.update(obs, action, reward, term, next_obs, next_action)
+                else:
+                    # optimize
+                    step_loss_mdp, step_loss_mon = 0, 0
+                    if self.buffer.buffer_size > batch_size:
+                        mdp_obs, _, non_final_mask, non_final_next_obs, mdp_reward, _, mdp_action, _ = self.buffer.process_batch(
+                            self.buffer.sample(batch_size), device="mps:0",
+                        )
+                        step_loss_mdp = self._critic.optimize_policy_model(mdp_obs, mdp_action, mdp_reward,
+                                                                          non_final_mask, non_final_next_obs)
 
                 episode_return_true += info["mdp_reward"]
                 episode_return_cost += reward["monitor"]
@@ -215,6 +240,8 @@ class MonExperiment(Experiment):
             )
             episode += 1
         # save Q-table as numpy array
+        if self.buffer is not None:
+            self.buffer.save(log_dir=self._log_dir)
         self._critic.save(seed=self._rng_seed)
         if self._save_train_log:
             np.save(self._log_dir + "/visit_table_{}.npy".format(self._rng_seed), self._visit_table)
@@ -245,7 +272,8 @@ class MonExperiment(Experiment):
             ep_states, ep_actions, ep_joint_reward = [], [], []
             return_true, return_proxy, return_cost, ep_discount_reward = 0, 0, 0, 0
             while True:
-                ep_states.append([obs["mdp"].item(), obs["monitor"]])
+                if isinstance(self._env.observation_space["mdp"], gym.spaces.Discrete):
+                    ep_states.append([obs["mdp"].item(), obs["monitor"]])
                 if render:
                     self._env.render()
                 action = self._actor(obs)
@@ -304,3 +332,7 @@ class MonExperiment(Experiment):
         self._critic.save(file_name="/checkpoints_{}/".format(self._checkpoint_count), seed=self._rng_seed)
         np.save(checkpoint_dir + "/visit_table_{}.npy".format(self._rng_seed), self._visit_table)
         self._checkpoint_count += 1
+
+    @staticmethod
+    def get_obs_from_agent_pos(self, grid_size: (int, int), agent_pos: (int, int)) -> int:
+        return int(agent_pos[0] * grid_size[0] + agent_pos[1])

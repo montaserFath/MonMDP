@@ -6,8 +6,7 @@ import os
 import numpy as np
 import torch
 from src.reward import RTable, RDict
-from src.replay_buffer import ReplayBuffer
-from src.network import NeuralNetwork
+from src.network import CNN
 
 
 class Critic(ABC):
@@ -249,6 +248,7 @@ class MonQCritic(Critic):
         return self._n_mon_actions
 
 
+
 class MonQTable(MonQCritic):
     """Q-Table for critic in Monitored MDP"""
 
@@ -301,6 +301,135 @@ class MonQTable(MonQCritic):
     def report(self):
         """get the values of the q-table in monitored MDP"""
         return self._q_table, self._mdp_critic.report()
+
+
+class MonQNet(MonQCritic):
+    def __init__(
+            self,
+            env_name: str,
+            observation_space,
+            action_space,
+            q0=0.0,
+            gamma=0.99,
+            lr=0.01,
+            on_policy=False,
+            strategy: str = "reward_model",
+            unseen_r_value: float = 0.0,
+            dir_name: str = None,
+            **kwargs,
+    ):
+        MonQCritic.__init__(self, env_name, q0, gamma, lr, on_policy, strategy=strategy, unseen_r_value=unseen_r_value)
+        self._n_actions = action_space["mdp"].n
+        self._n_mon_actions = action_space["monitor"].n
+        self._q0 = q0
+        self._gamma = gamma
+        self._lr = lr
+        # self.replay_buffer = None
+        self._q_network = None
+        self._loss_fun = torch.nn.SmoothL1Loss()
+        self.optimizer = None
+        self._transition = None
+        self._strategy = strategy
+        env_size = "3_3" if env_name.split("/")[1].split("-")[-1] == "v0" else "9_9"  # TODO change this
+        self._dir_name = "models/{}/{}/{}/".format(env_size, env_name, self._strategy) if dir_name is None else dir_name
+        self._observation_space = observation_space["mdp"]
+        self._action_space = action_space["mdp"]
+        self.reset()
+
+    def reset(self):
+        # self.replay_buffer = TorchReplayMemory(max_size=int(1e4))
+        # self._q_network = CNN(self._observation_space.shape, self._action_space.n, self._lr, device="mps:0")
+        # self._transition = namedtuple("Transition", ("obs", "action", "next_obs", "reward"))
+        self._q_network.reset()
+
+    def report(self):
+        NotImplemented
+
+    def _update(self, state, action, new_value):
+        NotImplemented
+
+    def __call__(self, state, action=None):
+        mdp_state = state["mdp"]
+        state = mdp_state if torch.is_tensor(mdp_state) else torch.tensor(mdp_state, dtype=torch.float)
+        state = state.reshape(1, state.shape[0], state.shape[1], state.shape[2]) if len(state.shape) == 3 else state
+        q_state = self._q_network(state).detach().numpy()
+        if action is None:
+            return q_state
+        return q_state[action]
+
+
+class MonQCNN(MonQNet):
+    def __init__(
+            self,
+            env_name: str,
+            observation_space,
+            action_space,
+            device: str,
+            **kwargs,
+    ):
+        super().__init__(env_name, observation_space, action_space, **kwargs)
+        self._device = device
+        self._target_network = None
+        self._tau = 5e-4
+        if self._lr > 1e-2:
+            raise ValueError("Learning rate for NN should be small not {}".format(self._lr))
+        self.optimizer = torch.optim.Adam(self._q_network.model.parameters(), lr=self._lr)
+
+    def reset(self):
+        self._q_network = CNN(self._observation_space.shape, self._action_space.n, self._lr, device="mps:0")
+        self._target_network = CNN(self._observation_space.shape, self._action_space.n, self._lr, device="mps:0")
+        self._transition = namedtuple("Transition", ("obs", "action", "next_obs", "reward"))
+        self._q_network.reset()
+
+    def __call__(self, state, action=None):
+        # return np.random.randint(0, 4, size=(4, ))
+        # state = torch.tensor(state["mdp"], dtype=torch.float, device="mps:0").unsqueeze(0)
+        q_state = self._q_network.forward(state["mdp"]).detach().cpu().numpy()
+        if action is None:
+            return q_state
+        return q_state[action]
+
+    # optimize the Q-network once
+    def optimize_policy_model(self, mdp_obs, mdp_action, mdp_reward, non_final_mask, non_final_next_states):
+        q_values = self._q_network.forward(mdp_obs).gather(1, mdp_action)
+        next_q_values = torch.zeros(q_values.shape[0], device=self._device)
+        with torch.no_grad():
+            next_q_values[non_final_mask] = self._target_network.forward(non_final_next_states).max(1).values
+        expected_q_values = (self._gamma * next_q_values.unsqueeze(1)) + mdp_reward
+        loss = self._loss_fun(q_values, expected_q_values)
+
+        self.optimizer.zero_grad()
+        loss.backward()
+        self.optimizer.step()
+
+        # update the target network
+        target_net_state_dict = self._target_network.model.state_dict()
+        policy_net_state_dict = self._q_network.model.state_dict()
+        for key in policy_net_state_dict:
+            target_net_state_dict[key] = policy_net_state_dict[key] * self._tau + target_net_state_dict[key] * (1 - self._tau)
+        self._target_network.model.load_state_dict(target_net_state_dict)
+
+        return loss.item()
+
+    def save(self, seed: int = 1, file_name: str = None):
+        file_dir = self._dir_name if file_name is None else self._dir_name + "/" + file_name
+        os.makedirs(file_dir, exist_ok=True)
+        self._q_network.save(log_dir=file_dir + "/q_network_{}".format(seed))
+        self._target_network.save(log_dir=file_dir + "/target_network_{}".format(seed))
+
+    def load(self, seed: int = 1, file_name: str = None):
+        file_dir = self._dir_name if file_name is None else self._dir_name + "/" + file_name
+        self._q_network.load(log_dir=file_dir + "/q_network_{}".format(seed))
+        self._target_network.load(log_dir=file_dir + "/target_network_{}".format(seed))
+
+    # def update(self, state, action, reward, terminated, next_state, next_action=None):
+    #     NotImplemented
+
+    def _update(self, state, action, new_value):
+        NotImplemented
+
+    def report(self):
+        NotImplemented
 
 
 class MonQTableOneAction(MonQTable):
@@ -488,70 +617,3 @@ class MonQDict(MonQCritic):
     def report(self):
         """get the current values of Q-dictionary"""
         return self._q_dict, self._mdp_critic.report()
-
-
-class MonQNet(MonQCritic):
-    def __int__(
-            self, env_name, q0, gamma, lr, on_policy, strategy, unseen_r_value, observation_space, action_space, dir_name: str = None,
-    ):
-        MonQCritic.__init__(self, env_name, q0, gamma, lr, on_policy, strategy=strategy, unseen_r_value=unseen_r_value)
-        self.replay_buffer = ReplayBuffer(observation_space.shape, action_space.shape)
-        self.q_network = NeuralNetwork(observation_space.shape, action_space.n)
-        self.transition = namedtuple("Transition", ("obs", "action", "next_obs", "reward"))
-        env_size = "3_3" if env_name.split("/")[1].split("-")[-1] == "v0" else "9_9"  # TODO change this
-        self._dir_name = "models/{}/{}/{}/".format(env_size, env_name, self._strategy) if dir_name is None else dir_name
-
-    def reset(self):
-        self.q_network.reset()
-
-    # optimize the Q-network once
-    def train(self, batch):
-        q_values, expected_q_values = self.process_batch(batch)
-        loss = self.q_network.loss_fun(q_values, expected_q_values)
-        self.q_network.optimizer.zero_grad()
-        loss.backward()
-        # In-place gradient clipping
-        torch.nn.utils.clip_grad_value_(self.q_network.parameters(), 100)
-        self.q_network.optimizer.step()
-
-    def __call__(self, state, action=None):
-        state = state if torch.is_tensor(state) else torch.from_numpy(state)
-        state = state.reshape(1, state.shape[0]) if len(state.shape) == 1 else state
-        q_state = self.q_network(state).detach().numpy()
-        if action is None:
-            return q_state
-        return q_state[action]
-
-    def save(self, seed: int = 1, file_name: str = None):
-        file_dir = self._dir_name if file_name is None else self._dir_name + "/" + file_name
-        os.makedirs(file_dir, exist_ok=True)
-        self.q_network.save(log_dir=file_dir + "/q_network_{}".format(seed))
-
-    def load(self, seed: int = 1, file_name: str = None):
-        file_dir = self._dir_name if file_name is None else self._dir_name + "/" + file_name
-        self.q_network.load(log_dir=file_dir + "/q_network_{}".format(seed))
-
-    # def update(self, state, action, reward, terminated, next_state, next_action=None):
-    #     NotImplemented
-
-    # TODO: args types and return types
-    def process_batch(self, batch):
-        batch_size = batch.shape[0]
-        batch = self.transition(*zip(*batch))
-
-        # from DQN pytorch https://pytorch.org/tutorials/intermediate/reinforcement_q_learning.html
-        non_final_mask = torch.tensor(tuple(map(
-            lambda obs: obs is not None, batch.next_obs)), device=self.q_network.device, dtype=torch.bool,
-        )
-        non_final_next_states = torch.cat([obs for obs in batch.next_obs if obs is not None])
-        states_batch = torch.cat(batch.obs)
-        action_batch = torch.cat(batch.action)
-        reward_batch = torch.cat(batch.reward)
-
-        q_values = self.q_network(states_batch).gather(1, action_batch)
-        next_q_values = torch.zeros(batch_size)
-        with torch.no_grad():
-            next_q_values[non_final_mask] = self.q_network(non_final_next_states).max(1)[0]
-
-        expected_q_values = (self._gamma * next_q_values) + reward_batch
-        return q_values, expected_q_values.unsqueeze(1)
