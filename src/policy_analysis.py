@@ -364,9 +364,9 @@ def mean_time_period(vec: np.ndarray, period: int) -> np.ndarray:
     return mean_vec
 
 
-def discount_episode_reward(reward: dict, gamma: float = 0.99) -> (np.ndarray, np.ndarray):
+def discount_episode_reward(reward: dict, gamma: float = 0.99, length: int = 5000) -> (np.ndarray, np.ndarray):
     """Calculate each episode discount reward and number of timesteps"""
-    discount = [gamma**i for i in range(100)]
+    discount = [gamma**i for i in range(length)]
     discount_reward, length = np.zeros(len(reward)), np.zeros(len(reward))
     for i, key in enumerate(reward.keys()):
         length[i] = len(reward[key])
@@ -384,10 +384,16 @@ def calculate_confidence_interval(vector: np.ndarray, confidence: float = 0.95) 
     return results
 
 
-def ind_to_action(action_ind: int, n_actions: int = 4) -> (int, int):
+def ind_to_action(action_ind: int, n_mdp_actions: int = 4) -> (int, int):
     """Transform integer index to MDP and Monitor actions"""
-    mon_action, mdp_action = action_ind // n_actions, action_ind % n_actions
+    mon_action, mdp_action = action_ind // n_mdp_actions, action_ind % n_mdp_actions
     return mdp_action, mon_action
+
+
+def get_action_ind(action: dict, n_mdp_actions: int = 4) -> int:
+    """convert a dictionary of MDP and Monitor actions to an index"""
+    mdp_action, mon_action = action["mdp"], action["monitor"]
+    return mon_action * n_mdp_actions + mdp_action
 
 
 def get_state_ind(state: list, n_states: int) -> int:

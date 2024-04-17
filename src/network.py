@@ -1,26 +1,25 @@
 """Neural Network class"""
-from abc import abstractmethod
+from abc import abstractmethod, ABC
 import numpy as np
 import torch
-import torch.nn as nn
 
 
 class NeuralNetwork:
     def __init__(
             self,
-            obs_size: int,
+            obs_size: tuple,
             n_actions: int,
             lr: float = 0.001,
-            device: str = "cpu",
+            device: str = "mps:0",  # "cpu"
     ):
         self._obs_size = obs_size
         self._n_actions = n_actions
         self._lr = lr
         self._device = device
-        self.loss_fun = nn.SmoothL1Loss()
-        self.optimizer = None
+        self.loss_fun = torch.nn.SmoothL1Loss()
+        # self.optimizer = None
         self.model = None
-        self.reset()
+        # self.reset()
 
     def __call__(self, data):
         return self.model(data)
@@ -46,14 +45,17 @@ class NeuralNetwork:
         return self.model(test).detach().cpu().numpy()
 
     def reset(self):
-        self.model = nn.Sequential(
-            nn.Linear(self._obs_size, 128),
-            nn.ReLU(),
-            nn.Linear(128, 64),
-            nn.ReLU(),
-            nn.Linear(64, self._n_actions),
+        input_size = 1
+        for item in self._obs_size:
+            input_size *= item
+        self.model = torch.nn.Sequential(
+            torch.nn.Linear(input_size, 128),
+            torch.nn.ReLU(),
+            torch.nn.Linear(128, 64),
+            torch.nn.ReLU(),
+            torch.nn.Linear(64, self._n_actions),
         ).to(self._device)
-        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self._lr, amsgrad=True)
+        # self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self._lr)
 
     def save(self, log_dir: str = None):
         if log_dir is None:
@@ -69,5 +71,51 @@ class NeuralNetwork:
         pass
 
     @property
+    def device(self):
+        return self._device
+
+
+class CNN(NeuralNetwork):
+    def __init__(
+            self,
+            obs_size: tuple,
+            n_actions: int,
+            lr: float = 0.001,
+            device: str = "mps:0",
+            features_dim: int = 64,
+    ):
+        """
+        :param obs_size: tuple
+        :param n_actions: (int) number of actions
+        :param lr: (float) learning rate for Adam optimizer
+        :param device: (str) device name "cpu" or "mps:0" for mac "cuda:0" for cuda
+        :param features_dim: (int) Number of features extracted. This corresponds to the number of unit for the last layer.
+        """
+        NeuralNetwork.__init__(self, obs_size, n_actions, lr, device)
+        # We assume CxHxW images (channels first)
+        if len(self._obs_size) != 3:
+            raise ValueError("The observation size should be CxHxW")
+        self.features_dim = features_dim
+        self.reset()
+
+    def forward(self, obs) -> torch.Tensor:
+        if isinstance(obs, np.ndarray):
+            obs = torch.tensor(obs, dtype=torch.float, device=self._device).unsqueeze(0)
+        return self.model(obs).to(self._device)
+
+    def reset(self):
+        n_flatten = 100
+        self.model = torch.nn.Sequential(
+            torch.nn.Conv2d(self._obs_size[0], 8, 3),
+            torch.nn.ReLU(),
+            torch.nn.Conv2d(8, 4, 3),
+            torch.nn.ReLU(),
+            torch.nn.Flatten(),
+            torch.nn.Linear(n_flatten, self.features_dim),
+            torch.nn.ReLU(),
+            torch.nn.Linear(self.features_dim, self._n_actions),
+        ).to(self._device)
+        # self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self._lr)
+
     def device(self):
         return self._device
