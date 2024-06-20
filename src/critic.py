@@ -376,8 +376,8 @@ class MonQCNN(MonQNet):
         self.optimizer = torch.optim.Adam(self._q_network.model.parameters(), lr=self._lr)
 
     def reset(self):
-        self._q_network = CNN(self._observation_space.shape, self._action_space.n, self._lr, device="mps:0")
-        self._target_network = CNN(self._observation_space.shape, self._action_space.n, self._lr, device="mps:0")
+        self._q_network = CNN(self._observation_space.shape, self._action_space.n, self._lr, device=self._device)
+        self._target_network = CNN(self._observation_space.shape, self._action_space.n, self._lr, device=self._device)
         self._transition = namedtuple("Transition", ("obs", "action", "next_obs", "reward"))
         self._q_network.reset()
 
@@ -390,18 +390,17 @@ class MonQCNN(MonQNet):
         return q_state[action]
 
     # optimize the Q-network once
-    def optimize_policy_model(self, mdp_obs, mdp_action, mdp_reward, non_final_mask, non_final_next_states):
-        q_values = self._q_network.forward(mdp_obs).gather(1, mdp_action)
-        next_q_values = torch.zeros(q_values.shape[0], device=self._device)
+    def optimize_policy_model(self, batch: dict):
+        q_values = self._q_network.forward(batch["mdp_obs"]).gather(1, batch["mdp_action"])
+        next_q_values = torch.zeros(batch["mdp_obs.shape"][0], device=self._device)
         with torch.no_grad():
-            next_q_values[non_final_mask] = self._target_network.forward(non_final_next_states).max(1).values
-        expected_q_values = (self._gamma * next_q_values.unsqueeze(1)) + mdp_reward
+            next_q_values[batch["non_final_mask"]] = self._target_network.forward(batch["non_final_next_states"]).max(1).values
+        expected_q_values = (self._gamma * next_q_values.unsqueeze(1)) + batch["mdp_reward"]
         loss = self._loss_fun(q_values, expected_q_values)
 
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
-
         # update the target network
         target_net_state_dict = self._target_network.model.state_dict()
         policy_net_state_dict = self._q_network.model.state_dict()
@@ -430,6 +429,9 @@ class MonQCNN(MonQNet):
 
     def report(self):
         NotImplemented
+
+    def get_device(self) -> str:
+        return self._device
 
 
 class MonQTableOneAction(MonQTable):

@@ -223,31 +223,32 @@ class TorchReplayMemory:
 
     def process_batch(self, batch, device: str):
         batch = self.transition(*zip(*batch))
-        non_nan_mask = [not np.isnan(p) for p in [r["mdp"] for r in batch.reward]]
-        if len(non_nan_mask) == 0:
+        real_reward_mask = [not np.isnan(p) for p in [r["mdp"] for r in batch.reward]]
+        if len(real_reward_mask) == 0:
             raise ValueError("All nan")
-        non_nan_idx = [i for i, x in enumerate(non_nan_mask) if x]
-        mdp_obs = torch.tensor([state["mdp"] for state in batch.obs], device=device, dtype=torch.float)[non_nan_idx]
-        mon_obs = torch.tensor([state["monitor"] for state in batch.obs], device=device, dtype=torch.float)[non_nan_idx]
-
+        real_reward_idx = [i for i, x in enumerate(real_reward_mask) if x]
         non_final_mask = torch.tensor(tuple(map(lambda s: s["mdp"] is not None, batch.next_obs)), dtype=torch.bool)
         non_final_next_states = torch.tensor(
-            [s["mdp"] for s in batch.next_obs if s["mdp"] is not None], device=device, dtype=torch.float,
+            np.array([s["mdp"] for s in batch.next_obs if s["mdp"] is not None]), device=device, dtype=torch.float,
         )
 
-        mdp_reward = torch.tensor([reward["mdp"] for reward in batch.reward], device=device, dtype=torch.float)[non_nan_idx]
-        mon_reward = torch.tensor([reward["monitor"] for reward in batch.reward], device=device, dtype=torch.float)[non_nan_idx]
+        mdp_obs = torch.tensor(np.array([state["mdp"] for state in batch.obs]), device=device, dtype=torch.float)
+        mon_obs = torch.tensor(np.array([state["monitor"] for state in batch.obs]), device=device, dtype=torch.float)
 
-        mdp_action = torch.tensor([a["mdp"] for a in batch.action], device=device)[non_nan_idx]
-        mon_action = torch.tensor([a["monitor"] for a in batch.action], device=device)[non_nan_idx]
+        mdp_reward = torch.tensor(np.array([r["mdp"] for r in batch.reward]), device=device, dtype=torch.float)
+        mon_reward = torch.tensor(np.array([r["monitor"] for r in batch.reward]), device=device, dtype=torch.float)
 
-        return (
-            mdp_obs,
-            mon_obs.unsqueeze(1),
-            non_final_mask,
-            non_final_next_states,
-            mdp_reward.unsqueeze(1),
-            mon_reward.unsqueeze(1),
-            mdp_action.unsqueeze(1),
-            mon_action.unsqueeze(1),
-        )
+        mdp_action = torch.tensor(np.array([a["mdp"] for a in batch.action]), device=device)
+        mon_action = torch.tensor(np.array([a["monitor"] for a in batch.action]), device=device)
+        process_batch = {
+            "real_reward_idx": real_reward_idx,
+            "mdp_obs": mdp_obs,
+            "mon_obs": mon_obs.unsqueeze(1),
+            "non_final_mask": non_final_mask,
+            "non_final_next_states": non_final_next_states,
+            "mdp_reward": mdp_reward.unsqueeze(1),
+            "mon_reward": mon_reward.unsqueeze(1),
+            "mdp_action": mdp_action.unsqueeze(1),
+            "mon_action": mon_action.unsqueeze(1),
+        }
+        return process_batch

@@ -37,6 +37,7 @@ class Experiment:
         self._save_train_log = save_log
         self._visit_table = None
         self._checkpoint_count = 0
+        self._start_train = int(1e5)  # start training after reaching number of timesteps
         self.buffer = TorchReplayMemory(max_size=int(self._training_timesteps)) if replay_buffer else None
 
     def train(self):
@@ -175,7 +176,8 @@ class MonExperiment(Experiment):
             episode_monitor_action_count, episode_timesteps = 0, 0
             next_action = None
             ep_joint_reward = []
-            agent_pos, grid_size = (0, 0), (9, 9)  # bug if (3, 3) fix this
+            agent_pos, grid_size = (0, 0), (9, 9)  #TODO bug if (3, 3) fix this
+            current_device = self._critic.get_device()
             while True:
                 episode_timesteps += 1
                 action = self._actor(obs) if next_action is None else next_action
@@ -197,12 +199,9 @@ class MonExperiment(Experiment):
                 else:
                     # optimize
                     step_loss_mdp, step_loss_mon = 0, 0
-                    if self.buffer.buffer_size > batch_size:
-                        mdp_obs, _, non_final_mask, non_final_next_obs, mdp_reward, _, mdp_action, _ = self.buffer.process_batch(
-                            self.buffer.sample(batch_size), device="mps:0",
-                        )
-                        step_loss_mdp = self._critic.optimize_policy_model(mdp_obs, mdp_action, mdp_reward,
-                                                                          non_final_mask, non_final_next_obs)
+                    if self.buffer.buffer_size > self._start_train:
+                        batch = self.buffer.process_batch(self.buffer.sample(batch_size), device=current_device)
+                        step_loss_mdp = self._critic.optimize_policy_model(batch)
 
                 episode_return_true += info["mdp_reward"]
                 episode_return_cost += reward["monitor"]

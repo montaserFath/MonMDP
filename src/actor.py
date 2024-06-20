@@ -1,6 +1,7 @@
 # pylint: disable=no-member
 """Different actors including Epsilon greedy for MDP and Monitored-MDP"""
 from abc import ABC, abstractmethod
+import random
 import numpy as np
 
 
@@ -69,7 +70,11 @@ class EpsilonGreedy(Actor):
     def __call__(self, state):
         if np.random.random() < self._eps.value and self._train:
             return np.random.randint(0, self._critic.n_actions)
-        return self._critic(state).argmax()
+        q_values = self._critic.predict(state)
+        indx = np.argwhere(q_values == np.max(q_values))
+        # break ties randomly
+        return random.choice(indx)[0]
+        # return self._critic(state).argmax()
 
     def update(self):
         """decay Epsilon"""
