@@ -1,7 +1,8 @@
 """Predictive Reward Model"""
 from abc import ABC, abstractmethod
 import numpy as np
-from src.network import NeuralNetwork
+from src.network import CNN
+import torch
 
 
 class Reward(ABC):
@@ -97,17 +98,65 @@ class RDict(Reward):
 
 
 class RewardNet(Reward):
-    def __init__(self, observation_space, action_space, lr: float = 0.01, **kwargs):
+    def __init__(self, observation_space, action_space, lr: float = 0.01, device: str = "mps:0", **kwargs):
         self._obs_size = observation_space.shape
         self._n_actions = action_space.n
         self._lr = lr
-        self.network = NeuralNetwork(self._obs_size, self._n_actions)
+        self._device = device
+        self._network = CNN(self._obs_size, self._n_actions, self._lr, device=self._device)
+        self._network.init_network()
+        self._reward_optimizer = torch.optim.Adam(self._network.model.parameters(), lr=self._lr)
+        self._reward_loss_fun = torch.nn.SmoothL1Loss()
+        self._reward_loss = []
+
+    def __call__(self, state, action):
+        return self.inference(state, action)
+
+    def _update(self, state, action, new_value):
+        state_tensor = torch.from_numpy(state).float().to(self._device)
+        action_tensor = torch.from_numpy(action).float().to(self._device)
+        reward_tensor = torch.from_numpy(new_value).float().to(self._device)
+        expected_reward = self._network(state_tensor).gather(1, action_tensor)
+        loss = self._reward_loss_fun(reward_tensor, expected_reward)
+
+        self._reward_optimizer.zero_grad()
+        self._reward_loss_fun.backward()
+        self._reward_optimizer.step()
+        self._reward_loss.append(loss.item())
+        return loss.item()
+
+    def optimize_reward_model(self, batch: dict):
+        real_reward_idx = batch["real_reward_idx"]
+        expected_reward = self._network(batch["mdp_obs"][real_reward_idx]).gather(1, batch["mdp_action"][real_reward_idx])
+        loss = self._reward_loss_fun(batch["mdp_reward"][real_reward_idx], expected_reward)
+
+        self._reward_optimizer.zero_grad()
+        self._reward_loss_fun.backward()
+        self._reward_optimizer.step()
+        return loss.item()
+
+    def inference(self, state: np.ndarray, actions: np.ndarray = None) -> torch.Tensor:
+        state_tensor = torch.from_numpy(state).float().to(self._device)
+        if actions is None:
+            return self._network.forward(state_tensor)
+        actions_tensor = torch.from_numpy(actions).float().to(self._device)
+        return self._network.forward(state_tensor).gather(1, actions_tensor)
 
     def reset(self):
-        NotImplemented
+        self._network.init_network()
+        self._reward_optimizer = torch.optim.Adam(self._network.model.parameters(), lr=self._lr)
+        self._reward_loss = []
 
-    def save(self):
-        NotImplemented
+    def save(self, seed: int = 1, file_name: str = None):
+        self._network.save(file_name + "/reward_model_{}".format(seed))
 
-    def load(self):
-        NotImplemented
+    def load(self, seed: int = 1, file_name: str = None):
+        if file_name is None:
+            raise ValueError("The log directory is empty")
+        self._network.load(file_name + "/reward_model_{}".format(seed))
+
+    def report(self):
+        return self._network.model
+
+    def get_current_loss(self) -> np.ndarray:
+        return np.array(self._reward_loss)
