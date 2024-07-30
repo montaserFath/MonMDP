@@ -60,7 +60,7 @@ def run_monitor(cfg: DictConfig) -> None:
         actor = MonStateEpsilonGreedy(critic, train=not EVAL, **cfg.agent.actor)
     else:
         if GENERALIZATION:
-            critic = MonQCNN(env_name=env_id, observation_space=env.observation_space, action_space=env.action_space, dir_name=train_dir, device="mps:0", **cfg.agent.critic)
+            critic = MonQCNN(env_id, env.observation_space, env.action_space, dir_name=train_dir, **cfg.agent.critic)
         else:
             critic = MonQTableOneAction(env_id, env.observation_space, env.action_space, train_dir, **cfg.agent.critic)
         actor = MonEpsilonGreedyOneAction(critic, train=not EVAL, **cfg.agent.actor)

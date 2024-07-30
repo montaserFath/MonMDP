@@ -44,7 +44,7 @@ class NeuralNetwork:
         # with torch.no_grad():
         return self.model(test).detach().cpu().numpy()
 
-    def reset(self):
+    def init_network(self):
         input_size = 1
         for item in self._obs_size:
             input_size *= item
@@ -92,18 +92,19 @@ class CNN(NeuralNetwork):
         :param features_dim: (int) Number of features extracted. This corresponds to the number of unit for the last layer.
         """
         NeuralNetwork.__init__(self, obs_size, n_actions, lr, device)
+        self._device = device
         # We assume CxHxW images (channels first)
         if len(self._obs_size) != 3:
             raise ValueError("The observation size should be CxHxW")
         self.features_dim = features_dim
-        self.reset()
+        self.init_network()
 
     def forward(self, obs) -> torch.Tensor:
         if isinstance(obs, np.ndarray):
             obs = torch.tensor(obs, dtype=torch.float, device=self._device).unsqueeze(0)
         return self.model(obs).to(self._device)
 
-    def reset(self):
+    def init_network(self):
         n_flatten = 100
         self.model = torch.nn.Sequential(
             torch.nn.Conv2d(self._obs_size[0], 8, 3),
