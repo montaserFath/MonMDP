@@ -112,27 +112,18 @@ class RewardNet(Reward):
     def __call__(self, state, action):
         return self.inference(state, action)
 
-    def _update(self, state, action, new_value):
-        state_tensor = torch.from_numpy(state).float().to(self._device)
-        action_tensor = torch.from_numpy(action).float().to(self._device)
-        reward_tensor = torch.from_numpy(new_value).float().to(self._device)
-        expected_reward = self._network(state_tensor).gather(1, action_tensor)
-        loss = self._reward_loss_fun(reward_tensor, expected_reward)
-
-        self._reward_optimizer.zero_grad()
-        self._reward_loss_fun.backward()
-        self._reward_optimizer.step()
-        self._reward_loss.append(loss.item())
-        return loss.item()
-
     def optimize_reward_model(self, batch: dict):
         real_reward_idx = batch["real_reward_idx"]
-        expected_reward = self._network(batch["mdp_obs"][real_reward_idx]).gather(1, batch["mdp_action"][real_reward_idx])
-        loss = self._reward_loss_fun(batch["mdp_reward"][real_reward_idx], expected_reward)
+        mdp_obs = batch["mdp_obs"][real_reward_idx]
+        mdp_action = batch["mdp_action"][real_reward_idx]
+        target_reward = batch["mdp_reward"][real_reward_idx]
+        expected_reward = self._network(mdp_obs).gather(1, mdp_action)
+        loss = self._reward_loss_fun(target_reward, expected_reward)
 
         self._reward_optimizer.zero_grad()
-        self._reward_loss_fun.backward()
+        loss.backward()
         self._reward_optimizer.step()
+        self._reward_loss.append(loss.item())
         return loss.item()
 
     def inference(self, state: np.ndarray, actions: np.ndarray = None) -> torch.Tensor:
@@ -148,7 +139,9 @@ class RewardNet(Reward):
         self._reward_loss = []
 
     def save(self, seed: int = 1, file_name: str = None):
+        """Save reward model network and the reward model loss"""
         self._network.save(file_name + "/reward_model_{}".format(seed))
+        np.save(file_name + "/reward_model_loss_{}".format(seed), self.get_current_loss())
 
     def load(self, seed: int = 1, file_name: str = None):
         if file_name is None:

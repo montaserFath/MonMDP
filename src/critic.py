@@ -5,7 +5,7 @@ from collections import namedtuple
 import os
 import numpy as np
 import torch
-from src.reward import RTable, RDict
+from src.reward import RTable, RDict, RewardNet
 from src.network import CNN
 
 
@@ -33,6 +33,10 @@ class Critic(ABC):
     @abstractmethod
     def report(self):
         """get the current status of the critic"""
+        return
+
+    @abstractmethod
+    def optimize_policy_model(self, batch: dict):
         return
 
 
@@ -71,16 +75,16 @@ class QTable(QCritic):
     """Q-Table for critic in MDP"""
 
     def __init__(
-            self,
-            observation_space,
-            action_space,
-            dir_name: str = None,
-            q0: float = 0.0,
-            gamma: float = 0.99,
-            lr: float = 0.01,
-            on_policy: bool = False,
-            env_name: str = None,
-            **kwargs,
+        self,
+        observation_space,
+        action_space,
+        dir_name: str = None,
+        q0: float = 0.0,
+        gamma: float = 0.99,
+        lr: float = 0.01,
+        on_policy: bool = False,
+        env_name: str = None,
+        **kwargs,
     ):
         QCritic.__init__(self, q0, gamma, lr, on_policy)
         self._n_states = observation_space.n
@@ -88,13 +92,17 @@ class QTable(QCritic):
         self._q_table = None
         if env_name is not None:
             self.env_size = "3_3" if env_name.split("/")[1].split("-")[-1] == "v0" else "9_9"  # TODO change this
-            self._dir_name = "models/{}/{}/q_learning/".format(self.env_size, env_name.split("-")[1]) if dir_name is None else dir_name
+            self._dir_name = (
+                "models/{}/{}/q_learning/".format(self.env_size, env_name.split("-")[1])
+                if dir_name is None
+                else dir_name
+            )
         self.reset()
 
     def __call__(self, state, action=None):
         state = state.item() if isinstance(state, np.ndarray) else state
         if action is None:
-                return self._q_table[state]
+            return self._q_table[state]
         return self._q_table[state][action]
 
     def _update(self, state, action, new_value):
@@ -155,20 +163,21 @@ class QDict(QCritic):
 # Monitored MDP
 # ------------------------------------------------------------------------------
 
+
 # pylint: disable=too-many-instance-attributes, too-many-locals, too-many-branches
 class MonQCritic(Critic):
     """Dictionary Q for the critic in Monitored MDP"""
 
     def __init__(
-            self,
-            env_name: str,
-            q0=0.0,
-            gamma=0.99,
-            lr=0.01,
-            on_policy=False,
-            strategy: str = "reward_model",
-            unseen_r_value: float = 0.0,
-            **kwargs,
+        self,
+        env_name: str,
+        q0=0.0,
+        gamma=0.99,
+        lr=0.01,
+        on_policy=False,
+        strategy: str = "reward_model",
+        unseen_r_value: float = 0.0,
+        **kwargs,
     ):
         self._env_name = env_name
         self._q0 = q0
@@ -181,7 +190,6 @@ class MonQCritic(Critic):
         self._mon_q = None
         self._r_model = None
         self._mdp_critic = None
-
 
     def update(self, state, action, reward, terminated, next_state, next_action=None):
         """Update the q-value"""
@@ -248,23 +256,22 @@ class MonQCritic(Critic):
         return self._n_mon_actions
 
 
-
 class MonQTable(MonQCritic):
     """Q-Table for critic in Monitored MDP"""
 
     def __init__(
-            self,
-            env_name,
-            observation_space,
-            action_space,
-            dir_name: str = None,
-            q0=0.0,
-            gamma=0.99,
-            lr=0.01,
-            on_policy=False,
-            strategy="zero_reward",
-            unseen_r_value=0.0,
-            **kwargs,
+        self,
+        env_name,
+        observation_space,
+        action_space,
+        dir_name: str = None,
+        q0=0.0,
+        gamma=0.99,
+        lr=0.01,
+        on_policy=False,
+        strategy="zero_reward",
+        unseen_r_value=0.0,
+        **kwargs,
     ):
         MonQCritic.__init__(self, env_name, q0, gamma, lr, on_policy, strategy=strategy, unseen_r_value=unseen_r_value)
         self._mdp_critic = QTable(observation_space["mdp"], action_space["mdp"], q0, gamma, lr)
@@ -275,12 +282,12 @@ class MonQTable(MonQCritic):
         self._q_table = None
         self.env_size = "3_3" if env_name.split("/")[1].split("-")[-1] == "v0" else "9_9"  # TODO change this
         env_name = self._env_name.split("/")[1].split("-")[1]
-        self._dir_name = "models/{}/{}/{}/".format(self.env_size, env_name, self._strategy) if dir_name is None else dir_name
+        self._dir_name = (
+            "models/{}/{}/{}/".format(self.env_size, env_name, self._strategy) if dir_name is None else dir_name
+        )
 
         if self._strategy == "reward_model":
             self._r_model = RTable(observation_space["mdp"], action_space["mdp"], **kwargs["reward_model"])
-        else:
-            self._r_model = None
 
         self.reset()
 
@@ -305,18 +312,19 @@ class MonQTable(MonQCritic):
 
 class MonQNet(MonQCritic):
     def __init__(
-            self,
-            env_name: str,
-            observation_space,
-            action_space,
-            q0=0.0,
-            gamma=0.99,
-            lr=0.01,
-            on_policy=False,
-            strategy: str = "reward_model",
-            unseen_r_value: float = 0.0,
-            dir_name: str = None,
-            **kwargs,
+        self,
+        env_name: str,
+        observation_space,
+        action_space,
+        q0=0.0,
+        gamma=0.99,
+        lr=0.01,
+        device: str = "mps:0",
+        on_policy=False,
+        strategy: str = "reward_model",
+        unseen_r_value: float = 0.0,
+        dir_name: str = None,
+        **kwargs,
     ):
         MonQCritic.__init__(self, env_name, q0, gamma, lr, on_policy, strategy=strategy, unseen_r_value=unseen_r_value)
         self._n_actions = action_space["mdp"].n
@@ -324,6 +332,7 @@ class MonQNet(MonQCritic):
         self._q0 = q0
         self._gamma = gamma
         self._lr = lr
+        self._device = device
         # self.replay_buffer = None
         self._q_network = None
         self._loss_fun = torch.nn.SmoothL1Loss()
@@ -332,14 +341,11 @@ class MonQNet(MonQCritic):
         self._strategy = strategy
         env_size = "3_3" if env_name.split("/")[1].split("-")[-1] == "v0" else "9_9"  # TODO change this
         self._dir_name = "models/{}/{}/{}/".format(env_size, env_name, self._strategy) if dir_name is None else dir_name
-        self._observation_space = observation_space["mdp"]
-        self._action_space = action_space["mdp"]
+        self._observation_space = observation_space
+        self._action_space = action_space
         self.reset()
 
     def reset(self):
-        # self.replay_buffer = TorchReplayMemory(max_size=int(1e4))
-        # self._q_network = CNN(self._observation_space.shape, self._action_space.n, self._lr, device="mps:0")
-        # self._transition = namedtuple("Transition", ("obs", "action", "next_obs", "reward"))
         self._q_network.reset()
 
     def report(self):
@@ -360,30 +366,36 @@ class MonQNet(MonQCritic):
 
 class MonQCNN(MonQNet):
     def __init__(
-            self,
-            env_name: str,
-            observation_space,
-            action_space,
-            device: str,
-            **kwargs,
+        self,
+        env_name: str,
+        observation_space,
+        action_space,
+        device: str,
+        **kwargs,
     ):
         super().__init__(env_name, observation_space, action_space, **kwargs)
-        self._device = device
         self._target_network = None
         self._tau = 5e-4
         if self._lr > 1e-2:
             raise ValueError("Learning rate for NN should be small not {}".format(self._lr))
         self.optimizer = torch.optim.Adam(self._q_network.model.parameters(), lr=self._lr)
+        self.q_loss_fun = torch.nn.SmoothL1Loss()
+        self._q_net_loss, self._target_net_loss = [], []
+        if self._strategy == "reward_model":
+            self._r_model = RewardNet(observation_space["mdp"], action_space["mdp"], **kwargs["reward_model"])
+            self._r_model.reset()
 
     def reset(self):
-        self._q_network = CNN(self._observation_space.shape, self._action_space.n, self._lr, device=self._device)
-        self._target_network = CNN(self._observation_space.shape, self._action_space.n, self._lr, device=self._device)
+        n_actions = int(self._action_space["mdp"].n * self._action_space["monitor"].n)
+        self._q_network = CNN(self._observation_space["mdp"].shape, n_actions, self._lr, device=self._device)
+        self._target_network = CNN(self._observation_space["mdp"].shape, n_actions, self._lr, device=self._device)
         self._transition = namedtuple("Transition", ("obs", "action", "next_obs", "reward"))
-        self._q_network.reset()
+        self._q_network.init_network()
+        self._target_network.init_network()
+        self.optimizer = torch.optim.Adam(self._q_network.model.parameters(), lr=self._lr)
+        self._q_net_loss, self._target_net_loss = [], []
 
     def __call__(self, state, action=None):
-        # return np.random.randint(0, 4, size=(4, ))
-        # state = torch.tensor(state["mdp"], dtype=torch.float, device="mps:0").unsqueeze(0)
         q_state = self._q_network.forward(state["mdp"]).detach().cpu().numpy()
         if action is None:
             return q_state
@@ -391,47 +403,67 @@ class MonQCNN(MonQNet):
 
     # optimize the Q-network once
     def optimize_policy_model(self, batch: dict):
-        q_values = self._q_network.forward(batch["mdp_obs"]).gather(1, batch["mdp_action"])
-        next_q_values = torch.zeros(batch["mdp_obs.shape"][0], device=self._device)
+        reward_loss = self._r_model.optimize_reward_model(batch)
+        combined_action = batch["mdp_action"] + self._action_space["mdp"].n * batch["mon_action"]
         with torch.no_grad():
-            next_q_values[batch["non_final_mask"]] = self._target_network.forward(batch["non_final_next_states"]).max(1).values
-        expected_q_values = (self._gamma * next_q_values.unsqueeze(1)) + batch["mdp_reward"]
-        loss = self._loss_fun(q_values, expected_q_values)
+            mdp_rewards = self._r_model._network(batch["mdp_obs"]).gather(1, batch["mdp_action"])
+        combined_reward = mdp_rewards + batch["mon_reward"]
+        q_values = self._q_network.forward(batch["mdp_obs"]).gather(1, combined_action)
+        next_q_values = torch.zeros(batch["mdp_obs"].shape[0], device=self._device)
+        with torch.no_grad():
+            next_q_values[batch["non_final_mask"]] = (
+                self._target_network.forward(batch["non_final_next_states"]).max(1).values
+            )
+        expected_q_values = (self._gamma * next_q_values.unsqueeze(1)) + combined_reward
+        q_loss = self.q_loss_fun(q_values, expected_q_values)
 
         self.optimizer.zero_grad()
-        loss.backward()
+        q_loss.backward()
         self.optimizer.step()
+        self._q_net_loss.append(q_loss.item())
+
         # update the target network
         target_net_state_dict = self._target_network.model.state_dict()
         policy_net_state_dict = self._q_network.model.state_dict()
         for key in policy_net_state_dict:
-            target_net_state_dict[key] = policy_net_state_dict[key] * self._tau + target_net_state_dict[key] * (1 - self._tau)
+            target_net_state_dict[key] = policy_net_state_dict[key] * self._tau + target_net_state_dict[key] * (
+                1 - self._tau
+            )
         self._target_network.model.load_state_dict(target_net_state_dict)
 
-        return loss.item()
+        return q_loss.item(), reward_loss
 
     def save(self, seed: int = 1, file_name: str = None):
         file_dir = self._dir_name if file_name is None else self._dir_name + "/" + file_name
         os.makedirs(file_dir, exist_ok=True)
         self._q_network.save(log_dir=file_dir + "/q_network_{}".format(seed))
         self._target_network.save(log_dir=file_dir + "/target_network_{}".format(seed))
+        self._r_model.save(seed=seed, file_name=file_dir)
+
+        np.save(file_dir + "/q_network_loss_{}".format(seed), self.get_current_loss()[0])
+        np.save(file_dir + "/target_network_loss_{}".format(seed), self.get_current_loss()[1])
 
     def load(self, seed: int = 1, file_name: str = None):
         file_dir = self._dir_name if file_name is None else self._dir_name + "/" + file_name
         self._q_network.load(log_dir=file_dir + "/q_network_{}".format(seed))
         self._target_network.load(log_dir=file_dir + "/target_network_{}".format(seed))
+        self._r_model.load(seed=seed, file_name=file_dir)
 
-    # def update(self, state, action, reward, terminated, next_state, next_action=None):
-    #     NotImplemented
-
-    def _update(self, state, action, new_value):
-        NotImplemented
+    def update(self, state, action, reward, terminated, next_state, next_action=None):
+        if not np.isnan(reward["mdp"]):
+            if self._strategy == "reward_model":
+                self._r_model.update(state["mdp"], action["mdp"], reward["mdp"])
+            else:
+                raise NotImplementedError
 
     def report(self):
         NotImplemented
 
     def get_device(self) -> str:
         return self._device
+
+    def get_current_loss(self):
+        return self._q_net_loss, self._target_net_loss
 
 
 class MonQTableOneAction(MonQTable):
@@ -574,15 +606,15 @@ class MonQDict(MonQCritic):
     """Q-Dictionary for Monitored MDP"""
 
     def __init__(
-            self,
-            observation_space,
-            action_space,
-            q0=0.0,
-            gamma=0.99,
-            lr=0.01,
-            on_policy=False,
-            strategy="zero_reward",
-            **kwargs,
+        self,
+        observation_space,
+        action_space,
+        q0=0.0,
+        gamma=0.99,
+        lr=0.01,
+        on_policy=False,
+        strategy="zero_reward",
+        **kwargs,
     ):
         MonQCritic.__init__(self, q0, gamma, lr, on_policy)
         self._mdp_critic = QDict(observation_space["mdp"], action_space["mdp"], q0, gamma, lr)
