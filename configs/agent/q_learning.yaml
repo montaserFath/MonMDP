@@ -3,7 +3,7 @@ critic:
   q0: 0
   gamma: 0.99
   lr: 1e-3 # 1.0
-  strategy: q_learning
+  strategy: reward_model
   unseen_r_value: 0.0
   reward_model:
     r0: 0
@@ -11,6 +11,6 @@ critic:
   device: "mps:0"
 
 actor:
-  init_eps: 1.0
-  min_eps: 1.0
-  eps_decay: 0 # 4.5e-6
+  init_eps: 0.9
+  min_eps: 0.9
+  eps_decay: 0 #1e-6
