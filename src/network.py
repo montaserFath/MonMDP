@@ -105,11 +105,11 @@ class CNN(NeuralNetwork):
         return self.model(obs).to(self._device)
 
     def init_network(self):
-        n_flatten = 100
+        n_flatten = 200
         self.model = torch.nn.Sequential(
-            torch.nn.Conv2d(self._obs_size[0], 8, 3),
+            torch.nn.Conv2d(self._obs_size[0], 16, 3),
             torch.nn.ReLU(),
-            torch.nn.Conv2d(8, 4, 3),
+            torch.nn.Conv2d(16, 8, 3),
             torch.nn.ReLU(),
             torch.nn.Flatten(),
             torch.nn.Linear(n_flatten, self.features_dim),
