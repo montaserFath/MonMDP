@@ -48,10 +48,10 @@ def run_monitor(cfg: DictConfig) -> None:
     grid_size = (3, 3) if env_id.split("/")[1].split("-")[-1] == "v0" else (9, 9)  # TODO change this
     train_dir = "general_models/" + env_size + "/" + env_id.split("/")[1].split("-")[1] + "/" + str(strategy) + "/"
     # for hyper-parameters tuning
-    if cfg.agent.actor.init_eps != cfg.agent.actor.min_eps:
-        raise ValueError("eps should be fixed")
+    # if cfg.agent.actor.init_eps != cfg.agent.actor.min_eps:
+    #     raise ValueError("eps should be fixed")
     q_lr, reward_lr, eps = cfg.agent.critic.lr, cfg.agent.critic.reward_model.lr, cfg.agent.actor.init_eps
-    train_dir += "env_{}/eps_{}/q_lr_{}/reward_lr_{}/".format(env_random, eps, q_lr, reward_lr)
+    train_dir += "env_{}/eps_{}/q_lr_{}/reward_lr_{}/".format(env_random, "decay", q_lr, reward_lr)
     os.makedirs(train_dir, exist_ok=True)
 
     if env_id.split("/")[1].split("-")[2] == "Button":

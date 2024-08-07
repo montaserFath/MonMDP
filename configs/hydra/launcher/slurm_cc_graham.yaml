@@ -4,7 +4,7 @@ submitit_folder: ${hydra.sweep.dir}/.submitit/%j
 name: ${hydra.job.name}
 account: def-mbowling # rrg-mbowling-ad
 partition: default
-timeout_min: 60
+timeout_min: 120
 cpus_per_task: 16
 gpus_per_node: 1
 tasks_per_node: 1
