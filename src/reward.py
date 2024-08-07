@@ -98,7 +98,7 @@ class RDict(Reward):
 
 
 class RewardNet(Reward):
-    def __init__(self, observation_space, action_space, lr: float = 0.01, device: str = "mps:0", **kwargs):
+    def __init__(self, observation_space, action_space, lr: float = 0.01, device: str = None, **kwargs):
         self._obs_size = observation_space.shape
         self._n_actions = action_space.n
         self._lr = lr
