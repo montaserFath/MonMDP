@@ -14,15 +14,16 @@ wandb:
 
 experiment:
   training_timesteps: 1e6
-  testing_episodes: 50
-  testing_frequency: 1e5
+  testing_episodes: 10
+  testing_frequency: 1e4
   rng_seed: 1
+  start_train_timestep: 1e4
   save_log: True
 
 hydra:
   sweeper:
     params:
-      experiment.rng_seed: range(0, 30)
+      experiment.rng_seed: range(0, 2)
 #      agent.critic.strategy: reward_model, q_monitor_joint
       # environment.id: MiniGrid-DoorKey-5x5-v0, Taxi-v3
       # monitor.id: BinaryMonitor

@@ -8,7 +8,7 @@ critic:
   reward_model:
     r0: 0
     lr: 1e-3 #1.0
-  device: "mps:0"
+  device: "cuda:0" #"mps:0"
 
 actor:
   init_eps: 0.9

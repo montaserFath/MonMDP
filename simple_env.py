@@ -26,7 +26,7 @@ LOG_DIR = "models/9_9/Penalty/reward_model/env_0.0/eps_1.0/q_lr_1.0/reward_lr_1.
 GENERALIZATION = True
 
 
-@hydra.main(version_base=None, config_path="configs", config_name="penalty_env")
+@hydra.main(version_base=None, config_path="configs", config_name="default")
 def run_monitor(cfg: DictConfig) -> None:
     """Run Monitor Baseline on an env to train or evaluate"""
     group = cfg.environment.id + "\\" + dict_to_id(cfg.monitor)
