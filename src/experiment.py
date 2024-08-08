@@ -256,8 +256,8 @@ class MonExperiment(Experiment):
             episode += 1
 
         # save Q-table as numpy array
-        if self.buffer is not None:
-            self.buffer.save(log_dir=self._log_dir)
+        # if self.buffer is not None:
+        #     self.buffer.save(log_dir=self._log_dir)
         self._critic.save(seed=self._rng_seed)
         if self._save_train_log:
             np.save(self._log_dir + "/visit_table_{}.npy".format(self._rng_seed), self._visit_table)
@@ -349,8 +349,8 @@ class MonExperiment(Experiment):
         os.makedirs(checkpoint_dir, exist_ok=True)
         self._critic.save(file_name="checkpoints_{}/".format(self._checkpoint_count), seed=self._rng_seed)
         np.save(checkpoint_dir + "/visit_table_{}.npy".format(self._rng_seed), self._visit_table)
-        if self.buffer is not None:
-            self.buffer.save(log_dir=checkpoint_dir)
+        # if self.buffer is not None:
+        #     self.buffer.save(log_dir=checkpoint_dir)
         self._checkpoint_count += 1
 
     @staticmethod
