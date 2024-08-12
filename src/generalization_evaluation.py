@@ -8,7 +8,7 @@ from src.policy_analysis import plot_env_actions
 from src.wrappers.env_wrappers import ChannelsObs, TimeStepReward
 from src.wrappers.monitor_wrappers import BinaryMonitor
 
-LOG_DIR = "cc_general_models/9_9/Penalty/reward_model/env_0.0/eps_decay/q_lr_0.0005/reward_lr_0.001/"
+LOG_DIR = "../cc_general_models/9_9/Penalty/reward_model/env_0.0/eps_decay/q_lr_0.001/reward_lr_0.001/"
 GRID_SIZE = (9, 9)
 
 
@@ -50,7 +50,7 @@ def eval_policy(env, q_model, n_episodes: int, gamma: float = 0.99) -> (np.ndarr
         while not done and timestep < 5000:
             with torch.no_grad():
                 q_values = q_model(torch.tensor(s["mdp"], dtype=torch.float32, device="mps:0").unsqueeze(0))
-            action = q_values.max(1).indices.view(1, 1).item()
+            action = select_action(q_values.cpu().numpy().squeeze())  # q_values.max(1).indices.view(1, 1).item()
             s, r, done, _, info = env.step({"mdp": action % 4, "monitor": action // 4})
             reward = info["mdp_reward"] + r["monitor"]
             total_r += reward * (gamma**timestep)
@@ -60,7 +60,9 @@ def eval_policy(env, q_model, n_episodes: int, gamma: float = 0.99) -> (np.ndarr
     return np.array(ep_reward), np.array(ep_timestep)
 
 
-def evaluate_police_seeds_checkpoints(n_seeds: int, n_checkpoints: int, save_fig: bool = False) -> None:
+def evaluate_police_seeds_checkpoints(
+    n_seeds: int, n_checkpoints: int, n_episodes: int, save_fig: bool = False
+) -> None:
     """Evaluate police seeds checkpoints and plot episode joint reward and plot policy actions"""
     for seed in range(n_seeds):
         env = gym.make("gym_monitor/TreasureHunt-Penalty-v1", render_modes="human", seed=seed)
@@ -74,7 +76,7 @@ def evaluate_police_seeds_checkpoints(n_seeds: int, n_checkpoints: int, save_fig
                 LOG_DIR + "/checkpoints_{}/q_network_{}".format(checkpoint, seed), map_location=torch.device("mps:0")
             )
             plot_policy(q_model, grid_size=GRID_SIZE, seed=seed, save_fig=save_fig)
-            ep_r, ep_t = eval_policy(env, q_model, 1)
+            ep_r, ep_t = eval_policy(env, q_model, n_episodes)
             eval_rewards.append(ep_r)
             eval_timestep.append(ep_t)
 
@@ -83,7 +85,7 @@ def evaluate_police_seeds_checkpoints(n_seeds: int, n_checkpoints: int, save_fig
 
         fig = plt.figure(figsize=(6, 4))
         plt.plot(np.squeeze(eval_rewards), lw=2)
-        plt.hlines(0.79, 0, 175, color="r", lw=3, linestyle="--")
+        plt.hlines(0.79, 0, n_checkpoints, color="r", lw=3, linestyle="--")  # optimal episode joint reward
         plt.xlabel("checkpoint")
         plt.ylabel("Eval Joint Episode Reward")
         plt.grid(axis="y")
@@ -93,4 +95,4 @@ def evaluate_police_seeds_checkpoints(n_seeds: int, n_checkpoints: int, save_fig
 
 
 if __name__ == "__main__":
-    evaluate_police_seeds_checkpoints(n_seeds=10, n_checkpoints=150, save_fig=True)
+    evaluate_police_seeds_checkpoints(n_seeds=2, n_checkpoints=10, n_episodes=1, save_fig=True)
