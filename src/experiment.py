@@ -223,7 +223,6 @@ class MonExperiment(Experiment):
                     episode_loss_mon += step_loss_mon
 
                 ep_joint_reward.append(info["mdp_reward"] + reward["monitor"])
-                ep_joint_reward.append(info["mdp_reward"] + reward["monitor"])
                 self._actor.update()
                 if term or trunc:
                     if not reward_seen:
