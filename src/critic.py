@@ -378,9 +378,10 @@ class MonQCNN(MonQNet):
         self._tau = 5e-4
         if self._lr > 1e-2:
             raise ValueError("Learning rate for NN should be small not {}".format(self._lr))
-        self.optimizer = torch.optim.RMSprop(
-            self._q_network.model.parameters(), lr=self._lr, weight_decay=0.95, eps=1e-5,
-        )
+        self.optimizer = torch.optim.Adam(self._q_network.model.parameters(), lr=self._lr)
+        # self.optimizer = torch.optim.RMSprop(
+        #     self._q_network.model.parameters(), lr=self._lr, weight_decay=0.95, eps=1e-5,
+        # )
         self.q_loss_fun = torch.nn.SmoothL1Loss()
         self._q_net_loss, self._target_net_loss = [], []
         if self._strategy == "reward_model":
@@ -394,9 +395,10 @@ class MonQCNN(MonQNet):
         self._transition = namedtuple("Transition", ("obs", "action", "next_obs", "reward"))
         self._q_network.init_network()
         self._target_network.init_network()
-        self.optimizer = torch.optim.RMSprop(
-            self._q_network.model.parameters(), lr=self._lr, weight_decay=0.95, eps=1e-5,
-        )
+        self.optimizer = torch.optim.Adam(self._q_network.model.parameters(), lr=self._lr)
+        # self.optimizer = torch.optim.RMSprop(
+        #     self._q_network.model.parameters(), lr=self._lr, weight_decay=0.95, eps=1e-5,
+        # )
         self._q_net_loss, self._target_net_loss = [], []
 
     def __call__(self, state, action=None):
