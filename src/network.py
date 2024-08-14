@@ -55,7 +55,6 @@ class NeuralNetwork:
             torch.nn.ReLU(),
             torch.nn.Linear(64, self._n_actions),
         ).to(self._device)
-        # self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self._lr)
 
     def save(self, log_dir: str = None):
         if log_dir is None:
@@ -93,7 +92,7 @@ class CNN(NeuralNetwork):
         :param kernel_size_0: (int) kernel size for the first convolutional layer
         :param kernel_size_1: (int) kernel size for the second convolutional layer
         :param output_channels: (int) number of output channels for the second convolutional layer
-        :param lr: (float) learning rate for Adam optimizer
+        :param lr: (float) learning rate for the optimizer
         :param device: (str) device name "cpu" or "mps:0" for mac "cuda:0" for cuda
         :param features_dim: (int) Number of features extracted. This corresponds to the number of unit for the last layer.
         """

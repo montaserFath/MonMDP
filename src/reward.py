@@ -105,7 +105,9 @@ class RewardNet(Reward):
         self._device = device
         self._network = CNN(self._obs_size, self._n_actions, self._lr, device=self._device)
         self._network.init_network()
-        self._reward_optimizer = torch.optim.Adam(self._network.model.parameters(), lr=self._lr)
+        self._reward_optimizer = torch.optim.RMSprop(
+            self._network.model.parameters(), lr=self._lr, weight_decay=0.95, eps=1e-5,
+        )
         self._reward_loss_fun = torch.nn.SmoothL1Loss()
         self._reward_loss = []
 
@@ -135,7 +137,9 @@ class RewardNet(Reward):
 
     def reset(self):
         self._network.init_network()
-        self._reward_optimizer = torch.optim.Adam(self._network.model.parameters(), lr=self._lr)
+        self._reward_optimizer = torch.optim.RMSprop(
+            self._network.model.parameters(), lr=self._lr, weight_decay=0.95, eps=1e-5,
+        )
         self._reward_loss = []
 
     def save(self, seed: int = 1, file_name: str = None):
