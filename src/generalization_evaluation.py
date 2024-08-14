@@ -10,7 +10,7 @@ from src.wrappers.monitor_wrappers import BinaryMonitor
 
 LOG_DIR = "../cc_general_models/9_9/Penalty/reward_model/env_0.0/eps_decay/q_lr_0.001/reward_lr_0.001/"
 GRID_SIZE = (9, 9)
-
+DEVICE = "mps:0"
 
 def select_action(q_values) -> int:
     """Choose an action from a Q value distribution"""
@@ -29,7 +29,7 @@ def plot_policy(q_model, grid_size: (int, int), seed: int, save_fig: bool = Fals
         for j in range(grid_size[1]):
             vec = torch.zeros((1, 9, 9), device="mps:0")
             vec[0, i, j] = 1
-            obs = torch.cat((vec, torch.from_numpy(penalty_vec).to("mps:0")))
+            obs = torch.cat((vec, torch.from_numpy(penalty_vec).to(DEVICE)))
             with torch.no_grad():
                 q_values[count] = q_model(obs.unsqueeze(0)).detach().cpu().numpy().squeeze()
                 actions_ind.append(select_action(q_values[count]))
@@ -49,7 +49,7 @@ def eval_policy(env, q_model, n_episodes: int, gamma: float = 0.99) -> (np.ndarr
         done = False
         while not done and timestep < 5000:
             with torch.no_grad():
-                q_values = q_model(torch.tensor(s["mdp"], dtype=torch.float32, device="mps:0").unsqueeze(0))
+                q_values = q_model(torch.tensor(s["mdp"], dtype=torch.float32, device=DEVICE).unsqueeze(0))
             action = select_action(q_values.cpu().numpy().squeeze())  # q_values.max(1).indices.view(1, 1).item()
             s, r, done, _, info = env.step({"mdp": action % 4, "monitor": action // 4})
             reward = info["mdp_reward"] + r["monitor"]
@@ -73,7 +73,7 @@ def evaluate_police_seeds_checkpoints(
         eval_rewards, eval_timestep = [], []
         for checkpoint in range(n_checkpoints):
             q_model = torch.load(
-                LOG_DIR + "/checkpoints_{}/q_network_{}".format(checkpoint, seed), map_location=torch.device("mps:0")
+                LOG_DIR + "/checkpoints_{}/q_network_{}".format(checkpoint, seed), map_location=torch.device(DEVICE)
             )
             plot_policy(q_model, grid_size=GRID_SIZE, seed=seed, save_fig=save_fig)
             ep_r, ep_t = eval_policy(env, q_model, n_episodes)
