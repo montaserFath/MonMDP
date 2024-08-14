@@ -12,6 +12,7 @@ LOG_DIR = "../cc_general_models/9_9/Penalty/reward_model/env_0.0/eps_decay/q_lr_
 GRID_SIZE = (9, 9)
 DEVICE = "mps:0"
 
+
 def select_action(q_values) -> int:
     """Choose an action from a Q value distribution"""
     indx = np.argwhere(q_values == np.max(q_values))
@@ -75,14 +76,13 @@ def evaluate_police_seeds_checkpoints(
             q_model = torch.load(
                 LOG_DIR + "/checkpoints_{}/q_network_{}".format(checkpoint, seed), map_location=torch.device(DEVICE)
             )
-            plot_policy(q_model, grid_size=GRID_SIZE, seed=seed, save_fig=save_fig)
             ep_r, ep_t = eval_policy(env, q_model, n_episodes)
             eval_rewards.append(ep_r)
             eval_timestep.append(ep_t)
 
         np.save(LOG_DIR + "/eval_joint_reward_{}".format(seed), np.squeeze(eval_rewards))
         np.save(LOG_DIR + "/eval_episode_length_{}".format(seed), np.squeeze(eval_timestep))
-
+        plot_policy(q_model, grid_size=GRID_SIZE, seed=seed, save_fig=save_fig)
         fig = plt.figure(figsize=(6, 4))
         plt.plot(np.squeeze(eval_rewards), lw=2)
         plt.hlines(0.79, 0, n_checkpoints, color="r", lw=3, linestyle="--")  # optimal episode joint reward
