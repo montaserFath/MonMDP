@@ -6,11 +6,11 @@ import torch
 
 class NeuralNetwork:
     def __init__(
-            self,
-            obs_size: tuple,
-            n_actions: int,
-            lr: float = 0.001,
-            device: str = None,  # "cpu"
+        self,
+        obs_size: tuple,
+        n_actions: int,
+        lr: float = 0.001,
+        device: str = None,  # "cpu"
     ):
         self._obs_size = obs_size
         self._n_actions = n_actions
@@ -77,16 +77,22 @@ class NeuralNetwork:
 
 class CNN(NeuralNetwork):
     def __init__(
-            self,
-            obs_size: tuple,
-            n_actions: int,
-            lr: float = 0.001,
-            device: str = None,
-            features_dim: int = 64,
+        self,
+        obs_size: tuple,
+        n_actions: int,
+        lr: float = 0.001,
+        kernel_size_0: int = 5,
+        kernel_size_1: int = 3,
+        output_channels: int = 64,
+        device: str = None,
+        features_dim: int = 512,
     ):
         """
         :param obs_size: tuple
         :param n_actions: (int) number of actions
+        :param kernel_size_0: (int) kernel size for the first convolutional layer
+        :param kernel_size_1: (int) kernel size for the second convolutional layer
+        :param output_channels: (int) number of output channels for the second convolutional layer
         :param lr: (float) learning rate for Adam optimizer
         :param device: (str) device name "cpu" or "mps:0" for mac "cuda:0" for cuda
         :param features_dim: (int) Number of features extracted. This corresponds to the number of unit for the last layer.
@@ -97,6 +103,15 @@ class CNN(NeuralNetwork):
         if len(self._obs_size) != 3:
             raise ValueError("The observation size should be CxHxW")
         self.features_dim = features_dim
+        self.kernel_size_0 = kernel_size_0
+        self.kernel_size_1 = kernel_size_1
+        self.output_channels = output_channels
+        if self.kernel_size_0 >= self._obs_size[1]:
+            raise ValueError("The kernel size of the first convolutional layer is larger than input size")
+
+        if self.kernel_size_1 >= self._obs_size[1] - self.kernel_size_0 + 1:
+            raise ValueError("The kernel size of the second convolutional layer is larger than input size")
+
         self.init_network()
 
     def forward(self, obs) -> torch.Tensor:
@@ -105,18 +120,18 @@ class CNN(NeuralNetwork):
         return self.model(obs).to(self._device)
 
     def init_network(self):
-        n_flatten = 200
+        ch_out = self._obs_size[1] - self.kernel_size_0 + 1 - self.kernel_size_1 + 1
+        n_flatten = int(ch_out**2 * self.output_channels)
         self.model = torch.nn.Sequential(
-            torch.nn.Conv2d(self._obs_size[0], 16, 3),
+            torch.nn.Conv2d(self._obs_size[0], 32, self.kernel_size_0),
             torch.nn.ReLU(),
-            torch.nn.Conv2d(16, 8, 3),
+            torch.nn.Conv2d(32, self.output_channels, self.kernel_size_1),
             torch.nn.ReLU(),
             torch.nn.Flatten(),
             torch.nn.Linear(n_flatten, self.features_dim),
             torch.nn.ReLU(),
             torch.nn.Linear(self.features_dim, self._n_actions),
         ).to(self._device)
-        # self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self._lr)
 
     def device(self):
         return self._device
