@@ -10,7 +10,7 @@ class NeuralNetwork:
         obs_size: tuple,
         n_actions: int,
         lr: float = 0.001,
-        device: str = None,  # "cpu"
+        device: str = "cuda:0",  # "cpu"
     ):
         self._obs_size = obs_size
         self._n_actions = n_actions
@@ -83,7 +83,7 @@ class CNN(NeuralNetwork):
         kernel_size_0: int = 5,
         kernel_size_1: int = 3,
         output_channels: int = 64,
-        device: str = None,
+        device: str = "cuda:0",
         features_dim: int = 512,
     ):
         """

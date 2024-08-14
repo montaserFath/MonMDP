@@ -319,7 +319,7 @@ class MonQNet(MonQCritic):
         q0=0.0,
         gamma=0.99,
         lr=0.01,
-        device: str = None,
+        device: str = "cuda:0",
         on_policy=False,
         strategy: str = "reward_model",
         unseen_r_value: float = 0.0,
