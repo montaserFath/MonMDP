@@ -335,7 +335,7 @@ class MonQNet(MonQCritic):
         self._device = device
         # self.replay_buffer = None
         self._q_network = None
-        self._loss_fun = torch.nn.SmoothL1Loss()
+        self._loss_fun = torch.nn.MSELoss()
         self.optimizer = None
         self._transition = None
         self._strategy = strategy
@@ -382,7 +382,7 @@ class MonQCNN(MonQNet):
         # self.optimizer = torch.optim.RMSprop(
         #     self._q_network.model.parameters(), lr=self._lr, weight_decay=0.95, eps=1e-5,
         # )
-        self.q_loss_fun = torch.nn.SmoothL1Loss()
+        self.q_loss_fun = torch.nn.MSELoss()
         self._q_net_loss, self._target_net_loss = [], []
         if self._strategy == "reward_model":
             self._r_model = RewardNet(observation_space["mdp"], action_space["mdp"], **kwargs["reward_model"])

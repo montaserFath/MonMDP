@@ -109,7 +109,7 @@ class RewardNet(Reward):
         #     self._network.model.parameters(), lr=self._lr, weight_decay=0.95, eps=1e-5,
         # )
         self._reward_optimizer = torch.optim.Adam(self._network.model.parameters(), lr=self._lr)
-        self._reward_loss_fun = torch.nn.SmoothL1Loss()
+        self._reward_loss_fun = torch.nn.MSELoss()
         self._reward_loss = []
 
     def __call__(self, state, action):

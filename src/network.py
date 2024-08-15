@@ -16,7 +16,7 @@ class NeuralNetwork:
         self._n_actions = n_actions
         self._lr = lr
         self._device = device
-        self.loss_fun = torch.nn.SmoothL1Loss()
+        self.loss_fun = torch.nn.MSELoss()
         # self.optimizer = None
         self.model = None
         # self.reset()
