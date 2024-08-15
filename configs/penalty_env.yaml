@@ -18,4 +18,5 @@ experiment:
   testing_frequency: 1e4
   rng_seed: 1
   start_train_timestep: 1e4
+  replay_buffer_size: 1e5
   save_log: True

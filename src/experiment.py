@@ -24,6 +24,7 @@ class Experiment:
         testing_frequency,
         rng_seed,
         log_dir: str,
+        replay_buffer_size: int,
         save_log: bool = False,
         replay_buffer: bool = False,
         start_train_timestep: int = int(1e4),
@@ -40,7 +41,7 @@ class Experiment:
         self._visit_table = None
         self._checkpoint_count = 0
         self._start_train_timestep = start_train_timestep  # start training after reaching number of timesteps
-        self.buffer = TorchReplayMemory(max_size=int(self._training_timesteps)) if replay_buffer else None
+        self.buffer = TorchReplayMemory(max_size=int(replay_buffer_size)) if replay_buffer else None
 
     def train(self):
         """Train an algorithm in MDP env, logs and save results"""
