@@ -28,6 +28,9 @@ class Experiment:
         save_log: bool = False,
         replay_buffer: bool = False,
         start_train_timestep: int = int(1e4),
+        batch_size: int = 128,
+        n_itr_episode: int = 5000,
+        update_target_freq: int = 1000,
     ):
         self._env = env
         self._actor = actor
@@ -41,6 +44,9 @@ class Experiment:
         self._visit_table = None
         self._checkpoint_count = 0
         self._start_train_timestep = start_train_timestep  # start training after reaching number of timesteps
+        self._batch_size = batch_size  # mini batch size number of sample per batch
+        self._n_itr_episode = n_itr_episode  # number of iteration to update the Q-network per episode
+        self._update_target_freq = update_target_freq  # update the target network every episode
         self.buffer = TorchReplayMemory(max_size=int(replay_buffer_size)) if replay_buffer else None
 
     def train(self):
@@ -140,8 +146,6 @@ class MonExperiment(Experiment):
         eval_count = 0
         total_timesteps = 0
         episode = 0
-        batch_size = 128
-        n_epoches_per_timesteps = 50
         # reset visit table
         self.reset_visit_table()
         while total_timesteps < self._training_timesteps:
@@ -233,9 +237,11 @@ class MonExperiment(Experiment):
                 obs = next_obs
             # Update Q-network and reward network
             if self.buffer.buffer_size > self._start_train_timestep:
-                for epoch in range(n_epoches_per_timesteps):
-                    batch = self.buffer.process_batch(self.buffer.sample(batch_size), device=current_device)
-                    step_loss_mdp, r_model_loss = self._critic.optimize_policy_model(batch)
+                for epoch in range(self._n_itr_episode):
+                    batch = self.buffer.process_batch(self.buffer.sample(self._batch_size), device=current_device)
+                    step_loss_mdp, r_model_loss = self._critic.optimize_policy_model(
+                        batch, update_target=epoch % self._update_target_freq == 0,
+                    )
                     episode_reward_model_loss += r_model_loss
                     episode_loss_mdp += step_loss_mdp
                     episode_loss_mon += step_loss_mon

@@ -36,7 +36,7 @@ class Critic(ABC):
         return
 
     @abstractmethod
-    def optimize_policy_model(self, batch: dict):
+    def optimize_policy_model(self, batch: dict, update_target: bool = False):
         return
 
 
@@ -408,7 +408,7 @@ class MonQCNN(MonQNet):
         return q_state[action]
 
     # optimize the Q-network once
-    def optimize_policy_model(self, batch: dict):
+    def optimize_policy_model(self, batch: dict, update_target: bool = False):
         reward_loss = self._r_model.optimize_reward_model(batch)
         combined_action = batch["mdp_action"] + self._action_space["mdp"].n * batch["mon_action"]
         with torch.no_grad():
@@ -429,13 +429,14 @@ class MonQCNN(MonQNet):
         self._q_net_loss.append(q_loss.item())
 
         # update the target network
-        target_net_state_dict = self._target_network.model.state_dict()
-        policy_net_state_dict = self._q_network.model.state_dict()
-        for key in policy_net_state_dict:
-            target_net_state_dict[key] = policy_net_state_dict[key] * self._tau + target_net_state_dict[key] * (
-                1 - self._tau
-            )
-        self._target_network.model.load_state_dict(target_net_state_dict)
+        if update_target:
+            target_net_state_dict = self._target_network.model.state_dict()
+            policy_net_state_dict = self._q_network.model.state_dict()
+            for key in policy_net_state_dict:
+                target_net_state_dict[key] = policy_net_state_dict[key] * self._tau + target_net_state_dict[key] * (
+                    1 - self._tau
+                )
+            self._target_network.model.load_state_dict(target_net_state_dict)
 
         return q_loss.item(), reward_loss
 
