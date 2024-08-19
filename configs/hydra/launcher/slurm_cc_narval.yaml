@@ -11,4 +11,4 @@ tasks_per_node: 1
 nodes: 1
 max_num_timeout: 100
 array_parallelism: 256
-mem: 127000M
+mem: 510000M
