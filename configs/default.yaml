@@ -20,8 +20,8 @@ experiment:
   start_train_timestep: 1e4
   replay_buffer_size: 1e5
   batch_size: 128
-  n_itr_episode: 5000
-  update_target_freq: 1000
+  n_itr_episode: 1000
+  update_target_freq: 250
   save_log: True
 
 hydra:
