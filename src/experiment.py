@@ -151,7 +151,7 @@ class MonExperiment(Experiment):
         while total_timesteps < self._training_timesteps:
             if total_timesteps > self._testing_frequency * self._checkpoint_count:
                 # perform/save checkpoint
-                self.checkpoint()
+                self.checkpoint(joint_reward, eval_joint_reward)
 
                 self._actor.eval()
                 (
@@ -349,12 +349,18 @@ class MonExperiment(Experiment):
             trajectories,
         )
 
-    def checkpoint(self):
+    def checkpoint(self, joint_reward, eval_joint_reward):
         """save the model and statistic during the training process"""
         checkpoint_dir = self._log_dir + "checkpoints_{}/".format(self._checkpoint_count)
         os.makedirs(checkpoint_dir, exist_ok=True)
         self._critic.save(file_name="checkpoints_{}/".format(self._checkpoint_count), seed=self._rng_seed)
         np.save(checkpoint_dir + "/visit_table_{}.npy".format(self._rng_seed), self._visit_table)
+        np.save(self._log_dir + "/visit_table_{}.npy".format(self._rng_seed), self._visit_table)
+        np.save(self._log_dir + "/training_joint_reward_{}.npy".format(self._rng_seed), joint_reward)
+        np.save(
+            self._log_dir + "/evaluation_joint_reward_{}.npy".format(self._rng_seed),
+            eval_joint_reward,
+        )
         # if self.buffer is not None:
         #     self.buffer.save(log_dir=checkpoint_dir)
         self._checkpoint_count += 1
