@@ -47,11 +47,9 @@ def run_monitor(cfg: DictConfig) -> None:
     env_size = "3_3" if env_id.split("/")[1].split("-")[-1] == "v0" else "9_9"  # TODO change this
     grid_size = (3, 3) if env_id.split("/")[1].split("-")[-1] == "v0" else (9, 9)  # TODO change this
     train_dir = "general_models/" + env_size + "/" + env_id.split("/")[1].split("-")[1] + "/" + str(strategy) + "/"
-    # for hyper-parameters tuning
-    # if cfg.agent.actor.init_eps != cfg.agent.actor.min_eps:
-    #     raise ValueError("eps should be fixed")
     q_lr, reward_lr, eps = cfg.agent.critic.lr, cfg.agent.critic.reward_model.lr, cfg.agent.actor.init_eps
-    train_dir += "env_{}/eps_{}/q_lr_{}/reward_lr_{}/".format(env_random, "decay", q_lr, reward_lr)
+    eps = eps if cfg.agent.actor.init_eps == cfg.agent.actor.min_eps else "decay"
+    train_dir += "env_{}/eps_{}/q_lr_{}/reward_lr_{}/".format(env_random, eps, q_lr, reward_lr)
     os.makedirs(train_dir, exist_ok=True)
 
     if env_id.split("/")[1].split("-")[2] == "Button":
@@ -94,7 +92,7 @@ def wrappe_env(
         env = ChannelsObs(env, grid_size, n_objects=4 if env_id.split("/")[1].split("-")[2] == "Button" else 3)
     else:
         env = TabularObservationsWrapper(env, grid_size=grid_size)
-    env = TimeStepReward(env, timestep_penalty=0.0, goal_reward=1, fire_reward=-10)
+    env = TimeStepReward(env, timestep_penalty=0.0, goal_reward=1, fire_reward=-1)
     env_random = cfg.environment.random_action_prob if not EVAL else float(LOG_DIR.split("/")[4].split("_")[-1])
     env = StochasticAction(env, random_prob=env_random)
     if monitor_wrapper:
