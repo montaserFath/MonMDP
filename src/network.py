@@ -81,7 +81,7 @@ class CNN(NeuralNetwork):
         n_actions: int,
         lr: float = 0.001,
         kernel_size_0: int = 5,
-        kernel_size_1: int = 3,
+        kernel_size_1: int = 2,
         output_channels: int = 64,
         device: str = "cuda:0",
         features_dim: int = 512,
