@@ -5,7 +5,7 @@ import hydra
 import wandb
 from omegaconf import DictConfig, OmegaConf
 from src.utils import dict_to_id
-from src.wrappers.env_wrappers import TimeStepReward, TabularObservationsWrapper, WindowViewObs, StochasticAction, ChannelsObs
+from src.wrappers.env_wrappers import TimeStepReward, TabularObservationsWrapper, WindowViewObs, StochasticAction, ChannelsObs, WallObs
 from src.wrappers.monitor_wrappers import BinaryMonitor, StateMonitor, FullMonitor
 from src.actor import MonEpsilonGreedyOneAction, MonStateEpsilonGreedy
 from src.critic import MonQTableOneAction, StateMonTable, MonQCNN
@@ -47,11 +47,9 @@ def run_monitor(cfg: DictConfig) -> None:
     env_size = "3_3" if env_id.split("/")[1].split("-")[-1] == "v0" else "9_9"  # TODO change this
     grid_size = (3, 3) if env_id.split("/")[1].split("-")[-1] == "v0" else (9, 9)  # TODO change this
     train_dir = "general_models/" + env_size + "/" + env_id.split("/")[1].split("-")[1] + "/" + str(strategy) + "/"
-    # for hyper-parameters tuning
-    # if cfg.agent.actor.init_eps != cfg.agent.actor.min_eps:
-    #     raise ValueError("eps should be fixed")
     q_lr, reward_lr, eps = cfg.agent.critic.lr, cfg.agent.critic.reward_model.lr, cfg.agent.actor.init_eps
-    train_dir += "env_{}/eps_{}/q_lr_{}/reward_lr_{}/".format(env_random, "decay", q_lr, reward_lr)
+    str_eps = "decay" if cfg.agent.actor.init_eps != cfg.agent.actor.min_eps else eps
+    train_dir += "env_{}/eps_{}/q_lr_{}/reward_lr_{}/".format(env_random, str_eps, q_lr, reward_lr)
     os.makedirs(train_dir, exist_ok=True)
 
     if env_id.split("/")[1].split("-")[2] == "Button":
@@ -88,14 +86,14 @@ def wrappe_env(
 ):
     """Wrapper Simple/Fire/Button env in Monitor MDP or MDP"""
     env = gym.make(env_id, render_modes="human")
-    # env = WindowViewObs(env, window_size=(3, 3), grid_size=(10, 10), image_obs=False)
     grid_size = (3, 3) if env_id.split("/")[1].split("-")[-1] == "v0" else (9, 9)  # TODO change this
     if generalization:
         env = ChannelsObs(env, grid_size, n_objects=4 if env_id.split("/")[1].split("-")[2] == "Button" else 3)
     else:
         env = TabularObservationsWrapper(env, grid_size=grid_size)
     env = TimeStepReward(env, timestep_penalty=0.0, goal_reward=1, fire_reward=-1)
-    env = WindowViewObs(env, window_size=5)
+    env = WallObs(env, grid_size=grid_size, n_walls=3)
+    env = WindowViewObs(env, window_size=7)
     env_random = cfg.environment.random_action_prob if not EVAL else float(LOG_DIR.split("/")[4].split("_")[-1])
     env = StochasticAction(env, random_prob=env_random)
     if monitor_wrapper:
