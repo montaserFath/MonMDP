@@ -70,45 +70,33 @@ class StochasticAction(gym.ActionWrapper):
 class WindowViewObs(gym.ObservationWrapper):
     """Observation wrapper get a window view around the agent"""
 
-    def __init__(
-        self, env, grid_size: tuple, window_size: (int, int), image_obs: bool = False, flatten_obs: bool = False
-    ):
+    def __init__(self, env, window_size: int, image_obs: bool = False, flatten_obs: bool = False):
         super().__init__(env)
         self.env = env
+        old_shape = self.env.observation_space.shape
+        if window_size > old_shape[1] or window_size > old_shape[2]:
+            raise ValueError("The window size should smaller than half of the grid size")
         self.window_size = window_size
-        self.grid_size = grid_size
         self.image_obs = image_obs
         self.flatten_obs = flatten_obs
 
         high = 255 if image_obs else int(env.observation_space.high_repr)
         low = 0 if image_obs else int(env.observation_space.low_repr)
 
-        if len(self.env.observation_space.shape) == 3:
-            self.observation_space = gym.spaces.Box(
-                low,
-                high,
-                (self.env.observation_space.shape[0],) + window_size,
-                dtype=np.int8,
-            )
-        else:
-            self.observation_space = gym.spaces.Box(low, high, window_size, dtype=np.int8)
+        if len(self.env.observation_space.shape) != 3:
+            raise ValueError("Parent env should have 3 dimensions CxHxW")
+        self.observation_space = gym.spaces.Box(low, high, (old_shape[0], window_size, window_size), dtype=np.int8)
 
     def observation(self, obs):
         # window_obs = np.zeros((self.window_size[0], self.window_size[1], self.env.observation_space.shape))
         agent_id = 1  # TODO remove hard coded value
-        if len(self.env.observation_space.shape) == 1:
-            obs = obs.reshape(self.grid_size[0], self.grid_size[1])
+        last_x, last_y = self.env.observation_space.shape[1], self.env.observation_space.shape[2]
         pos_x, pos_y = np.where(obs[0, :, :] == agent_id)[0][0], np.where(obs[0, :, :] == agent_id)[1][0]
-        min_x, max_x = max(0, pos_x - self.window_size[0] // 2), min(
-            self.grid_size[0], pos_x + self.window_size[0] // 2 + 1
-        )
-        min_y, max_y = max(0, pos_y - self.window_size[1] // 2), min(
-            self.grid_size[1], pos_y + self.window_size[0] // 2 + 1
-        )
-        if len(self.env.observation_space.shape) == 3:
-            window_obs = obs[:, min_x:max_x, min_y:max_y]
-        else:
-            window_obs = obs[min_x:max_x, min_y:max_y]
+        min_x, max_x = max(0, pos_x - self.window_size // 2), min(last_x, pos_x + self.window_size // 2 + 1)
+        min_y, max_y = max(0, pos_y - self.window_size // 2), min(last_y, pos_y + self.window_size // 2 + 1)
+        window_obs = obs[:, min_x:max_x, min_y:max_y]
+        if window_obs.shape[1] != self.window_size or window_obs.shape[2] != self.window_size:
+            raise ValueError("mismatch shape of observation in window wrapper")
         return window_obs.reshape(-1) if self.flatten_obs else window_obs
 
 
@@ -143,3 +131,31 @@ class ChannelsObs(gym.ObservationWrapper):
                 idx = np.argwhere(grid == obj_id)
                 observation[obj_id - 1, idx[:, 0], idx[:, 1]] = 1
         return observation
+
+
+class WallObs(gym.ObservationWrapper):
+    def __init__(self, env, grid_size: tuple, n_walls: int):
+        super().__init__(env)
+        self.env = env
+        if n_walls > (grid_size[0] // 2):
+            raise ValueError("number of walls should smaller than half of the grid size")
+        self.n_walls = n_walls
+        self.grid_size = grid_size
+        new_shape = list(self.env.observation_space.shape)
+        new_shape[0] += 1
+        new_shape[1] += 2 * self.n_walls
+        new_shape[2] += 2 * self.n_walls
+        self.shape = tuple(new_shape)
+        self.observation_space = gym.spaces.Box(0, self.shape[0], shape=self.shape, dtype=np.uint8)
+
+    def observation(self, obs):
+        new_obs = np.zeros(self.shape)
+        # copy obs
+        new_obs[:-1, self.n_walls : -self.n_walls, self.n_walls : -self.n_walls] = obs.copy()
+
+        # walls channel
+        new_obs[-1, : self.n_walls, :] = 1
+        new_obs[-1, :, : self.n_walls] = 1
+        new_obs[-1, -self.n_walls :, :] = 1
+        new_obs[-1, :, -self.n_walls :] = 1
+        return new_obs
