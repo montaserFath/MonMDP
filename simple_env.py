@@ -94,7 +94,8 @@ def wrappe_env(
         env = ChannelsObs(env, grid_size, n_objects=4 if env_id.split("/")[1].split("-")[2] == "Button" else 3)
     else:
         env = TabularObservationsWrapper(env, grid_size=grid_size)
-    env = TimeStepReward(env, timestep_penalty=0.0, goal_reward=1, fire_reward=-10)
+    env = TimeStepReward(env, timestep_penalty=0.0, goal_reward=1, fire_reward=-1)
+    env = WindowViewObs(env, window_size=5)
     env_random = cfg.environment.random_action_prob if not EVAL else float(LOG_DIR.split("/")[4].split("_")[-1])
     env = StochasticAction(env, random_prob=env_random)
     if monitor_wrapper:
