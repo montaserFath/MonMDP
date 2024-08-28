@@ -4,8 +4,13 @@ defaults:
   - _self_
 
 environment:
-  id: gym_monitor/TreasureHunt-Penalty-v1
-  random_action_prob: 0.0
+  grid_size: [6, 6]
+  n_plants: 3
+  plants_dryness_prob: 0.1
+  dry_difference: 0.5
+  agent_start_pos: [0, 0]
+  max_episode_steps: 100
+  n_walls: 3
 
 wandb:
   mode: offline
@@ -13,21 +18,21 @@ wandb:
   project: MonMDP
 
 experiment:
-  training_timesteps: 1e6
+  training_timesteps: 5e6
   testing_episodes: 10
-  testing_frequency: 1e4
+  testing_frequency: 5e4
   rng_seed: 1
   start_train_timestep: 1e4
-  replay_buffer_size: 1e5
+  replay_buffer_size: 1e6
   batch_size: 128
-  n_itr_episode: 5000
-  update_target_freq: 1000
+  n_itr_episode: 100
+  update_target_freq: 25
   save_log: True
 
 hydra:
   sweeper:
     params:
-      experiment.rng_seed: range(0, 2)
+      experiment.rng_seed: range(0, 10)
 #      agent.critic.strategy: reward_model, q_monitor_joint
       # environment.id: MiniGrid-DoorKey-5x5-v0, Taxi-v3
       # monitor.id: BinaryMonitor
