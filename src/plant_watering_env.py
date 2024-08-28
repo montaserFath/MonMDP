@@ -138,11 +138,12 @@ class PlantsWateringEnv(gym.Env):
         """Update plants dryness level"""
         # select a single plant and stochastic
         plant_id = np.random.randint(self.n_plants)
-        new_dry = self._grid[2, self._plants_pos[plant_id, 0], self._plants_pos[plant_id, 1]] + self.dry_difference
-        self._grid[2, self._plants_pos[plant_id, 0], self._plants_pos[plant_id, 1]] = max(
-            np.max(self.dryness_levels),
-            new_dry,
-        )
+        if np.random.random() < self.plants_dryness_prob:
+            new_dry = self._grid[2, self._plants_pos[plant_id, 0], self._plants_pos[plant_id, 1]] + self.dry_difference
+            self._grid[2, self._plants_pos[plant_id, 0], self._plants_pos[plant_id, 1]] = max(
+                np.max(self.dryness_levels),
+                new_dry,
+            )
 
     def update_info(self) -> dict:
         """Get information about the environment"""
