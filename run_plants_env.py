@@ -20,7 +20,7 @@ EVAL = False
 LOG_DIR = "models/9_9/Plants/reward_model/env_0.0/eps_1.0/q_lr_1.0/reward_lr_1.0/"
 
 
-@hydra.main(version_base=None, config_path="configs", config_name="plants_watering_env")
+@hydra.main(version_base=None, config_path="configs", config_name="default")
 def run_monitor(cfg: DictConfig) -> None:
     """Run env"""
     wandb.init(

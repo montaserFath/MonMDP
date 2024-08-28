@@ -55,6 +55,9 @@ class PlantsWateringEnv(gym.Env):
                 if self._grid[2, self._agent_pos[0], self._agent_pos[1]] > 0:
                     self.water_plant(self._agent_pos)
 
+        # randomly select a plant and increase the dryness level
+        if np.random.random() < self.plants_dryness_prob:
+            self.update_plants_dryness()
         reward = self.reward(action)
         self._current_timestep += 1
         return self._grid, reward, self._current_timestep > self.max_episode_steps, False, self.update_info()
@@ -138,12 +141,11 @@ class PlantsWateringEnv(gym.Env):
         """Update plants dryness level"""
         # select a single plant and stochastic
         plant_id = np.random.randint(self.n_plants)
-        if np.random.random() < self.plants_dryness_prob:
-            new_dry = self._grid[2, self._plants_pos[plant_id, 0], self._plants_pos[plant_id, 1]] + self.dry_difference
-            self._grid[2, self._plants_pos[plant_id, 0], self._plants_pos[plant_id, 1]] = max(
-                np.max(self.dryness_levels),
-                new_dry,
-            )
+        new_dry = self._grid[2, self._plants_pos[plant_id, 0], self._plants_pos[plant_id, 1]] + self.dry_difference
+        self._grid[2, self._plants_pos[plant_id, 0], self._plants_pos[plant_id, 1]] = max(
+            np.max(self.dryness_levels),
+            new_dry,
+        )
 
     def update_info(self) -> dict:
         """Get information about the environment"""
