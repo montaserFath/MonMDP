@@ -49,7 +49,7 @@ class Experiment:
         self._n_itr_episode = n_itr_episode  # number of iteration to update the Q-network per episode
         self._update_target_freq = update_target_freq  # update the target network every episode
         self.buffer = TorchReplayMemory(max_size=int(replay_buffer_size)) if replay_buffer else None
-        self._time_file = open(self._log_dir + "/time.txt", "w")
+        self._time_file = open(self._log_dir + "/time_{}.txt".format(self._rng_seed), "w")
 
     def train(self):
         """Train an algorithm in MDP env, logs and save results"""
