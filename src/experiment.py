@@ -284,7 +284,7 @@ class MonExperiment(Experiment):
         wandb.finish()
         self._env.close()
         self._time_file.write("Experiment time = {}".format(time.time() - start_time))
-        self._text_file.close()
+        self._time_file.close()
 
     def test(self, render: bool = False, seed: int = 1, save_results: bool = False):
         """Evaluate an algorithm in Monitor MDP env, logs and save results"""
