@@ -72,7 +72,7 @@ class PlantsWateringEnv(gym.Env):
     def reset(self, seed: int = None, **kwargs):
         """Reset the environment"""
         super().reset(seed=seed, **kwargs)
-        self.seed(seed)
+        # self.seed(seed)
         self._grid = np.zeros(self._obs_shape)
         self._current_timestep = 0
 
@@ -142,7 +142,7 @@ class PlantsWateringEnv(gym.Env):
         # select a single plant and stochastic
         plant_id = np.random.randint(self.n_plants)
         new_dry = self._grid[2, self._plants_pos[plant_id, 0], self._plants_pos[plant_id, 1]] + self.dry_difference
-        self._grid[2, self._plants_pos[plant_id, 0], self._plants_pos[plant_id, 1]] = max(
+        self._grid[2, self._plants_pos[plant_id, 0], self._plants_pos[plant_id, 1]] = min(
             np.max(self.dryness_levels),
             new_dry,
         )
