@@ -20,7 +20,7 @@ wandb:
 experiment:
   training_timesteps: 2e6
   testing_episodes: 10
-  testing_frequency: 1e4
+  testing_frequency: 5e3
   rng_seed: 1
   start_train_timestep: 1e4
   replay_buffer_size: 1e6

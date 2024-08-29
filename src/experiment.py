@@ -1,5 +1,6 @@
 # pylint: disable=too-many-locals, too-many-statements, too-many-instance-attributes, too-many-arguments
 """Experiments wrapper for Training and evaluating algorithms in MDP and Monitor MDP """
+import time
 import os
 import gymnasium as gym
 import numpy as np
@@ -48,6 +49,7 @@ class Experiment:
         self._n_itr_episode = n_itr_episode  # number of iteration to update the Q-network per episode
         self._update_target_freq = update_target_freq  # update the target network every episode
         self.buffer = TorchReplayMemory(max_size=int(replay_buffer_size)) if replay_buffer else None
+        self._time_file = open(self._log_dir + "/time.txt", "w")
 
     def train(self):
         """Train an algorithm in MDP env, logs and save results"""
@@ -138,6 +140,7 @@ class MonExperiment(Experiment):
 
     def train(self, checkpoint: bool = True):
         """Train an algorithm in Monitor MDP env, logs and save results"""
+        start_time = time.time()
         set_rng_seed(self._rng_seed)
         self._actor.reset()
         self._critic.reset()
@@ -147,9 +150,10 @@ class MonExperiment(Experiment):
         total_timesteps = 0
         episode = 0
         # reset visit table
-        self.reset_visit_table()
+        # self.reset_visit_table()
         while total_timesteps < self._training_timesteps:
             if total_timesteps > self._testing_frequency * self._checkpoint_count:
+                eval_time = time.time()
                 # perform/save checkpoint
                 self.checkpoint(joint_reward, eval_joint_reward)
 
@@ -178,6 +182,9 @@ class MonExperiment(Experiment):
                 }
                 self.log_save_logs(train=False, logs=logs, episode=episode, save_logs=True)
                 eval_count += 1
+                self._time_file.write("evaluation time for checkpoint {} = {}\n".format(
+                    self._checkpoint_count, time.time() - eval_time)
+                )
 
             ep_seed = cantor_pairing(self._rng_seed, episode)
             obs, _ = self._env.reset(seed=ep_seed)
@@ -196,9 +203,9 @@ class MonExperiment(Experiment):
             while True:
                 episode_timesteps += 1
                 action = self._actor(obs) if next_action is None else next_action
-                self._visit_table[
-                    self.get_obs_from_agent_pos(self, grid_size, agent_pos), get_action_ind(action)
-                ] += 1  # fix for stateMonMDP
+                # self._visit_table[
+                #     self.get_obs_from_agent_pos(self, grid_size, agent_pos), get_action_ind(action)
+                # ] += 1  # fix for stateMonMDP
 
                 next_obs, reward, term, trunc, info = self._env.step(action)
                 agent_pos = info["agent_pos"]
@@ -236,7 +243,8 @@ class MonExperiment(Experiment):
 
                 obs = next_obs
             # Update Q-network and reward network
-            if self.buffer.buffer_size > self._start_train_timestep:
+            if self.buffer.buffer_size > self._start_train_timestep and episode % 10 == 0:
+                train_timer = time.time()
                 for epoch in range(self._n_itr_episode):
                     batch = self.buffer.process_batch(self.buffer.sample(self._batch_size), device=current_device)
                     step_loss_mdp, r_model_loss = self._critic.optimize_policy_model(
@@ -245,6 +253,7 @@ class MonExperiment(Experiment):
                     episode_reward_model_loss += r_model_loss
                     episode_loss_mdp += step_loss_mdp
                     episode_loss_mon += step_loss_mon
+                self._time_file.write("Training time for episode {} = {}\n".format(episode, time.time() - train_timer))
             joint_reward.update({episode: ep_joint_reward})
             total_timesteps += episode_timesteps
             logs = {
@@ -266,7 +275,7 @@ class MonExperiment(Experiment):
         #     self.buffer.save(log_dir=self._log_dir)
         self._critic.save(seed=self._rng_seed)
         if self._save_train_log:
-            np.save(self._log_dir + "/visit_table_{}.npy".format(self._rng_seed), self._visit_table)
+            # np.save(self._log_dir + "/visit_table_{}.npy".format(self._rng_seed), self._visit_table)
             np.save(self._log_dir + "/training_joint_reward_{}.npy".format(self._rng_seed), joint_reward)
             np.save(
                 self._log_dir + "/evaluation_joint_reward_{}.npy".format(self._rng_seed),
@@ -274,6 +283,8 @@ class MonExperiment(Experiment):
             )
         wandb.finish()
         self._env.close()
+        self._time_file.write("Experiment time = {}".format(time.time() - start_time))
+        self._text_file.close()
 
     def test(self, render: bool = False, seed: int = 1, save_results: bool = False):
         """Evaluate an algorithm in Monitor MDP env, logs and save results"""
@@ -354,8 +365,8 @@ class MonExperiment(Experiment):
         checkpoint_dir = self._log_dir + "checkpoints_{}/".format(self._checkpoint_count)
         os.makedirs(checkpoint_dir, exist_ok=True)
         self._critic.save(file_name="checkpoints_{}/".format(self._checkpoint_count), seed=self._rng_seed)
-        np.save(checkpoint_dir + "/visit_table_{}.npy".format(self._rng_seed), self._visit_table)
-        np.save(self._log_dir + "/visit_table_{}.npy".format(self._rng_seed), self._visit_table)
+        # np.save(checkpoint_dir + "/visit_table_{}.npy".format(self._rng_seed), self._visit_table)
+        # np.save(self._log_dir + "/visit_table_{}.npy".format(self._rng_seed), self._visit_table)
         np.save(self._log_dir + "/training_joint_reward_{}.npy".format(self._rng_seed), joint_reward)
         np.save(
             self._log_dir + "/evaluation_joint_reward_{}.npy".format(self._rng_seed),

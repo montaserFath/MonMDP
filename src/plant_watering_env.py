@@ -39,7 +39,7 @@ class PlantsWateringEnv(gym.Env):
         self.observation_space = gym.spaces.Box(0, self._n_objects, shape=self._obs_shape, dtype=np.float16)
         self.reward_range = (-1, 1)
 
-        self._obj_codes = {0: "agent", 1: "plant", 3: "dryness", 4: "wall"}
+        self._obj_codes = {0: "agent", 1: "plant", 2: "dryness", 3: "wall"}
         self._actions_code = {0: "up", 1: "down", 2: "right", 3: "left", 4: "water", 5: "nothing"}
         self._plants_pos = None
         self._current_timestep = 0
@@ -121,8 +121,8 @@ class PlantsWateringEnv(gym.Env):
         if action == 4:  # Water
             if np.any(np.all(self._agent_pos == self._plants_pos, axis=1)):  #  Water a plant
                 if self._grid[2, self._agent_pos[0], self._agent_pos[1]] > 0:
-                    return 1.0
-                return -1.0
+                    return 1.0  # Water a dry plant
+                return -1.0  # Water a full watered plan
             return -0.2  # Water an empty cell
         return 0.0
 
