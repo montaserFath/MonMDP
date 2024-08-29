@@ -48,7 +48,7 @@ def run_monitor(cfg: DictConfig) -> None:
     q_lr, reward_lr, eps = cfg.agent.critic.lr, cfg.agent.critic.reward_model.lr, cfg.agent.actor.init_eps
     dry = cfg.environment.plants_dryness_prob
     eps = eps if cfg.agent.actor.init_eps == cfg.agent.actor.min_eps else "decay"
-    train_dir = "general_models/Plants/" + "/" + str(cfg.agent.critic.strategy) + "/6_6/{}/".format(dry)
+    train_dir = "general_models/Plants/" + "/" + str(cfg.agent.critic.strategy) + "/6_6/dry_{}/".format(dry)
     train_dir += "eps_{}/q_lr_{}/reward_lr_{}/".format(eps, q_lr, reward_lr)
     os.makedirs(train_dir, exist_ok=True)
 
