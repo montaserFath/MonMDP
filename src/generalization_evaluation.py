@@ -12,6 +12,7 @@ LOG_DIR = "../cc_general_models/9_9/Penalty/reward_model/env_0.0/eps_decay/windo
 GRID_SIZE = (9, 9)
 DEVICE = "mps:0"
 WINDOW_SIZE = 7
+N_MDP_ACTIONS = 4
 
 
 def select_action(q_values) -> int:
@@ -20,7 +21,9 @@ def select_action(q_values) -> int:
     return random.choice(indices)[0]
 
 
-def plot_policy(q_model, grid_size: (int, int), seed: int, window: bool = False, save_fig: bool = False) -> None:
+def plot_policy(
+        q_model, grid_size: (int, int), seed: int, n_mdp_actions: int, window: bool = False, save_fig: bool = False,
+) -> None:
     """Plot policy actions for each state"""
     actions_ind = []
     penalty_vec = np.load("../cc_general_models/9_9/Penalty/reward_model/env_0.0/obs_vector.npy")
@@ -38,7 +41,7 @@ def plot_policy(q_model, grid_size: (int, int), seed: int, window: bool = False,
             with torch.no_grad():
                 q_values[count] = q_model(obs.unsqueeze(0)).detach().cpu().numpy().squeeze()
                 actions_ind.append(select_action(q_values[count]))
-            actions[count, 0], actions[count, 1] = actions_ind[-1] % 4, actions_ind[-1] // 4
+            actions[count, 0], actions[count, 1] = actions_ind[-1] % n_mdp_actions, actions_ind[-1] // n_mdp_actions
             count += 1
     fig = plot_env_actions("Penalty", states=np.arange(grid_size[0] * grid_size[1]), actions=actions, grid_size=(9, 9))
     if save_fig:
@@ -118,7 +121,7 @@ def evaluate_police_seeds_checkpoints(
 
         np.save(LOG_DIR + "/eval_joint_reward_{}".format(seed), np.squeeze(eval_rewards))
         np.save(LOG_DIR + "/eval_episode_length_{}".format(seed), np.squeeze(eval_timestep))
-        plot_policy(q_model, grid_size=GRID_SIZE, window=True, seed=seed, save_fig=save_fig)
+        plot_policy(q_model, grid_size=GRID_SIZE, n_mdp_actions=N_MDP_ACTIONS, window=True, seed=seed, save_fig=save_fig)
         fig = plt.figure(figsize=(6, 4))
         plt.plot(x_axis, np.squeeze(eval_rewards), lw=2)
         plt.scatter(x_axis, np.squeeze(eval_rewards), marker="o", s=10)
