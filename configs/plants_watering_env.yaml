@@ -4,14 +4,15 @@ defaults:
   - _self_
 
 environment:
-#  id: gym_monitor/TreasureHunt-Penalty-v1
+  id: gym_monitor/Plants-Watering-v1
   grid_size: [6, 6]
   n_plants: 3
-  plants_dryness_prob: 0.1
+  plants_dryness_prob: 0.3
   dry_difference: 0.5
   agent_start_pos: [0, 0]
   max_episode_steps: 100
   n_walls: 3
+  window_size: 5
 
 wandb:
   mode: offline
@@ -19,13 +20,13 @@ wandb:
   project: MonMDP
 
 experiment:
-  training_timesteps: 5e5
+  training_timesteps: 3e6
   testing_episodes: 10
-  testing_frequency: 1e5
-  rng_seed: 1
+  testing_frequency: 5e4
+  rng_seed: 0
   start_train_timestep: 1e4
   replay_buffer_size: 1e6
   batch_size: 128
-  n_itr_episode: 100
-  update_target_freq: 25
+  n_itr_episode: 50
+  update_target_freq: 5
   save_log: True

@@ -316,6 +316,8 @@ class MonQNet(MonQCritic):
         env_name: str,
         observation_space,
         action_space,
+        kernel_size_0: int,
+        kernel_size_1: int,
         q0=0.0,
         gamma=0.99,
         lr=0.01,
@@ -332,6 +334,8 @@ class MonQNet(MonQCritic):
         self._q0 = q0
         self._gamma = gamma
         self._lr = lr
+        self._kernel_size_0 = kernel_size_0
+        self._kernel_size_1 = kernel_size_1
         self._device = device
         # self.replay_buffer = None
         self._q_network = None
@@ -370,10 +374,14 @@ class MonQCNN(MonQNet):
         env_name: str,
         observation_space,
         action_space,
+        kernel_size_0: int,
+        kernel_size_1: int,
         device: str,
         **kwargs,
     ):
-        super().__init__(env_name, observation_space, action_space, **kwargs)
+        super().__init__(env_name, observation_space, action_space, kernel_size_0, kernel_size_1, **kwargs)
+        self._kernel_size_0 = kernel_size_0
+        self._kernel_size_1 = kernel_size_1
         self._target_network = None
         self._tau = 5e-4
         if self._lr > 1e-2:
@@ -390,8 +398,22 @@ class MonQCNN(MonQNet):
 
     def reset(self):
         n_actions = int(self._action_space["mdp"].n * self._action_space["monitor"].n)
-        self._q_network = CNN(self._observation_space["mdp"].shape, n_actions, self._lr, device=self._device)
-        self._target_network = CNN(self._observation_space["mdp"].shape, n_actions, self._lr, device=self._device)
+        self._q_network = CNN(
+            self._observation_space["mdp"].shape,
+            n_actions,
+            self._lr,
+            self._kernel_size_0,
+            self._kernel_size_1,
+            device=self._device,
+        )
+        self._target_network = CNN(
+            self._observation_space["mdp"].shape,
+            n_actions,
+            self._lr,
+            self._kernel_size_0,
+            self._kernel_size_1,
+            device=self._device,
+        )
         self._transition = namedtuple("Transition", ("obs", "action", "next_obs", "reward"))
         self._q_network.init_network()
         self._target_network.init_network()

@@ -98,12 +98,25 @@ class RDict(Reward):
 
 
 class RewardNet(Reward):
-    def __init__(self, observation_space, action_space, lr: float = 0.01, device: str = None, **kwargs):
+    def __init__(
+            self,
+            observation_space,
+            action_space,
+            kernel_size_0: int,
+            kernel_size_1: int,
+            lr: float = 0.01,
+            device: str = None,
+            **kwargs,
+    ):
         self._obs_size = observation_space.shape
         self._n_actions = action_space.n
         self._lr = lr
+        self._kernel_size_0 = kernel_size_0
+        self._kernel_size_1 = kernel_size_1
         self._device = device
-        self._network = CNN(self._obs_size, self._n_actions, self._lr, device=self._device)
+        self._network = CNN(
+            self._obs_size, self._n_actions, self._lr, self._kernel_size_0, self._kernel_size_1, device=self._device,
+        )
         self._network.init_network()
         # self._reward_optimizer = torch.optim.RMSprop(
         #     self._network.model.parameters(), lr=self._lr, weight_decay=0.95, eps=1e-5,
