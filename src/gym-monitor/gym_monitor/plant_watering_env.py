@@ -1,0 +1,169 @@
+import gymnasium as gym
+import random
+import numpy as np
+import torch
+from gymnasium.core import RenderFrame
+
+
+class PlantsWateringEnv(gym.Env):
+    def __init__(
+        self,
+        grid_size: (int, int),
+        n_plants: int,
+        plants_dryness_prob: float,
+        dry_difference: float = 0.5,
+        agent_start_pos: [int, int] = None,
+        max_episode_steps: int = 1000,
+        render_mode: str = "rgb_array",
+        **kwargs,
+    ):
+        metadata = {
+            "render_modes": ["human", "rgb_array", "ansi"],
+            "render_fps": 4,
+        }
+        self.n_plants = n_plants
+        self.plants_dryness_prob = plants_dryness_prob
+        self.dry_difference = dry_difference
+        self.dryness_levels = np.arange(0, 1.1, dry_difference)
+        self.agent_start_pos = agent_start_pos
+        self.render_mode = render_mode
+        self.max_episode_steps = max_episode_steps
+
+        self._n_raws, self._n_columns = grid_size
+        self._n_actions = 6  # 0 up, 1 down, 2 right, 3 left, 4 water, 5 do nothing
+        self._n_objects = 3  # 0 agent, 1 plant, 2 dryness, 3 walls
+        self._obs_shape = (self._n_objects, self._n_raws, self._n_columns)
+        self._grid = np.zeros(self._obs_shape)
+        self.reset_agent_pos()
+
+        self.action_space = gym.spaces.Discrete(self._n_actions)
+        self.observation_space = gym.spaces.Box(0, self._n_objects, shape=self._obs_shape, dtype=np.float64)
+        self.reward_range = (-1, 1)
+
+        self._obj_codes = {0: "agent", 1: "plant", 2: "dryness", 3: "wall"}
+        self._actions_code = {0: "up", 1: "down", 2: "right", 3: "left", 4: "water", 5: "nothing"}
+        self._plants_pos = None
+        self._current_timestep = 0
+
+    def step(self, action: int):
+        """step function"""
+        if action in np.arange(4):
+            self._grid[0, self._agent_pos[0], self._agent_pos[1]] = 0  # reset
+            self._agent_pos = self.move(self._agent_pos, action)
+            self._grid[0, self._agent_pos[0], self._agent_pos[1]] = 1  # move the agent
+        elif action == 4:  # Water
+            if np.any(np.all(self._agent_pos == self._plants_pos, axis=1)):  #  Water a plant
+                if self._grid[2, self._agent_pos[0], self._agent_pos[1]] > 0:
+                    self.water_plant(self._agent_pos)
+
+        # randomly select a plant and increase the dryness level
+        if np.random.random() < self.plants_dryness_prob:
+            self.update_plants_dryness()
+        reward = self.reward(action)
+        self._current_timestep += 1
+        return self._grid, reward, self._current_timestep > self.max_episode_steps, False, self.update_info()
+
+    @staticmethod
+    def seed(self, seed: int = 0):
+        """Seed the environment, numpy, random and torch"""
+        np.random.seed(seed)
+        random.seed(seed)
+        torch.manual_seed(seed)
+
+    def reset(self, seed: int = None, **kwargs):
+        """Reset the environment"""
+        super().reset(seed=seed, **kwargs)
+        # self.seed(seed)
+        self._grid = np.zeros(self._obs_shape)
+        self._current_timestep = 0
+
+        # agent position
+        self.reset_agent_pos()
+        self._grid[0, self._agent_pos[0], self._agent_pos[1]] = 1
+
+        # Plants positions
+        # TODO: exclude agent position to avoid over lab
+        plants_pos_x = np.random.randint(0, self._n_raws, (self.n_plants, 1))
+        plants_pos_y = np.random.randint(0, self._n_columns, (self.n_plants, 1))
+        self._plants_pos = np.concatenate((plants_pos_x, plants_pos_y), 1)
+        self._grid[1, self._plants_pos[:, 0], self._plants_pos[:, 1]] = 1
+
+        # Plants dryness
+        self._grid[2, self._plants_pos[:, 0], self._plants_pos[:, 1]] = 1
+        # np.random.choice(self.dryness_levels, size=(self.n_plants,))
+
+        return self._grid, {}
+
+    def render(self) -> RenderFrame | list[RenderFrame] | None:
+        NotImplemented
+
+    def close(self):
+        """Close the environment"""
+        super().close()
+
+    def move(self, agent_pos: list, action: int):
+        """Move the agent in the grid"""
+        new_agent_pos = [agent_pos[0], agent_pos[1]]
+        if action not in np.arange(4):
+            raise ValueError("Action must be in range [0, 4)")
+
+        if action == 0:  # Up
+            new_agent_pos[0] = max(0, agent_pos[0] - 1)
+        elif action == 1:  # Down
+            new_agent_pos[0] = min(self._n_raws - 1, agent_pos[0] + 1)
+        elif action == 2:  # right
+            new_agent_pos[1] = min(self._n_columns - 1, agent_pos[1] + 1)
+        else:  # left
+            new_agent_pos[1] = max(0, agent_pos[1] - 1)
+        return np.array(new_agent_pos)
+
+    def reward(self, action: int) -> float:
+        """Get the timestep environment reward"""
+        if action == 4:  # Water
+            if np.any(np.all(self._agent_pos == self._plants_pos, axis=1)):  #  Water a plant
+                if self._grid[2, self._agent_pos[0], self._agent_pos[1]] > 0:
+                    return 1.0  # Water a dry plant
+                return -1.0  # Water a full watered plan
+            return -0.2  # Water an empty cell
+        return 0.0
+
+    def water_plant(self, plant_pos: list):
+        """Water a plant by reducing the amount of dryness by dry_difference"""
+        self._grid[2, plant_pos[0], plant_pos[1]] -= self.dry_difference
+
+    def reset_agent_pos(self):
+        """Reset the agent position in the grid to the initial position."""
+        if self.agent_start_pos is None:
+            self._agent_pos = [np.random.randint(0, self._n_raws), np.random.randint(0, self._n_columns)]
+        else:
+            self._agent_pos = self.agent_start_pos
+
+    def update_plants_dryness(self) -> None:
+        """Update plants dryness level"""
+        # select a single plant and stochastic
+        plant_id = np.random.randint(self.n_plants)
+        new_dry = self._grid[2, self._plants_pos[plant_id, 0], self._plants_pos[plant_id, 1]] + self.dry_difference
+        self._grid[2, self._plants_pos[plant_id, 0], self._plants_pos[plant_id, 1]] = min(
+            np.max(self.dryness_levels),
+            new_dry,
+        )
+
+    def update_info(self) -> dict:
+        """Get information about the environment"""
+        info = {}
+        info["agent_pos"] = self.get_agent_pos()
+        info["grid"] = self.get_grid()
+        info["plants_pos"] = self.get_plants_pos()
+        return info
+
+    def get_grid(self):
+        """Get the current grid"""
+        return self._grid.copy()
+
+    def get_agent_pos(self):
+        """Get the current agent position"""
+        return self._agent_pos
+
+    def get_plants_pos(self):
+        """Get plants position"""
+        return self._plants_pos

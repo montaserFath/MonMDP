@@ -58,3 +58,9 @@ def register_envs():
             "render_mode": "human",
         },
     )
+
+    register(
+        id="Plants-Watering-v1",
+        entry_point="gym_monitor.plant_watering_env:PlantsWateringEnv",
+        max_episode_steps=100,
+    )
