@@ -318,10 +318,10 @@ class MonQNet(MonQCritic):
         action_space,
         kernel_size_0: int,
         kernel_size_1: int,
+        device: str,
         q0=0.0,
         gamma=0.99,
         lr=0.01,
-        device: str = None,
         on_policy=False,
         strategy: str = "reward_model",
         unseen_r_value: float = 0.0,
@@ -379,9 +379,10 @@ class MonQCNN(MonQNet):
         device: str,
         **kwargs,
     ):
-        super().__init__(env_name, observation_space, action_space, kernel_size_0, kernel_size_1, **kwargs)
+        super().__init__(env_name, observation_space, action_space, kernel_size_0, kernel_size_1, device, **kwargs)
         self._kernel_size_0 = kernel_size_0
         self._kernel_size_1 = kernel_size_1
+        self._device = device
         self._target_network = None
         self._tau = 5e-4
         if self._lr > 1e-2:

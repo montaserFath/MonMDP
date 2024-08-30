@@ -12,7 +12,7 @@ critic:
     lr: 1e-3 #1.0
     kernel_size_0: 3
     kernel_size_1: 2
-  device: "mps:0" #"mps:0"
+  device: "cuda:0" #"mps:0"
 
 actor:
   init_eps: 1.0
