@@ -70,13 +70,21 @@ class StochasticAction(gym.ActionWrapper):
 class WindowViewObs(gym.ObservationWrapper):
     """Observation wrapper get a window view around the agent"""
 
-    def __init__(self, env, window_size: int, image_obs: bool = False, flatten_obs: bool = False):
+    def __init__(
+            self, env, window_size: int,
+            agent_channel: int = 0,
+            agent_id: int = 1,
+            image_obs: bool = False,
+            flatten_obs: bool = False,
+    ):
         super().__init__(env)
         self.env = env
         old_shape = self.env.observation_space.shape
         if window_size > old_shape[1] or window_size > old_shape[2]:
             raise ValueError("The window size should smaller than half of the grid size")
         self.window_size = window_size
+        self.agent_channel = agent_channel
+        self.agent_id = agent_id
         self.image_obs = image_obs
         self.flatten_obs = flatten_obs
 
@@ -89,9 +97,9 @@ class WindowViewObs(gym.ObservationWrapper):
 
     def observation(self, obs):
         # window_obs = np.zeros((self.window_size[0], self.window_size[1], self.env.observation_space.shape))
-        agent_id = 1  # TODO remove hard coded value
         last_x, last_y = self.env.observation_space.shape[1], self.env.observation_space.shape[2]
-        pos_x, pos_y = np.where(obs[0, :, :] == agent_id)[0][0], np.where(obs[0, :, :] == agent_id)[1][0]
+        pos_x = np.where(obs[self.agent_channel, :, :] == self.agent_id)[0][0]
+        pos_y = np.where(obs[self.agent_channel, :, :] == self.agent_id)[1][0]
         min_x, max_x = max(0, pos_x - self.window_size // 2), min(last_x, pos_x + self.window_size // 2 + 1)
         min_y, max_y = max(0, pos_y - self.window_size // 2), min(last_y, pos_y + self.window_size // 2 + 1)
         window_obs = obs[:, min_x:max_x, min_y:max_y]
