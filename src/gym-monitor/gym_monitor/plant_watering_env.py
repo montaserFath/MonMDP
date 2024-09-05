@@ -3,21 +3,22 @@ import random
 import numpy as np
 import torch
 from gymnasium.core import RenderFrame
+import pygame
 
 
 class PlantsWateringEnv(gym.Env):
     def __init__(
-        self,
-        grid_size: (int, int),
-        n_plants: int,
-        plants_dryness_prob: float,
-        dry_difference: float = 0.5,
-        agent_start_pos: [int, int] = None,
-        max_episode_steps: int = 1000,
-        render_mode: str = "rgb_array",
-        **kwargs,
+            self,
+            grid_size: (int, int),
+            n_plants: int,
+            plants_dryness_prob: float,
+            dry_difference: float = 0.5,
+            agent_start_pos: [int, int] = None,
+            max_episode_steps: int = 1000,
+            render_mode: str = None,
+            **kwargs,
     ):
-        metadata = {
+        self._metadata = {
             "render_modes": ["human", "rgb_array", "ansi"],
             "render_fps": 4,
         }
@@ -45,23 +46,36 @@ class PlantsWateringEnv(gym.Env):
         self._plants_pos = None
         self._current_timestep = 0
 
+        # for rendering
+        self._window_size = (min(64 * self._n_raws, 512), min(64 * self._n_columns, 512))
+        self._cell_size = (self._window_size[0] // self._n_raws, self._window_size[1] // self._n_columns)
+        self._clock = pygame.time.Clock()
+        self._window_surface = None
+        self._colors = {
+            "white": (255, 255, 255),
+            "black": (0, 0, 0),
+            "red": (255, 0, 0),
+            "brown": (150, 75, 0),
+            "green": (0, 255, 0),
+        }
+
     def step(self, action: int):
         """step function"""
+        reward = self.reward(action)
         if action in np.arange(4):
             self._grid[0, self._agent_pos[0], self._agent_pos[1]] = 0  # reset
             self._agent_pos = self.move(self._agent_pos, action)
             self._grid[0, self._agent_pos[0], self._agent_pos[1]] = 1  # move the agent
         elif action == 4:  # Water
             if np.any(np.all(self._agent_pos == self._plants_pos, axis=1)):  #  Water a plant
-                if self._grid[2, self._agent_pos[0], self._agent_pos[1]] > 0:
+                if self._grid[2, self._agent_pos[0], self._agent_pos[1]] > np.min(self.dryness_levels):
                     self.water_plant(self._agent_pos)
 
         # randomly select a plant and increase the dryness level
         if np.random.random() < self.plants_dryness_prob:
             self.update_plants_dryness()
-        reward = self.reward(action)
         self._current_timestep += 1
-        return self._grid, reward, self._current_timestep > self.max_episode_steps, False, self.update_info()
+        return self._grid, reward, self._current_timestep >= self.max_episode_steps, False, self.update_info()
 
     @staticmethod
     def seed(self, seed: int = 0):
@@ -94,12 +108,14 @@ class PlantsWateringEnv(gym.Env):
 
         return self._grid, {}
 
-    def render(self) -> RenderFrame | list[RenderFrame] | None:
-        NotImplemented
+    def render(self):
+        return self._render_gui(self.render_mode)
 
     def close(self):
         """Close the environment"""
-        super().close()
+        if self._window_surface is not None:
+            pygame.display.quit()
+            pygame.quit()
 
     def move(self, agent_pos: list, action: int):
         """Move the agent in the grid"""
@@ -121,7 +137,7 @@ class PlantsWateringEnv(gym.Env):
         """Get the timestep environment reward"""
         if action == 4:  # Water
             if np.any(np.all(self._agent_pos == self._plants_pos, axis=1)):  #  Water a plant
-                if self._grid[2, self._agent_pos[0], self._agent_pos[1]] > 0:
+                if self._grid[2, self._agent_pos[0], self._agent_pos[1]] > np.min(self.dryness_levels):
                     return 1.0  # Water a dry plant
                 return -1.0  # Water a full watered plan
             return -0.2  # Water an empty cell
@@ -167,3 +183,59 @@ class PlantsWateringEnv(gym.Env):
     def get_plants_pos(self):
         """Get plants position"""
         return self._plants_pos
+
+    def _draw_lines(self):
+        """Draw lines between cells"""
+        # white lines between cells
+        cell_x, cell_y = self._cell_size
+        # horizontal lines
+        for i in range(1, self._n_raws):
+            pygame.draw.line(self._window_surface, self._colors["black"], (0, i * cell_x), (cell_x ** 2, i * cell_y), 3)
+        # vertical lines
+        for j in range(1, self._n_columns):
+            pygame.draw.line(self._window_surface, self._colors["black"], (j * cell_y, 0), (j * cell_x, cell_y ** 2), 3)
+
+    def _render_gui(self, mode):
+        """"""
+        if mode == "human":
+            pygame.display.init()
+            pygame.display.set_caption("Plants Watering Environment")
+            self._window_surface = pygame.display.set_mode(self._window_size)
+        elif mode == "rgb_array":
+            self._window_surface = pygame.Surface(self._window_size)
+        else:
+            raise ValueError("Undefined render mode")
+        self._window_surface.fill(self._colors["white"])
+        self._draw_lines()
+        for obj_id in range(self.n_plants + 1):
+            if obj_id == self.n_plants:
+                self._draw_obj("agent", self._agent_pos)
+            else:
+                plant_pos = self._plants_pos[obj_id]
+                self._draw_obj("plant", plant_pos, self._grid[2, plant_pos[0], plant_pos[1]])
+
+        if mode == "human":
+            pygame.event.pump()
+            pygame.display.update()
+            self._clock.tick(self._metadata["render_fps"])
+        elif mode == "rgb_array":
+            return np.transpose(np.array(pygame.surfarray.pixels3d(self._window_surface)), axes=(1, 0, 2))
+        else:
+            raise NotImplementedError
+
+    def _draw_obj(self, obj: str, pos: [int, int], dryness: float = 0.0):
+        """Draw the grid"""
+        new_pos = ((pos[0] + 0.5) * self._cell_size[0], (pos[1] + 0.5) * self._cell_size[1])
+        if obj == "plant":
+            if dryness == np.max(self.dryness_levels):
+                color = self._colors["red"]
+            elif dryness == np.min(self.dryness_levels):
+                color = self._colors["green"]
+            else:
+                color = self._colors["brown"]
+            pygame.draw.circle(self._window_surface, color, new_pos, 20)
+        elif obj == "agent":
+            pygame.draw.rect(self._window_surface, self._colors["black"], (new_pos[0], new_pos[1], 30, 30), 0)
+        else:
+            raise ValueError("Undefined object type")
+        # pygame.draw.polygon(self._window_surface, (), ((25, 75), (320, 125), (250, 375)))
