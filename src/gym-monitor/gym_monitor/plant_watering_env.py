@@ -35,7 +35,7 @@ class PlantsWateringEnv(gym.Env):
         self._n_objects = 3  # 0 agent, 1 plant, 2 dryness, 3 walls
         self._obs_shape = (self._n_objects, self._n_raws, self._n_columns)
         self._grid = np.zeros(self._obs_shape)
-        self.reset_agent_pos()
+        self.reset_agent_plants_pos()
 
         self.action_space = gym.spaces.Discrete(self._n_actions)
         self.observation_space = gym.spaces.Box(0, self._n_objects, shape=self._obs_shape, dtype=np.float64)
@@ -91,16 +91,15 @@ class PlantsWateringEnv(gym.Env):
         self._grid = np.zeros(self._obs_shape)
         self._current_timestep = 0
 
-        # agent position
-        self.reset_agent_pos()
+        # agent & Plants position
+        self.reset_agent_plants_pos()
         self._grid[0, self._agent_pos[0], self._agent_pos[1]] = 1
+        self._grid[1, self._plants_pos[:, 0], self._plants_pos[:, 1]] = 1
 
         # Plants positions
-        # TODO: exclude agent position to avoid over lab
-        plants_pos_x = np.random.randint(0, self._n_raws, (self.n_plants, 1))
-        plants_pos_y = np.random.randint(0, self._n_columns, (self.n_plants, 1))
-        self._plants_pos = np.concatenate((plants_pos_x, plants_pos_y), 1)
-        self._grid[1, self._plants_pos[:, 0], self._plants_pos[:, 1]] = 1
+        # plants_pos_x = np.random.randint(0, self._n_raws, (self.n_plants, 1))
+        # plants_pos_y = np.random.randint(0, self._n_columns, (self.n_plants, 1))
+        # self._plants_pos = np.concatenate((plants_pos_x, plants_pos_y), 1)
 
         # Plants dryness
         self._grid[2, self._plants_pos[:, 0], self._plants_pos[:, 1]] = 1
@@ -147,12 +146,15 @@ class PlantsWateringEnv(gym.Env):
         """Water a plant by reducing the amount of dryness by dry_difference"""
         self._grid[2, plant_pos[0], plant_pos[1]] -= self.dry_difference
 
-    def reset_agent_pos(self):
-        """Reset the agent position in the grid to the initial position."""
+    def reset_agent_plants_pos(self):
+        """Reset the agent and plants position in the grid to the initial position."""
+        pos_x = np.random.choice(np.arange(self._n_raws), size=(self.n_plants + 1, 1), replace=False)
+        pos_y = np.random.choice(np.arange(self._n_columns), size=(self.n_plants + 1, 1), replace=False)
         if self.agent_start_pos is None:
-            self._agent_pos = [np.random.randint(0, self._n_raws), np.random.randint(0, self._n_columns)]
+            self._agent_pos = [pos_x[0], pos_y[0]]
         else:
             self._agent_pos = self.agent_start_pos
+        self._plants_pos = np.concatenate((pos_x[1:], pos_y[1:]), 1)
 
     def update_plants_dryness(self) -> None:
         """Update plants dryness level"""
