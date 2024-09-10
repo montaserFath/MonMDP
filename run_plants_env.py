@@ -36,6 +36,10 @@ def run_monitor(cfg: DictConfig) -> None:
     # eps = eps if cfg.agent.actor.init_eps == cfg.agent.actor.min_eps else "decay"
     train_dir = "general_models/Plants/" + "/" + str(cfg.agent.critic.strategy) + "/6_6/dry_{}/".format(dry)
     agent_start_pos = None if cfg.monitor.id == "RoomMonitor" else cfg.environment.agent_start_pos
+    if cfg.monitor.id == "RoomMonitor":
+        train_dir += "room/"
+    train_dir += "/window_{}/q_lr_{}/reward_lr_{}/".format(window_size, q_lr, reward_lr)
+    os.makedirs(train_dir, exist_ok=True)
 
     env = gym.make(
         cfg.environment.id,
@@ -54,14 +58,11 @@ def run_monitor(cfg: DictConfig) -> None:
         critic = MonRoomCNN(
             cfg.environment.id, env.observation_space, env.action_space, dir_name=train_dir, **cfg.agent.critic,
         )
-        train_dir += "room/"
     else:
         env = BinaryMonitor(env, full_monitor=False, **cfg.monitor)
         critic = MonQCNN(
             cfg.environment.id, env.observation_space, env.action_space, dir_name=train_dir, **cfg.agent.critic,
         )
-    train_dir += "/window_{}/q_lr_{}/reward_lr_{}/".format(window_size, q_lr, reward_lr)
-    os.makedirs(train_dir, exist_ok=True)
 
     actor = MonEpsilonGreedyOneAction(critic, train=not EVAL, **cfg.agent.actor)
     experiment = MonExperiment(
