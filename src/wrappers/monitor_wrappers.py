@@ -201,7 +201,7 @@ class RoomMonitor(Monitor):
             self,
             env,
             full_monitor: bool,
-            monitor_cost: float = 0.2,
+            monitor_cost: float = 0.0,
             monitor_column_ind: int = 3,
             **kwargs,
     ):
@@ -220,21 +220,19 @@ class RoomMonitor(Monitor):
         self.action_space.seed(seed)
         self.observation_space.seed(seed)
         mdp_obs, mdp_info = self.env.reset(seed=seed, **kwargs)
+        self.get_monitor_state()
         return {"mdp": mdp_obs, "monitor": self.monitor_state}, mdp_info
 
     def _monitor_step(self, action, mdp_reward, mdp_state=None):
+        self.get_monitor_state()
         if mdp_state is None:
             raise ValueError("mdp_state is None")
-        self.monitor_state = 1 if self.env.get_agent_pos()[1] < self.monitor_column_ind else 0
-        if self.full_monitor:
+        if self.env.get_agent_pos()[1] < self.monitor_column_ind:
             return self.monitor_state, mdp_reward, 0.0
-        if self.monitor_state == 0:
-            monitor_cost = 0.0
-            proxy_reward = np.nan
-        else:
-            monitor_cost = -self.monitor_cost
-            proxy_reward = mdp_reward
-        return self.monitor_state, proxy_reward, monitor_cost
+        return self.monitor_state, np.nan, 0.0
+
+    def get_monitor_state(self):
+        self.monitor_state = 1 if self.env.get_agent_pos()[1] < self.monitor_column_ind else 0
 
 
 class NMonitor(Monitor):
