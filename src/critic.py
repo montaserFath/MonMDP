@@ -75,16 +75,16 @@ class QTable(QCritic):
     """Q-Table for critic in MDP"""
 
     def __init__(
-        self,
-        observation_space,
-        action_space,
-        dir_name: str = None,
-        q0: float = 0.0,
-        gamma: float = 0.99,
-        lr: float = 0.01,
-        on_policy: bool = False,
-        env_name: str = None,
-        **kwargs,
+            self,
+            observation_space,
+            action_space,
+            dir_name: str = None,
+            q0: float = 0.0,
+            gamma: float = 0.99,
+            lr: float = 0.01,
+            on_policy: bool = False,
+            env_name: str = None,
+            **kwargs,
     ):
         QCritic.__init__(self, q0, gamma, lr, on_policy)
         self._n_states = observation_space.n
@@ -169,15 +169,15 @@ class MonQCritic(Critic):
     """Dictionary Q for the critic in Monitored MDP"""
 
     def __init__(
-        self,
-        env_name: str,
-        q0=0.0,
-        gamma=0.99,
-        lr=0.01,
-        on_policy=False,
-        strategy: str = "reward_model",
-        unseen_r_value: float = 0.0,
-        **kwargs,
+            self,
+            env_name: str,
+            q0=0.0,
+            gamma=0.99,
+            lr=0.01,
+            on_policy=False,
+            strategy: str = "reward_model",
+            unseen_r_value: float = 0.0,
+            **kwargs,
     ):
         self._env_name = env_name
         self._q0 = q0
@@ -260,18 +260,18 @@ class MonQTable(MonQCritic):
     """Q-Table for critic in Monitored MDP"""
 
     def __init__(
-        self,
-        env_name,
-        observation_space,
-        action_space,
-        dir_name: str = None,
-        q0=0.0,
-        gamma=0.99,
-        lr=0.01,
-        on_policy=False,
-        strategy="zero_reward",
-        unseen_r_value=0.0,
-        **kwargs,
+            self,
+            env_name,
+            observation_space,
+            action_space,
+            dir_name: str = None,
+            q0=0.0,
+            gamma=0.99,
+            lr=0.01,
+            on_policy=False,
+            strategy="zero_reward",
+            unseen_r_value=0.0,
+            **kwargs,
     ):
         MonQCritic.__init__(self, env_name, q0, gamma, lr, on_policy, strategy=strategy, unseen_r_value=unseen_r_value)
         self._mdp_critic = QTable(observation_space["mdp"], action_space["mdp"], q0, gamma, lr)
@@ -312,21 +312,21 @@ class MonQTable(MonQCritic):
 
 class MonQNet(MonQCritic):
     def __init__(
-        self,
-        env_name: str,
-        observation_space,
-        action_space,
-        kernel_size_0: int,
-        kernel_size_1: int,
-        device: str,
-        q0=0.0,
-        gamma=0.99,
-        lr=0.01,
-        on_policy=False,
-        strategy: str = "reward_model",
-        unseen_r_value: float = 0.0,
-        dir_name: str = None,
-        **kwargs,
+            self,
+            env_name: str,
+            observation_space,
+            action_space,
+            kernel_size_0: int,
+            kernel_size_1: int,
+            device: str,
+            q0=0.0,
+            gamma=0.99,
+            lr=0.01,
+            on_policy=False,
+            strategy: str = "reward_model",
+            unseen_r_value: float = 0.0,
+            dir_name: str = None,
+            **kwargs,
     ):
         MonQCritic.__init__(self, env_name, q0, gamma, lr, on_policy, strategy=strategy, unseen_r_value=unseen_r_value)
         self._n_actions = action_space["mdp"].n
@@ -370,14 +370,14 @@ class MonQNet(MonQCritic):
 
 class MonQCNN(MonQNet):
     def __init__(
-        self,
-        env_name: str,
-        observation_space,
-        action_space,
-        kernel_size_0: int,
-        kernel_size_1: int,
-        device: str,
-        **kwargs,
+            self,
+            env_name: str,
+            observation_space,
+            action_space,
+            kernel_size_0: int,
+            kernel_size_1: int,
+            device: str,
+            **kwargs,
     ):
         super().__init__(env_name, observation_space, action_space, kernel_size_0, kernel_size_1, device, **kwargs)
         self._kernel_size_0 = kernel_size_0
@@ -431,11 +431,14 @@ class MonQCNN(MonQNet):
         with torch.no_grad():
             mdp_rewards = self._r_model._network(batch["mdp_obs"]).gather(1, batch["mdp_action"])
         combined_reward = mdp_rewards + batch["mon_reward"]
-        q_values = self._q_network.forward(batch["mdp_obs"], batch["mon_obs"] if monitor_state else None).gather(1, combined_action)
+        q_values = self._q_network.forward(batch["mdp_obs"], batch["mon_obs"] if monitor_state else None).gather(1,
+                                                                                                                 combined_action)
         next_q_values = torch.zeros(batch["mdp_obs"].shape[0], device=self._device)
         with torch.no_grad():
             next_q_values[batch["non_final_mask"]] = (
-                self._target_network.forward(batch["non_final_next_states"], batch["non_final_next_monitor_states"] if monitor_state else None).max(1).values
+                self._target_network.forward(batch["non_final_next_states"],
+                                             batch["non_final_next_monitor_states"] if monitor_state else None).max(
+                    1).values
             )
         expected_q_values = (self._gamma * next_q_values.unsqueeze(1)) + combined_reward
         q_loss = self.q_loss_fun(q_values, expected_q_values)
@@ -451,7 +454,7 @@ class MonQCNN(MonQNet):
             policy_net_state_dict = self._q_network.model.state_dict()
             for key in policy_net_state_dict:
                 target_net_state_dict[key] = policy_net_state_dict[key] * self._tau + target_net_state_dict[key] * (
-                    1 - self._tau
+                        1 - self._tau
                 )
             self._target_network.model.load_state_dict(target_net_state_dict)
 
@@ -491,6 +494,9 @@ class MonQCNN(MonQNet):
 
 
 class MonRoomCNN(MonQCNN):
+    def __init__(self, env_name, observation_space, action_space, kernel_size_0, kernel_size_1, device, **kwargs):
+        super().__init__(env_name, observation_space, action_space, kernel_size_0, kernel_size_1, device, **kwargs)
+
     def reset(self):
         self._q_network = CNN(
             self._observation_space["mdp"].shape,
@@ -521,6 +527,24 @@ class MonRoomCNN(MonQCNN):
         if action is None:
             return q_state
         return q_state[action]
+
+    def optimize_policy_model(self, batch: dict, update_target: bool = False, monitor_state: bool = False):
+        return super().optimize_policy_model(batch, update_target, monitor_state)
+
+    def save(self, seed: int = 1, file_name: str = None):
+        super().save(seed=seed, file_name=file_name)
+
+    def update(self, state, action, reward, terminated, next_state, next_action=None):
+        super().update(state, action, reward, terminated, next_state, next_action)
+
+    def load(self, seed: int = 1, file_name: str = None):
+        super().load(seed=seed, file_name=file_name)
+
+    def get_current_loss(self):
+        return self._q_net_loss, self._target_net_loss
+
+    def get_device(self):
+        return self._device
 
 
 class MonQTableOneAction(MonQTable):
@@ -598,7 +622,7 @@ class MonQTableOneAction(MonQTable):
         """Expand Q-table for MDP"""
         new_q = np.zeros((self._mdp_q.shape[0], self._mdp_q.shape[1] * 2))
         new_q[:, : self._n_actions] = self._mdp_q.copy()
-        new_q[:, self._n_actions :] = self._mdp_q.copy()
+        new_q[:, self._n_actions:] = self._mdp_q.copy()
         return new_q
 
 
@@ -654,7 +678,7 @@ class StateMonTable(MonQTableOneAction):
         """Expand Q-table for MDP"""
         new_q = np.zeros((self._mdp_q.shape[0] * 2, self._mdp_q.shape[1]))
         new_q[: self._n_states] = self._mdp_q.copy()
-        new_q[self._n_states :] = self._mdp_q.copy()
+        new_q[self._n_states:] = self._mdp_q.copy()
         return new_q
 
 
@@ -663,15 +687,15 @@ class MonQDict(MonQCritic):
     """Q-Dictionary for Monitored MDP"""
 
     def __init__(
-        self,
-        observation_space,
-        action_space,
-        q0=0.0,
-        gamma=0.99,
-        lr=0.01,
-        on_policy=False,
-        strategy="zero_reward",
-        **kwargs,
+            self,
+            observation_space,
+            action_space,
+            q0=0.0,
+            gamma=0.99,
+            lr=0.01,
+            on_policy=False,
+            strategy="zero_reward",
+            **kwargs,
     ):
         MonQCritic.__init__(self, q0, gamma, lr, on_policy)
         self._mdp_critic = QDict(observation_space["mdp"], action_space["mdp"], q0, gamma, lr)

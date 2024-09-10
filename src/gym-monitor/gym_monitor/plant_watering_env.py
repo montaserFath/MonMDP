@@ -151,7 +151,7 @@ class PlantsWateringEnv(gym.Env):
         pos_x = np.random.choice(np.arange(self._n_raws), size=(self.n_plants + 1, 1), replace=False)
         pos_y = np.random.choice(np.arange(self._n_columns), size=(self.n_plants + 1, 1), replace=False)
         if self.agent_start_pos is None:
-            self._agent_pos = [pos_x[0], pos_y[0]]
+            self._agent_pos = [pos_x[0, 0], pos_y[0, 0]]
         else:
             self._agent_pos = self.agent_start_pos
         self._plants_pos = np.concatenate((pos_x[1:], pos_y[1:]), 1)

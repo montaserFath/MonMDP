@@ -9,8 +9,7 @@ from src.actor import Actor
 from src.critic import Critic
 from src.utils import set_rng_seed, cantor_pairing
 from src.replay_buffer import TorchReplayMemory
-from src.policy_analysis import get_action_ind
-
+from src.critic import MonRoomCNN
 
 class Experiment:
     """Run experiments for training and testing in MDP env"""
@@ -248,7 +247,7 @@ class MonExperiment(Experiment):
                 for epoch in range(self._n_itr_episode):
                     batch = self.buffer.process_batch(self.buffer.sample(self._batch_size), device=current_device)
                     step_loss_mdp, r_model_loss = self._critic.optimize_policy_model(
-                        batch, update_target=epoch % self._update_target_freq == 0, monitor_state=True,
+                        batch, epoch % self._update_target_freq == 0, monitor_state=isinstance(self._critic, MonRoomCNN),
                     )
                     episode_reward_model_loss += r_model_loss
                     episode_loss_mdp += step_loss_mdp
