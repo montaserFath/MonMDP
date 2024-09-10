@@ -33,8 +33,9 @@ def run_monitor(cfg: DictConfig) -> None:
 
     q_lr, reward_lr, eps = cfg.agent.critic.lr, cfg.agent.critic.reward_model.lr, cfg.agent.actor.init_eps
     dry, window_size = cfg.environment.plants_dryness_prob, cfg.environment.window_size
-    eps = eps if cfg.agent.actor.init_eps == cfg.agent.actor.min_eps else "decay"
+    # eps = eps if cfg.agent.actor.init_eps == cfg.agent.actor.min_eps else "decay"
     train_dir = "general_models/Plants/" + "/" + str(cfg.agent.critic.strategy) + "/6_6/dry_{}/".format(dry)
+    agent_start_pos = None if cfg.monitor.id == "RoomMonitor" else cfg.environment.agent_start_pos
 
     env = gym.make(
         cfg.environment.id,
@@ -42,7 +43,7 @@ def run_monitor(cfg: DictConfig) -> None:
         n_plants=cfg.environment.n_plants,
         plants_dryness_prob=cfg.environment.plants_dryness_prob,
         dry_difference=cfg.environment.dry_difference,
-        agent_start_pos=cfg.environment.agent_start_pos,
+        agent_start_pos=agent_start_pos,
         max_episode_steps=cfg.environment.max_episode_steps,
     )
     env = WallObs(env, grid_size=cfg.environment.grid_size, n_walls=cfg.environment.n_walls)
