@@ -195,6 +195,48 @@ class BinaryMonitor(Monitor):
         return self.monitor_state, proxy_reward, monitor_cost
 
 
+class RoomMonitor(Monitor):
+    """Divide grid to monitored and unmonitored rooms."""
+    def __init__(
+            self,
+            env,
+            full_monitor: bool,
+            monitor_cost: float = 0.2,
+            monitor_column_ind: int = 3,
+            **kwargs,
+    ):
+        """initialization function"""
+        gymnasium.Wrapper.__init__(self, env)
+        self.env = env
+        self.full_monitor = full_monitor
+        self.action_space = spaces.Dict({"mdp": env.action_space, "monitor": spaces.Discrete(1)})
+        self.observation_space = spaces.Dict({"mdp": env.observation_space, "monitor": spaces.Discrete(2)})
+        self.monitor_cost = monitor_cost
+        self.monitor_column_ind = monitor_column_ind
+        self.monitor_state = None
+
+    def reset(self, seed=None, **kwargs):
+        """reset the environment"""
+        self.action_space.seed(seed)
+        self.observation_space.seed(seed)
+        mdp_obs, mdp_info = self.env.reset(seed=seed, **kwargs)
+        return {"mdp": mdp_obs, "monitor": self.monitor_state}, mdp_info
+
+    def _monitor_step(self, action, mdp_reward, mdp_state=None):
+        if mdp_state is None:
+            raise ValueError("mdp_state is None")
+        self.monitor_state = 1 if self.env.get_agent_pos()[1] =< self.monitor_column_ind else 0
+        if self.full_monitor:
+            return self.monitor_state, mdp_reward, 0.0
+        if self.monitor_state == 0:
+            monitor_cost = 0.0
+            proxy_reward = np.nan
+        else:
+            monitor_cost = -self.monitor_cost
+            proxy_reward = mdp_reward
+        return self.monitor_state, proxy_reward, monitor_cost
+
+
 class NMonitor(Monitor):
     """
     There are N monitors. At every time step, a random monitor is active (or none).

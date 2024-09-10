@@ -1,6 +1,6 @@
 defaults:
   - agent: q_learning
-  - monitor: binary
+  - monitor: room
   - _self_
 
 environment:
@@ -12,7 +12,7 @@ environment:
   agent_start_pos: [0, 0]
   max_episode_steps: 100
   n_walls: 3
-  window_size: 5
+  window_size: 7
 
 wandb:
   mode: offline

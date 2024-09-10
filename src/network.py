@@ -82,6 +82,7 @@ class CNN(NeuralNetwork):
         lr: float = 0.001,
         kernel_size_0: int = 5,
         kernel_size_1: int = 3,
+        add_monitor_obs: bool = False,
         output_channels: int = 64,
         device: str = None,
         features_dim: int = 512,
@@ -91,6 +92,7 @@ class CNN(NeuralNetwork):
         :param n_actions: (int) number of actions
         :param kernel_size_0: (int) kernel size for the first convolutional layer
         :param kernel_size_1: (int) kernel size for the second convolutional layer
+        :param add_monitor_obs: (bool) add monitor observation
         :param output_channels: (int) number of output channels for the second convolutional layer
         :param lr: (float) learning rate for the optimizer
         :param device: (str) device name "cpu" or "mps:0" for mac "cuda:0" for cuda
@@ -104,6 +106,7 @@ class CNN(NeuralNetwork):
         self.features_dim = features_dim
         self.kernel_size_0 = kernel_size_0
         self.kernel_size_1 = kernel_size_1
+        self.add_monitor_obs = add_monitor_obs
         self.output_channels = output_channels
         if self.kernel_size_0 >= self._obs_size[1]:
             raise ValueError("The kernel size of the first convolutional layer is larger than input size")
@@ -113,14 +116,19 @@ class CNN(NeuralNetwork):
 
         self.init_network()
 
-    def forward(self, obs) -> torch.Tensor:
+    def forward(self, obs, monitor_obs = None) -> torch.Tensor:
         if isinstance(obs, np.ndarray):
             obs = torch.tensor(obs, dtype=torch.float, device=self._device).unsqueeze(0)
-        return self.model(obs).to(self._device)
+        if monitor_obs is None:
+            return self.model(obs).to(self._device)
+        if isinstance(monitor_obs, int):
+            monitor_obs = torch.tensor([monitor_obs], dtype=torch.float, device=self._device).unsqueeze(0)
+        inter_obs = torch.concat((self.model[:5](obs), monitor_obs), 1)
+        return self.model[5:](inter_obs)
 
     def init_network(self):
         ch_out = self._obs_size[1] - self.kernel_size_0 + 1 - self.kernel_size_1 + 1
-        n_flatten = int(ch_out**2 * self.output_channels)
+        n_flatten = int(ch_out**2 * self.output_channels) + (1 if self.add_monitor_obs else 0)
         self.model = torch.nn.Sequential(
             torch.nn.Conv2d(self._obs_size[0], 32, self.kernel_size_0),
             torch.nn.ReLU(),

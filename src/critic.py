@@ -36,7 +36,7 @@ class Critic(ABC):
         return
 
     @abstractmethod
-    def optimize_policy_model(self, batch: dict, update_target: bool = False):
+    def optimize_policy_model(self, batch: dict, update_target: bool = False, monitor_state: bool = False):
         return
 
 
@@ -388,9 +388,6 @@ class MonQCNN(MonQNet):
         if self._lr > 1e-2:
             raise ValueError("Learning rate for NN should be small not {}".format(self._lr))
         self.optimizer = torch.optim.Adam(self._q_network.model.parameters(), lr=self._lr)
-        # self.optimizer = torch.optim.RMSprop(
-        #     self._q_network.model.parameters(), lr=self._lr, weight_decay=0.95, eps=1e-5,
-        # )
         self.q_loss_fun = torch.nn.MSELoss()
         self._q_net_loss, self._target_net_loss = [], []
         if self._strategy == "reward_model":
@@ -419,9 +416,6 @@ class MonQCNN(MonQNet):
         self._q_network.init_network()
         self._target_network.init_network()
         self.optimizer = torch.optim.Adam(self._q_network.model.parameters(), lr=self._lr)
-        # self.optimizer = torch.optim.RMSprop(
-        #     self._q_network.model.parameters(), lr=self._lr, weight_decay=0.95, eps=1e-5,
-        # )
         self._q_net_loss, self._target_net_loss = [], []
 
     def __call__(self, state, action=None):
@@ -431,17 +425,17 @@ class MonQCNN(MonQNet):
         return q_state[action]
 
     # optimize the Q-network once
-    def optimize_policy_model(self, batch: dict, update_target: bool = False):
+    def optimize_policy_model(self, batch: dict, update_target: bool = False, monitor_state: bool = False):
         reward_loss = self._r_model.optimize_reward_model(batch)
         combined_action = batch["mdp_action"] + self._action_space["mdp"].n * batch["mon_action"]
         with torch.no_grad():
             mdp_rewards = self._r_model._network(batch["mdp_obs"]).gather(1, batch["mdp_action"])
         combined_reward = mdp_rewards + batch["mon_reward"]
-        q_values = self._q_network.forward(batch["mdp_obs"]).gather(1, combined_action)
+        q_values = self._q_network.forward(batch["mdp_obs"], batch["mon_obs"] if monitor_state else None).gather(1, combined_action)
         next_q_values = torch.zeros(batch["mdp_obs"].shape[0], device=self._device)
         with torch.no_grad():
             next_q_values[batch["non_final_mask"]] = (
-                self._target_network.forward(batch["non_final_next_states"]).max(1).values
+                self._target_network.forward(batch["non_final_next_states"], batch["non_final_next_monitor_states"] if monitor_state else None).max(1).values
             )
         expected_q_values = (self._gamma * next_q_values.unsqueeze(1)) + combined_reward
         q_loss = self.q_loss_fun(q_values, expected_q_values)
@@ -494,6 +488,39 @@ class MonQCNN(MonQNet):
 
     def get_current_loss(self):
         return self._q_net_loss, self._target_net_loss
+
+
+class MonRoomCNN(MonQCNN):
+    def reset(self):
+        self._q_network = CNN(
+            self._observation_space["mdp"].shape,
+            self._action_space["mdp"].n,
+            self._lr,
+            self._kernel_size_0,
+            self._kernel_size_1,
+            add_monitor_obs=True,
+            device=self._device,
+        )
+        self._target_network = CNN(
+            self._observation_space["mdp"].shape,
+            self._action_space["mdp"].n,
+            self._lr,
+            self._kernel_size_0,
+            self._kernel_size_1,
+            add_monitor_obs=True,
+            device=self._device,
+        )
+        self._transition = namedtuple("Transition", ("obs", "action", "next_obs", "reward"))
+        self._q_network.init_network()
+        self._target_network.init_network()
+        self.optimizer = torch.optim.Adam(self._q_network.model.parameters(), lr=self._lr)
+        self._q_net_loss, self._target_net_loss = [], []
+
+    def __call__(self, state, action=None):
+        q_state = self._q_network.forward(state["mdp"], state["monitor"]).detach().cpu().numpy()
+        if action is None:
+            return q_state
+        return q_state[action]
 
 
 class MonQTableOneAction(MonQTable):

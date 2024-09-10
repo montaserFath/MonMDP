@@ -248,7 +248,7 @@ class MonExperiment(Experiment):
                 for epoch in range(self._n_itr_episode):
                     batch = self.buffer.process_batch(self.buffer.sample(self._batch_size), device=current_device)
                     step_loss_mdp, r_model_loss = self._critic.optimize_policy_model(
-                        batch, update_target=epoch % self._update_target_freq == 0,
+                        batch, update_target=epoch % self._update_target_freq == 0, monitor_state=True,
                     )
                     episode_reward_model_loss += r_model_loss
                     episode_loss_mdp += step_loss_mdp

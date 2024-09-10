@@ -1,6 +1,6 @@
 defaults:
   - agent: q_learning
-  - monitor: binary
+  - monitor: room
   - _self_
 
 environment:

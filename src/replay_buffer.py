@@ -232,8 +232,12 @@ class TorchReplayMemory:
             np.array([s["mdp"] for s in batch.next_obs if s["mdp"] is not None]), device=device, dtype=torch.float,
         )
 
+        non_final_next_monitor_states = torch.tensor(
+            np.array([s["monitor"] for s in batch.next_obs if s["monitor"] is not None]), device=device, dtype=torch.float,
+        )
+
         mdp_obs = torch.tensor(np.array([state["mdp"] for state in batch.obs]), device=device, dtype=torch.float)
-        mon_obs = torch.tensor(np.array([state["monitor"] for state in batch.obs]), device=device, dtype=torch.float)
+        mon_obs = torch.tensor(np.array([state["monitor"] for state in batch.obs]).astype(np.float32), device=device, dtype=torch.float)
 
         mdp_reward = torch.tensor(np.array([r["mdp"] for r in batch.reward]), device=device, dtype=torch.float)
         mon_reward = torch.tensor(np.array([r["monitor"] for r in batch.reward]), device=device, dtype=torch.float)
@@ -246,6 +250,7 @@ class TorchReplayMemory:
             "mon_obs": mon_obs.unsqueeze(1),
             "non_final_mask": non_final_mask,
             "non_final_next_states": non_final_next_states,
+            "non_final_next_monitor_states": non_final_next_monitor_states.unsqueeze(1),
             "mdp_reward": mdp_reward.unsqueeze(1),
             "mon_reward": mon_reward.unsqueeze(1),
             "mdp_action": mdp_action.unsqueeze(1),

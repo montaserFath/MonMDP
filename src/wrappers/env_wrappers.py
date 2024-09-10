@@ -167,3 +167,6 @@ class WallObs(gym.ObservationWrapper):
         new_obs[-1, -self.n_walls :, :] = 1
         new_obs[-1, :, -self.n_walls :] = 1
         return new_obs
+
+    def get_n_walls(self):
+        return self.n_walls
