@@ -17,7 +17,7 @@ EVAL = False
 LOG_DIR = "models/9_9/Plants/reward_model/env_0.0/eps_1.0/q_lr_1.0/reward_lr_1.0/"
 
 
-@hydra.main(version_base=None, config_path="configs", config_name="plants_watering_env")
+@hydra.main(version_base=None, config_path="configs", config_name="default")
 def run_monitor(cfg: DictConfig) -> None:
     """Run env"""
     wandb.init(
@@ -59,7 +59,7 @@ def run_monitor(cfg: DictConfig) -> None:
         critic = MonQCNN(
             cfg.environment.id, env.observation_space, env.action_space, dir_name=train_dir, **cfg.agent.critic,
         )
-    train_dir += "/window_{}/q_lr_{}/reward_lr_{}/".format(eps, window_size, q_lr, reward_lr)
+    train_dir += "/window_{}/q_lr_{}/reward_lr_{}/".format(window_size, q_lr, reward_lr)
     os.makedirs(train_dir, exist_ok=True)
 
     actor = MonEpsilonGreedyOneAction(critic, train=not EVAL, **cfg.agent.actor)
