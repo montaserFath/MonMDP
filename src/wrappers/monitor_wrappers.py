@@ -225,7 +225,7 @@ class RoomMonitor(Monitor):
     def _monitor_step(self, action, mdp_reward, mdp_state=None):
         if mdp_state is None:
             raise ValueError("mdp_state is None")
-        self.monitor_state = 1 if self.env.get_agent_pos()[1] =< self.monitor_column_ind else 0
+        self.monitor_state = 1 if self.env.get_agent_pos()[1] < self.monitor_column_ind else 0
         if self.full_monitor:
             return self.monitor_state, mdp_reward, 0.0
         if self.monitor_state == 0:
