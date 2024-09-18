@@ -143,6 +143,7 @@ class MonExperiment(Experiment):
         set_rng_seed(self._rng_seed)
         self._actor.reset()
         self._critic.reset()
+        monitor_states = []
         joint_reward = {}
         eval_joint_reward = {}
         eval_count = 0
@@ -196,11 +197,13 @@ class MonExperiment(Experiment):
             reward_seen = False
             episode_monitor_action_count, episode_timesteps = 0, 0
             next_action = None
+            monitor_states_ep = []
             ep_joint_reward = []
             agent_pos, grid_size = (0, 0), (9, 9)  # TODO bug if (3, 3) fix this
             current_device = self._critic.get_device()
             while True:
                 episode_timesteps += 1
+                monitor_states_ep.append(obs["monitor"])
                 action = self._actor(obs) if next_action is None else next_action
                 # self._visit_table[
                 #     self.get_obs_from_agent_pos(self, grid_size, agent_pos), get_action_ind(action)
@@ -253,6 +256,7 @@ class MonExperiment(Experiment):
                     episode_loss_mdp += step_loss_mdp
                     episode_loss_mon += step_loss_mon
                 self._time_file.write("Training time for episode {} = {}\n".format(episode, time.time() - train_timer))
+            monitor_states.append(monitor_states_ep)
             joint_reward.update({episode: ep_joint_reward})
             total_timesteps += episode_timesteps
             logs = {
@@ -272,6 +276,7 @@ class MonExperiment(Experiment):
         # save Q-table as numpy array
         # if self.buffer is not None:
         #     self.buffer.save(log_dir=self._log_dir)
+        np.save(self._log_dir + "/monitor_states.npy".format(self._rng_seed), np.squeeze(monitor_states))
         self._critic.save(seed=self._rng_seed)
         if self._save_train_log:
             # np.save(self._log_dir + "/visit_table_{}.npy".format(self._rng_seed), self._visit_table)
@@ -364,6 +369,7 @@ class MonExperiment(Experiment):
         checkpoint_dir = self._log_dir + "checkpoints_{}/".format(self._checkpoint_count)
         os.makedirs(checkpoint_dir, exist_ok=True)
         self._critic.save(file_name="checkpoints_{}/".format(self._checkpoint_count), seed=self._rng_seed)
+        self._critic.save(seed=self._rng_seed)  # save critic
         # np.save(checkpoint_dir + "/visit_table_{}.npy".format(self._rng_seed), self._visit_table)
         # np.save(self._log_dir + "/visit_table_{}.npy".format(self._rng_seed), self._visit_table)
         np.save(self._log_dir + "/training_joint_reward_{}.npy".format(self._rng_seed), joint_reward)
@@ -371,6 +377,7 @@ class MonExperiment(Experiment):
             self._log_dir + "/evaluation_joint_reward_{}.npy".format(self._rng_seed),
             eval_joint_reward,
         )
+        np.save(self._log_dir + "/monitor_states.npy".format(self._rng_seed) , np.squeeze(monitor_states))
         # if self.buffer is not None:
         #     self.buffer.save(log_dir=checkpoint_dir)
         self._checkpoint_count += 1
