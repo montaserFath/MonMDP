@@ -155,7 +155,7 @@ class MonExperiment(Experiment):
             if total_timesteps > self._testing_frequency * self._checkpoint_count:
                 eval_time = time.time()
                 # perform/save checkpoint
-                self.checkpoint(joint_reward, eval_joint_reward)
+                self.checkpoint(joint_reward, eval_joint_reward, monitor_states)
 
                 self._actor.eval()
                 (
@@ -364,7 +364,7 @@ class MonExperiment(Experiment):
             trajectories,
         )
 
-    def checkpoint(self, joint_reward, eval_joint_reward):
+    def checkpoint(self, joint_reward, eval_joint_reward, monitor_states):
         """save the model and statistic during the training process"""
         checkpoint_dir = self._log_dir + "checkpoints_{}/".format(self._checkpoint_count)
         os.makedirs(checkpoint_dir, exist_ok=True)
