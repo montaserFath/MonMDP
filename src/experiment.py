@@ -166,7 +166,7 @@ class MonExperiment(Experiment):
                     ep_length,
                     ep_discount_reward,
                     _,
-                ) = self.test()
+                ) = self.test(save_results=True)
                 eval_joint_reward.update({episode: ep_discount_reward})
                 episode_return_true = ep_return_true.mean()
                 episode_return_proxy = np.nanmean(ep_return_proxy)
@@ -276,7 +276,7 @@ class MonExperiment(Experiment):
         # save Q-table as numpy array
         # if self.buffer is not None:
         #     self.buffer.save(log_dir=self._log_dir)
-        np.save(self._log_dir + "/monitor_states.npy".format(self._rng_seed), np.squeeze(monitor_states))
+        np.save(self._log_dir + "/monitor_states_{}.npy".format(self._rng_seed), np.squeeze(monitor_states))
         self._critic.save(seed=self._rng_seed)
         if self._save_train_log:
             # np.save(self._log_dir + "/visit_table_{}.npy".format(self._rng_seed), self._visit_table)
@@ -296,6 +296,7 @@ class MonExperiment(Experiment):
         episode_return_proxy = []
         episode_return_cost = []
         episode_monitor_action = []
+        episode_monitor_states = []
         episode_length = []
         episode_discount_reward = []
         trajectories = {}
@@ -313,6 +314,7 @@ class MonExperiment(Experiment):
                     ep_states.append([obs["mdp"].item(), obs["monitor"]])
                 if render:
                     self._env.render()
+                episode_monitor_states.append(obs["monitor"])
                 action = self._actor(obs)
                 ep_actions.append([action["mdp"], action["monitor"]])
                 if action["monitor"] == 1:
@@ -350,6 +352,7 @@ class MonExperiment(Experiment):
                 "joint_reward": np.array(episode_return_true) + np.array(episode_return_cost),
                 "length": np.array(episode_length),
                 "undiscounted_joint_reward": np.array(ep_joint_reward),
+                "monitor_states": np.squeeze(episode_monitor_states),
             }
             episode += 1
         if save_results:
@@ -377,7 +380,7 @@ class MonExperiment(Experiment):
             self._log_dir + "/evaluation_joint_reward_{}.npy".format(self._rng_seed),
             eval_joint_reward,
         )
-        np.save(self._log_dir + "/monitor_states.npy".format(self._rng_seed) , np.squeeze(monitor_states))
+        np.save(self._log_dir + "/monitor_states_{}.npy".format(self._rng_seed), np.squeeze(monitor_states))
         # if self.buffer is not None:
         #     self.buffer.save(log_dir=checkpoint_dir)
         self._checkpoint_count += 1
