@@ -49,6 +49,7 @@ def run_monitor(cfg: DictConfig) -> None:
         dry_difference=cfg.environment.dry_difference,
         agent_start_pos=agent_start_pos,
         max_episode_steps=cfg.environment.max_episode_steps,
+        add_new_plants=cfg.environment.add_new_plants,
     )
     env = WallObs(env, grid_size=cfg.environment.grid_size, n_walls=cfg.environment.n_walls)
     env = WindowViewObs(env, window_size=cfg.environment.window_size)

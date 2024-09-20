@@ -13,6 +13,7 @@ environment:
   max_episode_steps: 100
   n_walls: 3
   window_size: 5
+  add_new_plants: True
 
 wandb:
   mode: offline

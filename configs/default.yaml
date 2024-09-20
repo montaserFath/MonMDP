@@ -5,14 +5,15 @@ defaults:
 
 environment:
   id: gym_monitor/Plants-Watering-v1
-  grid_size: [6, 6]
-  n_plants: 3
+  grid_size: [9, 9]
+  n_plants: 4
   plants_dryness_prob: 0.1
   dry_difference: 0.5
   agent_start_pos: [0, 0]
   max_episode_steps: 100
   n_walls: 3
   window_size: 7
+  add_new_plants: True
 
 wandb:
   mode: offline

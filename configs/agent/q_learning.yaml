@@ -9,7 +9,7 @@ critic:
   kernel_size_1: 2
   reward_model:
     r0: 0
-    lr: 1e-3 #1.0
+    lr: 1e-4 #1.0
     kernel_size_0: 3
     kernel_size_1: 2
     device: "cuda:0" #"mps:0"
