@@ -15,12 +15,12 @@ class Monitor(gymnasium.Wrapper):
     """
 
     @abstractmethod
-    def _monitor_step(self, action, mdp_reward, mdp_state=None):
+    def _monitor_step(self, action, mdp_reward, mdp_state=None, mdp_info=None):
         pass
 
     def step(self, action):
         mdp_obs, mdp_reward, mdp_terminated, mdp_truncated, mdp_info = self.env.step(action["mdp"])
-        monitor_obs, proxy_reward, monitor_cost = self._monitor_step(action, mdp_reward, mdp_obs)
+        monitor_obs, proxy_reward, monitor_cost = self._monitor_step(action, mdp_reward, mdp_obs, mdp_info)
 
         obs = {"mdp": mdp_obs, "monitor": monitor_obs}
         reward = {"mdp": proxy_reward, "monitor": monitor_cost}
@@ -64,7 +64,7 @@ class FullMonitor(Monitor):
         monitor_obs = 0  # default monitor state, always active
         return {"mdp": mdp_obs, "monitor": monitor_obs}, mdp_info
 
-    def _monitor_step(self, action, mdp_reward, mdp_state=None):
+    def _monitor_step(self, action, mdp_reward, mdp_state=None, mdp_info=None):
         monitor_cost = 0.0
         proxy_reward = mdp_reward
         monitor_obs = 0
@@ -107,7 +107,7 @@ class StateMonitor(Monitor):
         self.prev_mdp_state = None
         return {"mdp": mdp_obs, "monitor": self.monitor_state}, mdp_info
 
-    def _monitor_step(self, action, mdp_reward, mdp_state=None):
+    def _monitor_step(self, action, mdp_reward, mdp_state=None, mdp_info=None):
         if self.prev_mdp_state == self.button_state and action["mdp"] == self.button_action:
             self.monitor_state = (self.monitor_state + 1) % 2  # flip the button
 
@@ -178,7 +178,7 @@ class BinaryMonitor(Monitor):
         self.monitor_state = self.init_monitor_state
         return {"mdp": mdp_obs, "monitor": self.monitor_state}, mdp_info
 
-    def _monitor_step(self, action, mdp_reward, mdp_state=None):
+    def _monitor_step(self, action, mdp_reward, mdp_state=None, mdp_info=None):
         if self.full_monitor:
             # return 1, mdp_reward, 0.
             return 1, mdp_reward, -self.monitor_cost if action["monitor"] == 1 else 0.0
@@ -197,13 +197,14 @@ class BinaryMonitor(Monitor):
 
 class RoomMonitor(Monitor):
     """Divide grid to monitored and unmonitored rooms."""
+
     def __init__(
-            self,
-            env,
-            full_monitor: bool,
-            monitor_cost: float = 0.0,
-            monitor_column_ind: int = 3,
-            **kwargs,
+        self,
+        env,
+        full_monitor: bool,
+        monitor_cost: float = 0.0,
+        monitor_column_ind: int = 3,
+        **kwargs,
     ):
         """initialization function"""
         gymnasium.Wrapper.__init__(self, env)
@@ -220,19 +221,19 @@ class RoomMonitor(Monitor):
         self.action_space.seed(seed)
         self.observation_space.seed(seed)
         mdp_obs, mdp_info = self.env.reset(seed=seed, **kwargs)
-        self.get_monitor_state()
+        self.get_monitor_state(mdp_info["previous_agent_pos"])
         return {"mdp": mdp_obs, "monitor": self.monitor_state}, mdp_info
 
-    def _monitor_step(self, action, mdp_reward, mdp_state=None):
-        self.get_monitor_state()
+    def _monitor_step(self, action, mdp_reward, mdp_state=None, mdp_info=None):
         if mdp_state is None:
             raise ValueError("mdp_state is None")
-        if self.env.get_agent_pos()[1] < self.monitor_column_ind:
+        self.get_monitor_state(mdp_info["previous_agent_pos"])
+        if mdp_info["previous_agent_pos"][1] < self.monitor_column_ind:
             return self.monitor_state, mdp_reward, 0.0
         return self.monitor_state, np.nan, 0.0
 
-    def get_monitor_state(self):
-        self.monitor_state = 1 if self.env.get_agent_pos()[1] < self.monitor_column_ind else 0
+    def get_monitor_state(self, agent_pos):
+        self.monitor_state = 1 if agent_pos[1] < self.monitor_column_ind else 0
 
 
 class NMonitor(Monitor):
@@ -272,7 +273,7 @@ class NMonitor(Monitor):
         self.monitor_state = self.action_space["monitor"].sample()
         return {"mdp": mdp_obs, "monitor": self.monitor_state}, mdp_info
 
-    def _monitor_step(self, action, mdp_reward, mdp_state=None):
+    def _monitor_step(self, action, mdp_reward, mdp_state=None, mdp_info=None):
         assert action["monitor"] < self.action_space["monitor"].n, "illegal monitor action"
 
         monitor_cost = 0.0
@@ -326,7 +327,7 @@ class TimeLimitedMonitor(Monitor):
         self.monitor_state = 1
         return {"mdp": mdp_obs, "monitor": self.monitor_state}, mdp_info
 
-    def _monitor_step(self, action, mdp_reward, mdp_state=None):
+    def _monitor_step(self, action, mdp_reward, mdp_state=None, mdp_info=None):
         monitor_cost = 0.0
         if self.monitor_state == 1:
             proxy_reward = mdp_reward
@@ -389,7 +390,7 @@ class LimitedUseMonitor(Monitor):
         self.monitor_battery = 100  # battery full
         return {"mdp": mdp_obs, "monitor": self.monitor_state}, mdp_info
 
-    def _monitor_step(self, action, mdp_reward, mdp_state=None):
+    def _monitor_step(self, action, mdp_reward, mdp_state=None, mdp_info=None):
         proxy_reward = np.nan
         battery_cost = 0
         monitor_cost = 0.0

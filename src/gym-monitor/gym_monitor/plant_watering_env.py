@@ -2,21 +2,21 @@ import gymnasium as gym
 import random
 import numpy as np
 import torch
-from gymnasium.core import RenderFrame
 import pygame
 
 
 class PlantsWateringEnv(gym.Env):
     def __init__(
-            self,
-            grid_size: (int, int),
-            n_plants: int,
-            plants_dryness_prob: float,
-            dry_difference: float = 0.5,
-            agent_start_pos: [int, int] = None,
-            max_episode_steps: int = 1000,
-            render_mode: str = None,
-            **kwargs,
+        self,
+        grid_size: (int, int),
+        n_plants: int,
+        plants_dryness_prob: float,
+        dry_difference: float = 0.5,
+        agent_start_pos: [int, int] = None,
+        max_episode_steps: int = 1000,
+        render_mode: str = None,
+        add_new_plants: bool = False,
+        **kwargs,
     ):
         self._metadata = {
             "render_modes": ["human", "rgb_array", "ansi"],
@@ -29,21 +29,25 @@ class PlantsWateringEnv(gym.Env):
         self.agent_start_pos = agent_start_pos
         self.render_mode = render_mode
         self.max_episode_steps = max_episode_steps
+        self.add_new_plants = add_new_plants
 
         self._n_raws, self._n_columns = grid_size
         self._n_actions = 6  # 0 up, 1 down, 2 right, 3 left, 4 water, 5 do nothing
-        self._n_objects = 3  # 0 agent, 1 plant, 2 dryness, 3 walls
+        self._n_objects = 4 if self.add_new_plants else 3  # 0 agent, 1 plant, 2 dryness, 3 walls, 4 New plants
         self._obs_shape = (self._n_objects, self._n_raws, self._n_columns)
         self._grid = np.zeros(self._obs_shape)
-        self.reset_agent_plants_pos()
+        self._agent_pos = None
+        self._plants_pos = None
+        self._new_plants_pos = None
+        self._n_new_plants = 2 if self.add_new_plants else 0  # TODO: fix this
+        self._previous_agent_pos = None
 
         self.action_space = gym.spaces.Discrete(self._n_actions)
         self.observation_space = gym.spaces.Box(0, self._n_objects, shape=self._obs_shape, dtype=np.float64)
         self.reward_range = (-1, 1)
 
-        self._obj_codes = {0: "agent", 1: "plant", 2: "dryness", 3: "wall"}
+        self._obj_codes = {0: "agent", 1: "plant", 2: "dryness", 3: "wall", 4: "new_plants"}
         self._actions_code = {0: "up", 1: "down", 2: "right", 3: "left", 4: "water", 5: "nothing"}
-        self._plants_pos = None
         self._current_timestep = 0
 
         # for rendering
@@ -57,10 +61,12 @@ class PlantsWateringEnv(gym.Env):
             "red": (255, 0, 0),
             "brown": (150, 75, 0),
             "green": (0, 255, 0),
+            "blue": (0, 0, 255),
         }
 
     def step(self, action: int):
         """step function"""
+        self._previous_agent_pos = self._agent_pos
         reward = self.reward(action)
         if action in np.arange(4):
             self._grid[0, self._agent_pos[0], self._agent_pos[1]] = 0  # reset
@@ -91,21 +97,22 @@ class PlantsWateringEnv(gym.Env):
         self._grid = np.zeros(self._obs_shape)
         self._current_timestep = 0
 
-        # agent & Plants position
+        # agent & Plants positions
         self.reset_agent_plants_pos()
         self._grid[0, self._agent_pos[0], self._agent_pos[1]] = 1
         self._grid[1, self._plants_pos[:, 0], self._plants_pos[:, 1]] = 1
 
-        # Plants positions
-        # plants_pos_x = np.random.randint(0, self._n_raws, (self.n_plants, 1))
-        # plants_pos_y = np.random.randint(0, self._n_columns, (self.n_plants, 1))
-        # self._plants_pos = np.concatenate((plants_pos_x, plants_pos_y), 1)
-
         # Plants dryness
         self._grid[2, self._plants_pos[:, 0], self._plants_pos[:, 1]] = 1
-        # np.random.choice(self.dryness_levels, size=(self.n_plants,))
 
-        return self._grid, {}
+        if self.add_new_plants:
+            self._grid[3, self._new_plants_pos[:, 0], self._new_plants_pos[:, 1]] = 1  # New Plants
+        self._previous_agent_pos = self._agent_pos
+        return self._grid, {
+            "agent_pos": self._agent_pos,
+            "grid": self._grid,
+            "previous_agent_pos": self._previous_agent_pos,
+        }
 
     def render(self):
         return self._render_gui(self.render_mode)
@@ -135,10 +142,13 @@ class PlantsWateringEnv(gym.Env):
     def reward(self, action: int) -> float:
         """Get the timestep environment reward"""
         if action == 4:  # Water
-            if np.any(np.all(self._agent_pos == self._plants_pos, axis=1)):  #  Water a plant
+            if np.any(np.all(self._agent_pos == self._plants_pos, axis=1)):  # Water a plant
                 if self._grid[2, self._agent_pos[0], self._agent_pos[1]] > np.min(self.dryness_levels):
                     return 1.0  # Water a dry plant
                 return -1.0  # Water a full watered plan
+            if self.add_new_plants:
+                if np.any(np.all(self._agent_pos == self._new_plants_pos, axis=1)):  # Water a new plant
+                    return -1.0
             return -0.2  # Water an empty cell
         return 0.0
 
@@ -150,11 +160,23 @@ class PlantsWateringEnv(gym.Env):
         """Reset the agent and plants position in the grid to the initial position."""
         pos_x = np.random.choice(np.arange(self._n_raws), size=(self.n_plants + 1, 1), replace=False)
         pos_y = np.random.choice(np.arange(self._n_columns), size=(self.n_plants + 1, 1), replace=False)
+        if self.add_new_plants:
+            plants_pos_x = np.random.choice(np.arange(self._n_raws), size=(self.n_plants, 1), replace=False)
+            plants_pos_y = np.random.choice(np.arange(self._n_columns - 3), size=(self.n_plants, 1), replace=False)
+            self._plants_pos = np.concatenate((plants_pos_x, plants_pos_y), 1)
+
+            new_x = np.random.choice(np.arange(self._n_raws), (self._n_new_plants, 1), replace=False)
+            new_y = np.random.choice(
+                np.arange(self._n_columns - 3, self._n_raws), (self._n_new_plants, 1), replace=False
+            )
+            self._new_plants_pos = np.concatenate((new_x, new_y), 1)
+        else:
+            self._plants_pos = np.concatenate((pos_x[1:], pos_y[1:]), 1)
+        # Agent starting position
         if self.agent_start_pos is None:
             self._agent_pos = [pos_x[0, 0], pos_y[0, 0]]
         else:
             self._agent_pos = self.agent_start_pos
-        self._plants_pos = np.concatenate((pos_x[1:], pos_y[1:]), 1)
 
     def update_plants_dryness(self) -> None:
         """Update plants dryness level"""
@@ -172,11 +194,16 @@ class PlantsWateringEnv(gym.Env):
         info["agent_pos"] = self.get_agent_pos()
         info["grid"] = self.get_grid()
         info["plants_pos"] = self.get_plants_pos()
+        info["previous_agent_pos"] = self._previous_agent_pos
         return info
 
     def get_grid(self):
         """Get the current grid"""
         return self._grid.copy()
+
+    def get_new_plants_pos(self):
+        """Get the current grid"""
+        return self._new_plants_pos
 
     def get_agent_pos(self):
         """Get the current agent position"""
@@ -192,21 +219,23 @@ class PlantsWateringEnv(gym.Env):
         cell_x, cell_y = self._cell_size
         # horizontal lines
         for i in range(1, self._n_raws):
-            pygame.draw.line(self._window_surface, self._colors["black"], (0, i * cell_x), (cell_x ** 2, i * cell_y), 3)
+            pygame.draw.line(self._window_surface, self._colors["black"], (0, i * cell_x), (cell_x**2, i * cell_y), 3)
         # vertical lines
         for j in range(1, self._n_columns):
-            pygame.draw.line(self._window_surface, self._colors["black"], (j * cell_y, 0), (j * cell_x, cell_y ** 2), 3)
+            pygame.draw.line(self._window_surface, self._colors["black"], (j * cell_y, 0), (j * cell_x, cell_y**2), 3)
 
     def _render_gui(self, mode):
-        """"""
-        if mode == "human":
-            pygame.display.init()
-            pygame.display.set_caption("Plants Watering Environment")
-            self._window_surface = pygame.display.set_mode(self._window_size)
-        elif mode == "rgb_array":
-            self._window_surface = pygame.Surface(self._window_size)
-        else:
-            raise ValueError("Undefined render mode")
+        """render gui"""
+        if self._window_surface is None:
+            pygame.init()
+            if mode == "human":
+                pygame.display.init()
+                pygame.display.set_caption("Plants Watering Environment")
+                self._window_surface = pygame.display.set_mode(self._window_size)
+            elif mode == "rgb_array":
+                self._window_surface = pygame.Surface(self._window_size)
+            else:
+                raise ValueError("Undefined render mode")
         self._window_surface.fill(self._colors["white"])
         self._draw_lines()
         for obj_id in range(self.n_plants + 1):
@@ -215,6 +244,10 @@ class PlantsWateringEnv(gym.Env):
             else:
                 plant_pos = self._plants_pos[obj_id]
                 self._draw_obj("plant", plant_pos, self._grid[2, plant_pos[0], plant_pos[1]])
+        if self.add_new_plants:
+            for new_plant in range(self._n_new_plants):
+                new_plant_pos = self._new_plants_pos[new_plant]
+                self._draw_obj("new_plant", new_plant_pos)
 
         if mode == "human":
             pygame.event.pump()
@@ -227,7 +260,8 @@ class PlantsWateringEnv(gym.Env):
 
     def _draw_obj(self, obj: str, pos: [int, int], dryness: float = 0.0):
         """Draw the grid"""
-        new_pos = ((pos[0] + 0.5) * self._cell_size[0], (pos[1] + 0.5) * self._cell_size[1])
+        # TODO solve flipping x and y
+        new_pos = ((pos[1] + 0.5) * self._cell_size[0], (pos[0] + 0.5) * self._cell_size[1])
         if obj == "plant":
             if dryness == np.max(self.dryness_levels):
                 color = self._colors["red"]
@@ -238,6 +272,8 @@ class PlantsWateringEnv(gym.Env):
             pygame.draw.circle(self._window_surface, color, new_pos, 20)
         elif obj == "agent":
             pygame.draw.rect(self._window_surface, self._colors["black"], (new_pos[0], new_pos[1], 30, 30), 0)
+        elif obj == "new_plant":
+            pygame.draw.circle(self._window_surface, self._colors["blue"], new_pos, 20)
         else:
             raise ValueError("Undefined object type")
         # pygame.draw.polygon(self._window_surface, (), ((25, 75), (320, 125), (250, 375)))
