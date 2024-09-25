@@ -2,13 +2,14 @@
 _target_: hydra_plugins.hydra_submitit_launcher.submitit_launcher.SlurmLauncher
 submitit_folder: ${hydra.sweep.dir}/.submitit/%j
 name: ${hydra.job.name}
-account: def-mbowling
+account: rrg-mbowling-ad # def-mbowling
 partition: default
 timeout_min: 360
-cpus_per_task: 48
-gpus_per_node: 1
-tasks_per_node: 1
+cpus_per_task: 1
+# gpus_per_node: a100_3g.20gb:1 #gpu:4g.20gb
+gres: gpu:a100_3g.20gb:1
+tasks_per_node: 6
 nodes: 1
 max_num_timeout: 100
 array_parallelism: 256
-mem: 510000M
+mem: 62000M
