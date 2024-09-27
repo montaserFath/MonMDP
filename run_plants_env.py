@@ -20,16 +20,16 @@ LOG_DIR = "models/9_9/Plants/reward_model/env_0.0/eps_1.0/q_lr_1.0/reward_lr_1.0
 @hydra.main(version_base=None, config_path="configs", config_name="default")
 def run_monitor(cfg: DictConfig) -> None:
     """Run env"""
-    wandb.init(
-        group="gym_monitor/Plants-Watering-v1" + "\\" + dict_to_id(cfg.monitor),
-        config=OmegaConf.to_container(
-            cfg,
-            resolve=True,
-            throw_on_missing=True,
-        ),
-        settings=wandb.Settings(start_method="thread"),
-        **cfg.wandb,
-    )
+    # wandb.init(
+    #     group="gym_monitor/Plants-Watering-v1" + "\\" + dict_to_id(cfg.monitor),
+    #     config=OmegaConf.to_container(
+    #         cfg,
+    #         resolve=True,
+    #         throw_on_missing=True,
+    #     ),
+    #     settings=wandb.Settings(start_method="thread"),
+    #     **cfg.wandb,
+    # )
 
     q_lr, reward_lr, eps = cfg.agent.critic.lr, cfg.agent.critic.reward_model.lr, cfg.agent.actor.init_eps
     dry, window_size = cfg.environment.plants_dryness_prob, cfg.environment.window_size
