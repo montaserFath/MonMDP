@@ -145,8 +145,8 @@ class WallObs(gym.ObservationWrapper):
     def __init__(self, env, grid_size: tuple, n_walls: int):
         super().__init__(env)
         self.env = env
-        if n_walls > (grid_size[0] // 2):
-            raise ValueError("number of walls should smaller than half of the grid size")
+        # if n_walls > (grid_size[0] // 2):
+        #     raise ValueError("number of walls should smaller than half of the grid size")
         self.n_walls = n_walls
         self.grid_size = grid_size
         new_shape = list(self.env.observation_space.shape)
