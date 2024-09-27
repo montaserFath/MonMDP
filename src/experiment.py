@@ -49,7 +49,7 @@ class Experiment:
         self._n_itr_episode = n_itr_episode  # number of iteration to update the Q-network per episode
         self._update_target_freq = update_target_freq  # update the target network every episode
         self.buffer = TorchReplayMemory(max_size=int(replay_buffer_size)) if replay_buffer else None
-        self._time_file = open(self._log_dir + "/time_{}.txt".format(self._rng_seed), "w")
+        # self._time_file = open(self._log_dir + "/time_{}.txt".format(self._rng_seed), "w")
 
     def train(self):
         """Train an algorithm in MDP env, logs and save results"""
@@ -183,9 +183,9 @@ class MonExperiment(Experiment):
                 }
                 self.log_save_logs(train=False, logs=logs, episode=episode, save_logs=True)
                 eval_count += 1
-                self._time_file.write("evaluation time for checkpoint {} = {}\n".format(
-                    self._checkpoint_count, time.time() - eval_time)
-                )
+                # self._time_file.write("evaluation time for checkpoint {} = {}\n".format(
+                #     self._checkpoint_count, time.time() - eval_time)
+                # )
 
             ep_seed = cantor_pairing(self._rng_seed, episode)
             obs, _ = self._env.reset(seed=ep_seed)
@@ -248,7 +248,7 @@ class MonExperiment(Experiment):
                         batch, epoch % self._update_target_freq == 0, monitor_state=isinstance(self._critic, MonRoomCNN),
                     )
                     episode_reward_model_loss += r_model_loss
-                self._time_file.write("Training time for episode {} = {}\n".format(episode, time.time() - train_timer))
+                # self._time_file.write("Training time for episode {} = {}\n".format(episode, time.time() - train_timer))
             agent_locations.append(agent_location_ep)
             joint_reward.update({episode: ep_joint_reward})
             total_timesteps += episode_timesteps
@@ -278,8 +278,8 @@ class MonExperiment(Experiment):
             )
         # wandb.finish()
         self._env.close()
-        self._time_file.write("Experiment time = {}".format(time.time() - start_time))
-        self._time_file.close()
+        # self._time_file.write("Experiment time = {}".format(time.time() - start_time))
+        # self._time_file.close()
 
     def test(self, render: bool = False, seed: int = 1, save_results: bool = False):
         """Evaluate an algorithm in Monitor MDP env, logs and save results"""
