@@ -11,6 +11,7 @@ from src.utils import set_rng_seed, cantor_pairing
 from src.replay_buffer import TorchReplayMemory
 from src.critic import MonRoomCNN
 
+
 class Experiment:
     """Run experiments for training and testing in MDP env"""
 
@@ -63,7 +64,7 @@ class Experiment:
                 self._actor.eval()
                 episode_return = self.test()
                 self._actor.train()
-                wandb.log({"test/environment_reward": episode_return.mean()}, step=episode, commit=False)
+                # wandb.log({"test/environment_reward": episode_return.mean()}, step=episode, commit=False)
 
             ep_seed = cantor_pairing(self._rng_seed, episode)
             obs, _ = self._env.reset(seed=ep_seed)
@@ -88,14 +89,14 @@ class Experiment:
             joint_reward[episode_timesteps] = ep_joint_reward
             total_timesteps += episode_timesteps
             episode += 1
-            wandb.log(
-                {"train/environment_reward": episode_return, "train/loss_mdp": episode_loss}, step=episode, commit=True
-            )
+            # wandb.log(
+            #     {"train/environment_reward": episode_return, "train/loss_mdp": episode_loss}, step=episode, commit=True
+            # )
         if self._save_train_log:
             np.save(self._log_dir + "/training_joint_reward_{}.npy".format(self._rng_seed), joint_reward)
         # save Q-table as numpy array
         self._critic.save(seed=self._rng_seed)
-        wandb.finish()
+        # wandb.finish()
         self._env.close()
 
     def test(self, render: bool = False) -> dict:
