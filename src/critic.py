@@ -389,7 +389,7 @@ class MonQCNN(MonQNet):
             raise ValueError("Learning rate for NN should be small not {}".format(self._lr))
         self.optimizer = torch.optim.Adam(self._q_network.model.parameters(), lr=self._lr)
         self.q_loss_fun = torch.nn.MSELoss()
-        self._q_net_loss, self._target_net_loss = [], []
+        self._q_net_loss, = []
         if self._strategy == "reward_model":
             self._r_model = RewardNet(observation_space["mdp"], action_space["mdp"], **kwargs["reward_model"])
             self._r_model.reset()
@@ -416,7 +416,7 @@ class MonQCNN(MonQNet):
         self._q_network.init_network()
         self._target_network.init_network()
         self.optimizer = torch.optim.Adam(self._q_network.model.parameters(), lr=self._lr)
-        self._q_net_loss, self._target_net_loss = [], []
+        self._q_net_loss = []
 
     def __call__(self, state, action=None):
         q_state = self._q_network.forward(state["mdp"]).detach().cpu().numpy()
@@ -431,8 +431,7 @@ class MonQCNN(MonQNet):
         with torch.no_grad():
             mdp_rewards = self._r_model._network(batch["mdp_obs"]).gather(1, batch["mdp_action"])
         combined_reward = mdp_rewards + batch["mon_reward"]
-        q_values = self._q_network.forward(batch["mdp_obs"], batch["mon_obs"] if monitor_state else None).gather(1,
-                                                                                                                 combined_action)
+        q_values = self._q_network.forward(batch["mdp_obs"], batch["mon_obs"] if monitor_state else None).gather(1, combined_action)
         next_q_values = torch.zeros(batch["mdp_obs"].shape[0], device=self._device)
         with torch.no_grad():
             next_q_values[batch["non_final_mask"]] = (
@@ -464,7 +463,7 @@ class MonQCNN(MonQNet):
         file_dir = self._dir_name if file_name is None else self._dir_name + "/" + file_name
         os.makedirs(file_dir, exist_ok=True)
         self._q_network.save(log_dir=file_dir + "/q_network_{}".format(seed))
-        self._target_network.save(log_dir=file_dir + "/target_network_{}".format(seed))
+        # self._target_network.save(log_dir=file_dir + "/target_network_{}".format(seed))
         self._r_model.save(seed=seed, file_name=file_dir)
 
         np.save(file_dir + "/q_network_loss_{}".format(seed), self.get_current_loss()[0])
@@ -490,7 +489,7 @@ class MonQCNN(MonQNet):
         return self._device
 
     def get_current_loss(self):
-        return self._q_net_loss, self._target_net_loss
+        return self._q_net_loss
 
 
 class MonRoomCNN(MonQCNN):
@@ -520,7 +519,7 @@ class MonRoomCNN(MonQCNN):
         self._q_network.init_network()
         self._target_network.init_network()
         self.optimizer = torch.optim.Adam(self._q_network.model.parameters(), lr=self._lr)
-        self._q_net_loss, self._target_net_loss = [], []
+        self._q_net_loss = []
 
     def __call__(self, state, action=None):
         q_state = self._q_network.forward(state["mdp"], state["monitor"]).detach().cpu().numpy()
@@ -541,7 +540,7 @@ class MonRoomCNN(MonQCNN):
         super().load(seed=seed, file_name=file_name)
 
     def get_current_loss(self):
-        return self._q_net_loss, self._target_net_loss
+        return self._q_net_loss
 
     def get_device(self):
         return self._device

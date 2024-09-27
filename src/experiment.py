@@ -143,7 +143,6 @@ class MonExperiment(Experiment):
         set_rng_seed(self._rng_seed)
         self._actor.reset()
         self._critic.reset()
-        monitor_states = []
         agent_locations = []
         joint_reward = {}
         eval_joint_reward = {}
@@ -156,7 +155,7 @@ class MonExperiment(Experiment):
             if total_timesteps > self._testing_frequency * self._checkpoint_count:
                 eval_time = time.time()
                 # perform/save checkpoint
-                self.checkpoint(joint_reward, eval_joint_reward, monitor_states, agent_locations)
+                self.checkpoint(joint_reward, eval_joint_reward, agent_locations)
 
                 self._actor.eval()
                 (
@@ -177,8 +176,8 @@ class MonExperiment(Experiment):
                     "environment_reward": episode_return_true,
                     "received_reward": episode_return_proxy,
                     "monitor_reward": episode_return_cost,
-                    "monitor_action": np.mean(ep_monitor_action),
-                    "number_of_timesteps": np.mean(ep_length),
+                    # "monitor_action": np.mean(ep_monitor_action),
+                    # "number_of_timesteps": np.mean(ep_length),
                     "joint_reward": episode_return_true + episode_return_cost,
                 }
                 self.log_save_logs(train=False, logs=logs, episode=episode, save_logs=True)
@@ -192,19 +191,16 @@ class MonExperiment(Experiment):
             episode_return_true = 0.0
             episode_return_proxy = 0.0
             episode_return_cost = 0.0
-            episode_loss_mdp = 0.0
-            episode_loss_mon = 0.0
             episode_reward_model_loss = 0.0
             reward_seen = False
             episode_monitor_action_count, episode_timesteps = 0, 0
             next_action = None
-            monitor_states_ep, agent_location_ep = [], []
+            agent_location_ep = []
             ep_joint_reward = []
-            agent_pos, grid_size = (0, 0), (9, 9)  # TODO bug if (3, 3) fix this
+            # agent_pos, grid_size = (0, 0), (9, 9)  # TODO bug if (3, 3) fix this
             current_device = self._critic.get_device()
             while True:
                 episode_timesteps += 1
-                monitor_states_ep.append(obs["monitor"])
                 agent_location_ep.append(self._env.get_agent_pos())
                 action = self._actor(obs) if next_action is None else next_action
                 # self._visit_table[
@@ -212,8 +208,8 @@ class MonExperiment(Experiment):
                 # ] += 1  # fix for stateMonMDP
 
                 next_obs, reward, term, trunc, info = self._env.step(action)
-                agent_pos = info["agent_pos"]
-                grid_size = info["grid"].shape
+                # agent_pos = info["agent_pos"]
+                # grid_size = info["grid"].shape
                 if self.buffer is not None:
                     self.buffer.push(obs, action, {"mdp": None, "monitor": None} if term else next_obs, reward)
 
@@ -233,10 +229,6 @@ class MonExperiment(Experiment):
                 if not np.isnan(reward["mdp"]):
                     reward_seen = True
                     episode_return_proxy += reward["mdp"]
-                if not np.isnan(step_loss_mdp):
-                    episode_loss_mdp += step_loss_mdp
-                if not np.isnan(step_loss_mon):
-                    episode_loss_mon += step_loss_mon
 
                 ep_joint_reward.append(info["mdp_reward"] + reward["monitor"])
                 self._actor.update()
@@ -255,10 +247,7 @@ class MonExperiment(Experiment):
                         batch, epoch % self._update_target_freq == 0, monitor_state=isinstance(self._critic, MonRoomCNN),
                     )
                     episode_reward_model_loss += r_model_loss
-                    episode_loss_mdp += step_loss_mdp
-                    episode_loss_mon += step_loss_mon
                 self._time_file.write("Training time for episode {} = {}\n".format(episode, time.time() - train_timer))
-            monitor_states.append(monitor_states_ep)
             agent_locations.append(agent_location_ep)
             joint_reward.update({episode: ep_joint_reward})
             total_timesteps += episode_timesteps
@@ -266,11 +255,9 @@ class MonExperiment(Experiment):
                 "environment_reward": episode_return_true,
                 "received_reward": episode_return_proxy,
                 "monitor_reward": episode_return_cost,
-                "loss_mdp": episode_loss_mdp,
-                "loss_mon": episode_loss_mon,
                 "episode_reward_model_loss": episode_reward_model_loss,
-                "monitor_action": episode_monitor_action_count,
-                "number_of_timesteps": episode_timesteps,
+                # "monitor_action": episode_monitor_action_count,
+                # "number_of_timesteps": episode_timesteps,
                 "joint_reward": episode_return_true + episode_return_cost,
             }
             self.log_save_logs(train=True, logs=logs, episode=episode, save_logs=True)
@@ -279,8 +266,7 @@ class MonExperiment(Experiment):
         # save Q-table as numpy array
         # if self.buffer is not None:
         #     self.buffer.save(log_dir=self._log_dir)
-        np.save(self._log_dir + "/monitor_states_{}.npy".format(self._rng_seed), np.squeeze(monitor_states))
-        np.save(self._log_dir + "/agent_locations_{}.npy".format(self._rng_seed), np.squeeze(agent_locations))
+        np.save(self._log_dir + "/agent_locations_{}.npy".format(self._rng_seed), np.array(agent_locations, dtype=np.int8))
         self._critic.save(seed=self._rng_seed)
         if self._save_train_log:
             # np.save(self._log_dir + "/visit_table_{}.npy".format(self._rng_seed), self._visit_table)
@@ -289,7 +275,7 @@ class MonExperiment(Experiment):
                 self._log_dir + "/evaluation_joint_reward_{}.npy".format(self._rng_seed),
                 eval_joint_reward,
             )
-        wandb.finish()
+        # wandb.finish()
         self._env.close()
         self._time_file.write("Experiment time = {}".format(time.time() - start_time))
         self._time_file.close()
@@ -299,9 +285,9 @@ class MonExperiment(Experiment):
         episode_return_true = []
         episode_return_proxy = []
         episode_return_cost = []
-        episode_monitor_action = []
-        episode_monitor_states, episode_agent_locations = [], []
-        episode_length = []
+        # episode_monitor_action = []
+        episode_agent_locations = []
+        # episode_length = []
         episode_discount_reward = []
         trajectories = {}
         total_timesteps = 0
@@ -314,16 +300,15 @@ class MonExperiment(Experiment):
             ep_states, ep_actions, ep_joint_reward = [], [], []
             return_true, return_proxy, return_cost, ep_discount_reward = 0, 0, 0, 0
             while True:
-                if isinstance(self._env.observation_space["mdp"], gym.spaces.Discrete):
-                    ep_states.append([obs["mdp"].item(), obs["monitor"]])
+                # if isinstance(self._env.observation_space["mdp"], gym.spaces.Discrete):
+                #     ep_states.append([obs["mdp"].item(), obs["monitor"]])
                 if render:
                     self._env.render()
-                episode_monitor_states.append(obs["monitor"])
                 episode_agent_locations.append(self._env.get_agent_pos())
                 action = self._actor(obs)
-                ep_actions.append([action["mdp"], action["monitor"]])
-                if action["monitor"] == 1:
-                    episode_monitor_action_count += 1
+                # ep_actions.append([action["mdp"], action["monitor"]])
+                # if action["monitor"] == 1:
+                #     episode_monitor_action_count += 1
                 next_obs, reward, term, trunc, info = self._env.step(action)
                 return_true += info["mdp_reward"]
                 return_cost += reward["monitor"]
@@ -344,36 +329,37 @@ class MonExperiment(Experiment):
             episode_return_true.append(return_true)
             episode_return_cost.append(return_cost)
             episode_return_proxy.append(return_proxy)
-            episode_monitor_action.append(episode_monitor_action_count)
-            episode_length.append(episode_timesteps)
+            # episode_monitor_action.append(episode_monitor_action_count)
+            # episode_length.append(episode_timesteps)
             total_timesteps += episode_timesteps
             episode_discount_reward.append(ep_discount_reward)
             trajectories[episode] = {
-                "states": np.array(ep_states),
-                "actions": np.array(ep_actions),
+                # "states": np.array(ep_states),
+                # "actions": np.array(ep_actions),
                 "environment_reward": np.array(episode_return_true),
                 "received_reward": np.array(episode_return_proxy),
                 "monitor_reward": np.array(episode_return_cost),
                 "joint_reward": np.array(episode_return_true) + np.array(episode_return_cost),
-                "length": np.array(episode_length),
+                # "length": np.array(episode_length),
                 "undiscounted_joint_reward": np.array(ep_joint_reward),
-                "monitor_states": np.squeeze(episode_monitor_states),
                 "episode_agent_locations": np.squeeze(episode_agent_locations),
             }
             episode += 1
-        if save_results:
-            np.save(self._log_dir + "/trajectories_{}.npy".format(seed), trajectories)
+        # if save_results:
+        #     np.save(self._log_dir + "/trajectories_{}.npy".format(seed), trajectories)
         return (
             np.array(episode_return_true),
             np.array(episode_return_proxy),
             np.array(episode_return_cost),
-            np.array(episode_monitor_action),
-            np.array(episode_length),
+            # np.array(episode_monitor_action),
+            np.array([]),
+            # np.array(episode_length),
+            np.array([]),
             np.array(episode_discount_reward),
             trajectories,
         )
 
-    def checkpoint(self, joint_reward, eval_joint_reward, monitor_states, agent_locations):
+    def checkpoint(self, joint_reward, eval_joint_reward, agent_locations):
         """save the model and statistic during the training process"""
         checkpoint_dir = self._log_dir + "checkpoints_{}/".format(self._checkpoint_count)
         os.makedirs(checkpoint_dir, exist_ok=True)
@@ -383,11 +369,9 @@ class MonExperiment(Experiment):
         # np.save(self._log_dir + "/visit_table_{}.npy".format(self._rng_seed), self._visit_table)
         np.save(self._log_dir + "/training_joint_reward_{}.npy".format(self._rng_seed), joint_reward)
         np.save(
-            self._log_dir + "/evaluation_joint_reward_{}.npy".format(self._rng_seed),
-            eval_joint_reward,
+            self._log_dir + "/evaluation_joint_reward_{}.npy".format(self._rng_seed), eval_joint_reward,
         )
-        np.save(self._log_dir + "/monitor_states_{}.npy".format(self._rng_seed), np.squeeze(monitor_states))
-        np.save(self._log_dir + "/agent_locations_{}.npy".format(self._rng_seed), np.squeeze(agent_locations))
+        np.save(self._log_dir + "/agent_locations_{}.npy".format(self._rng_seed), np.array(agent_locations, dtype=np.int8))
         # if self.buffer is not None:
         #     self.buffer.save(log_dir=checkpoint_dir)
         self._checkpoint_count += 1
@@ -399,6 +383,6 @@ class MonExperiment(Experiment):
     def log_save_logs(self, train: bool, logs: dict, episode: int, save_logs: bool) -> None:
         """log and save logs to wand"""
         for key, value in logs.items():
-            wandb.log({"{}/{}".format("train" if train else "test", key): value}, step=episode, commit=True)
+            # wandb.log({"{}/{}".format("train" if train else "test", key): value}, step=episode, commit=True)
             if save_logs:
                 np.save(self._log_dir + "/{}_{}.npy".format(key, self._rng_seed), value)
