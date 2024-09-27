@@ -389,7 +389,7 @@ class MonQCNN(MonQNet):
             raise ValueError("Learning rate for NN should be small not {}".format(self._lr))
         self.optimizer = torch.optim.Adam(self._q_network.model.parameters(), lr=self._lr)
         self.q_loss_fun = torch.nn.MSELoss()
-        self._q_net_loss, = []
+        self._q_net_loss = []
         if self._strategy == "reward_model":
             self._r_model = RewardNet(observation_space["mdp"], action_space["mdp"], **kwargs["reward_model"])
             self._r_model.reset()
@@ -466,8 +466,7 @@ class MonQCNN(MonQNet):
         # self._target_network.save(log_dir=file_dir + "/target_network_{}".format(seed))
         self._r_model.save(seed=seed, file_name=file_dir)
 
-        np.save(file_dir + "/q_network_loss_{}".format(seed), self.get_current_loss()[0])
-        np.save(file_dir + "/target_network_loss_{}".format(seed), self.get_current_loss()[1])
+        np.save(file_dir + "/q_network_loss_{}".format(seed), self.get_current_loss())
 
     def load(self, seed: int = 1, file_name: str = None):
         file_dir = self._dir_name if file_name is None else self._dir_name + "/" + file_name
