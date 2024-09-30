@@ -49,6 +49,7 @@ class PlantsWateringEnv(gym.Env):
         self._obj_codes = {0: "agent", 1: "plant", 2: "dryness", 3: "wall", 4: "new_plants"}
         self._actions_code = {0: "up", 1: "down", 2: "right", 3: "left", 4: "water", 5: "nothing"}
         self._current_timestep = 0
+        self._combinations = np.squeeze(np.meshgrid(range(self._n_raws), range(self._n_columns))).T.reshape(-1, 2)
 
         # for rendering
         self._window_size = (min(64 * self._n_raws, 512), min(64 * self._n_columns, 512))
@@ -158,8 +159,7 @@ class PlantsWateringEnv(gym.Env):
 
     def reset_agent_plants_pos(self):
         """Reset the agent and plants position in the grid to the initial position."""
-        pos_x = np.random.choice(np.arange(self._n_raws), size=(self.n_plants + 1, 1), replace=False)
-        pos_y = np.random.choice(np.arange(self._n_columns), size=(self.n_plants + 1, 1), replace=False)
+        pos = self._combinations[np.random.choice(self._combinations.shape[0], self.n_plants + 1, replace=False)]
         if self.add_new_plants:
             plants_pos_x = np.random.choice(np.arange(self._n_raws), size=(self.n_plants, 1), replace=False)
             plants_pos_y = np.random.choice(np.arange(self._n_columns - 3), size=(self.n_plants, 1), replace=False)
@@ -171,12 +171,9 @@ class PlantsWateringEnv(gym.Env):
             )
             self._new_plants_pos = np.concatenate((new_x, new_y), 1)
         else:
-            self._plants_pos = np.concatenate((pos_x[1:], pos_y[1:]), 1)
+            self._plants_pos = np.concatenate((pos[1:], pos[1:]), 1)
         # Agent starting position
-        if self.agent_start_pos is None:
-            self._agent_pos = [pos_x[0, 0], pos_y[0, 0]]
-        else:
-            self._agent_pos = self.agent_start_pos
+        self._agent_pos = pos[0] if self.agent_start_pos is None else self.agent_start_pos
 
     def update_plants_dryness(self) -> None:
         """Update plants dryness level"""
