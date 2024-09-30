@@ -140,7 +140,7 @@ class MonExperiment(Experiment):
 
     def train(self, checkpoint: bool = True):
         """Train an algorithm in Monitor MDP env, logs and save results"""
-        start_time = time.time()
+        # start_time = time.time()
         set_rng_seed(self._rng_seed)
         self._actor.reset()
         self._critic.reset()
@@ -154,7 +154,7 @@ class MonExperiment(Experiment):
         # self.reset_visit_table()
         while total_timesteps < self._training_timesteps:
             if total_timesteps > self._testing_frequency * self._checkpoint_count:
-                eval_time = time.time()
+                # eval_time = time.time()
                 # perform/save checkpoint
                 self.checkpoint(joint_reward, eval_joint_reward, agent_locations)
 
@@ -240,8 +240,8 @@ class MonExperiment(Experiment):
 
                 obs = next_obs
             # Update Q-network and reward network
-            if self.buffer.buffer_size > self._start_train_timestep and episode % 10 == 0:
-                train_timer = time.time()
+            if self.buffer.buffer_size > self._start_train_timestep and episode % 20 == 0:
+                # train_timer = time.time()
                 for epoch in range(self._n_itr_episode):
                     batch = self.buffer.process_batch(self.buffer.sample(self._batch_size), device=current_device)
                     step_loss_mdp, r_model_loss = self._critic.optimize_policy_model(
