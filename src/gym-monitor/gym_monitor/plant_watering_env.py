@@ -33,7 +33,7 @@ class PlantsWateringEnv(gym.Env):
 
         self._n_raws, self._n_columns = grid_size
         self._n_actions = 6  # 0 up, 1 down, 2 right, 3 left, 4 water, 5 do nothing
-        self._n_objects = 4 if self.add_new_plants else 3  # 0 agent, 1 plant, 2 dryness, 3 walls, 4 New plants
+        self._n_objects = 3  # 0 agent, 1 plant, 2 dryness, 3 walls
         self._obs_shape = (self._n_objects, self._n_raws, self._n_columns)
         self._grid = np.zeros(self._obs_shape)
         self._agent_pos = None
@@ -46,7 +46,7 @@ class PlantsWateringEnv(gym.Env):
         self.observation_space = gym.spaces.Box(0.0, 1.0, shape=self._obs_shape, dtype=np.float64)
         self.reward_range = (-1, 1)
 
-        self._obj_codes = {0: "agent", 1: "plant", 2: "dryness", 3: "wall", 4: "new_plants"}
+        self._obj_codes = {0: "agent", 1: "plant", 2: "dryness", 3: "wall"}
         self._actions_code = {0: "up", 1: "down", 2: "right", 3: "left", 4: "water", 5: "nothing"}
         self._current_timestep = 0
         self._combinations = np.squeeze(np.meshgrid(range(self._n_raws), range(self._n_columns))).T.reshape(-1, 2)
@@ -103,13 +103,14 @@ class PlantsWateringEnv(gym.Env):
         self._grid[0, self._agent_pos[0], self._agent_pos[1]] = 1  # agent position
         # Agents location half & half
         self._grid[1, self._plants_pos[: self.n_plants // 2, 0], self._plants_pos[: self.n_plants // 2, 1]] = 0.2
-        self._grid[1, self._plants_pos[self.n_plants // 2 :, 0], self._plants_pos[self.n_plants // 2 :, 1]] = 0.4
+        self._grid[1, self._plants_pos[self.n_plants // 2:, 0], self._plants_pos[self.n_plants // 2:, 1]] = 0.4
 
         # Plants dryness
         self._grid[2, self._plants_pos[:, 0], self._plants_pos[:, 1]] = 1
 
         if self.add_new_plants:
-            self._grid[3, self._new_plants_pos[:, 0], self._new_plants_pos[:, 1]] = 1  # New Plants
+            self._grid[1, self._new_plants_pos[:, 0], self._new_plants_pos[:, 1]] = 0.8  # New Plants different plant
+            self._grid[2, self._new_plants_pos[:, 0], self._new_plants_pos[:, 1]] = 1  # New Plants are always dry
         self._previous_agent_pos = self._agent_pos
         return self._grid, {
             "agent_pos": self._agent_pos,
@@ -163,15 +164,13 @@ class PlantsWateringEnv(gym.Env):
         """Reset the agent and plants position in the grid to the initial position."""
         pos = self._combinations[np.random.choice(self._combinations.shape[0], self.n_plants + 1, replace=False)]
         if self.add_new_plants:
-            plants_pos_x = np.random.choice(np.arange(self._n_raws), size=(self.n_plants, 1), replace=False)
-            plants_pos_y = np.random.choice(np.arange(self._n_columns - 3), size=(self.n_plants, 1), replace=False)
-            self._plants_pos = np.concatenate((plants_pos_x, plants_pos_y), 1)
+            new_plants = np.squeeze(np.meshgrid(range(self._n_raws), range(3, 6))).T.reshape(-1, 2)
+            plants_comb_0 = np.squeeze(np.meshgrid(range(self._n_raws), range(3))).T.reshape(-1, 2)
+            plants_comb_1 = np.squeeze(np.meshgrid(range(self._n_raws), range(6, self._n_columns))).T.reshape(-1, 2)
+            plants_comb = np.concatenate((plants_comb_0, plants_comb_1), 0)
 
-            new_x = np.random.choice(np.arange(self._n_raws), (self._n_new_plants, 1), replace=False)
-            new_y = np.random.choice(
-                np.arange(self._n_columns - 3, self._n_raws), (self._n_new_plants, 1), replace=False
-            )
-            self._new_plants_pos = np.concatenate((new_x, new_y), 1)
+            self._new_plants_pos = new_plants[np.random.choice(new_plants.shape[0], self._n_new_plants, replace=False)]
+            self._plants_pos = plants_comb[np.random.choice(plants_comb.shape[0], self.n_plants, replace=False)]
         else:
             self._plants_pos = pos[1:]
         # Agent starting position
@@ -246,8 +245,7 @@ class PlantsWateringEnv(gym.Env):
                 self._draw_obj(plant_type, plant_pos, self._grid[2, plant_pos[0], plant_pos[1]])
         if self.add_new_plants:
             for new_plant in range(self._n_new_plants):
-                new_plant_pos = self._new_plants_pos[new_plant]
-                self._draw_obj("new_plant", new_plant_pos)
+                self._draw_obj("new_plant", self._new_plants_pos[new_plant])
 
         if mode == "human":
             pygame.event.pump()
