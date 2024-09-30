@@ -43,7 +43,7 @@ class PlantsWateringEnv(gym.Env):
         self._previous_agent_pos = None
 
         self.action_space = gym.spaces.Discrete(self._n_actions)
-        self.observation_space = gym.spaces.Box(0, self._n_objects, shape=self._obs_shape, dtype=np.float64)
+        self.observation_space = gym.spaces.Box(0.0, 1.0, shape=self._obs_shape, dtype=np.float64)
         self.reward_range = (-1, 1)
 
         self._obj_codes = {0: "agent", 1: "plant", 2: "dryness", 3: "wall", 4: "new_plants"}
@@ -100,8 +100,10 @@ class PlantsWateringEnv(gym.Env):
 
         # agent & Plants positions
         self.reset_agent_plants_pos()
-        self._grid[0, self._agent_pos[0], self._agent_pos[1]] = 1
-        self._grid[1, self._plants_pos[:, 0], self._plants_pos[:, 1]] = 1
+        self._grid[0, self._agent_pos[0], self._agent_pos[1]] = 1  # agent position
+        # Agents location half & half
+        self._grid[1, self._plants_pos[: self.n_plants // 2, 0], self._plants_pos[: self.n_plants // 2, 1]] = 0.2
+        self._grid[1, self._plants_pos[self.n_plants // 2 :, 0], self._plants_pos[self.n_plants // 2 :, 1]] = 0.4
 
         # Plants dryness
         self._grid[2, self._plants_pos[:, 0], self._plants_pos[:, 1]] = 1
@@ -171,9 +173,9 @@ class PlantsWateringEnv(gym.Env):
             )
             self._new_plants_pos = np.concatenate((new_x, new_y), 1)
         else:
-            self._plants_pos = np.concatenate((pos[1:], pos[1:]), 1)
+            self._plants_pos = pos[1:]
         # Agent starting position
-        self._agent_pos = pos[0] if self.agent_start_pos is None else self.agent_start_pos
+        self._agent_pos = [pos[0, 0], pos[0, 1]] if self.agent_start_pos is None else self.agent_start_pos
 
     def update_plants_dryness(self) -> None:
         """Update plants dryness level"""
@@ -240,7 +242,8 @@ class PlantsWateringEnv(gym.Env):
                 self._draw_obj("agent", self._agent_pos)
             else:
                 plant_pos = self._plants_pos[obj_id]
-                self._draw_obj("plant", plant_pos, self._grid[2, plant_pos[0], plant_pos[1]])
+                plant_type = "plant_0" if self._grid[1, plant_pos[0], plant_pos[1]] == 0.2 else "plant_1"
+                self._draw_obj(plant_type, plant_pos, self._grid[2, plant_pos[0], plant_pos[1]])
         if self.add_new_plants:
             for new_plant in range(self._n_new_plants):
                 new_plant_pos = self._new_plants_pos[new_plant]
@@ -259,14 +262,19 @@ class PlantsWateringEnv(gym.Env):
         """Draw the grid"""
         # TODO solve flipping x and y
         new_pos = ((pos[1] + 0.5) * self._cell_size[0], (pos[0] + 0.5) * self._cell_size[1])
-        if obj == "plant":
+        shift_x, shift_y = 0.5 * self._cell_size[0], 0.5 * self._cell_size[1]
+        if obj in ["plant_0", "plant_1"]:
             if dryness == np.max(self.dryness_levels):
                 color = self._colors["red"]
             elif dryness == np.min(self.dryness_levels):
                 color = self._colors["green"]
             else:
                 color = self._colors["brown"]
-            pygame.draw.circle(self._window_surface, color, new_pos, 20)
+            # circle or square plants
+            if obj == "plant_0":
+                pygame.draw.circle(self._window_surface, color, new_pos, 20)
+            else:
+                pygame.draw.rect(self._window_surface, color, (new_pos[0] - shift_x, new_pos[1] - shift_y, 50, 50), 0)
         elif obj == "agent":
             pygame.draw.rect(self._window_surface, self._colors["black"], (new_pos[0], new_pos[1], 30, 30), 0)
         elif obj == "new_plant":
