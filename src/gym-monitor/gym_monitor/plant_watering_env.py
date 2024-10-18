@@ -75,7 +75,7 @@ class PlantsWateringEnv(gym.Env):
             self._grid[0, self._agent_pos[0], self._agent_pos[1]] = 1  # move the agent
         elif action == 4:  # Water
             water_plant = np.any(np.all(self._agent_pos == self._plants_pos, axis=1))  # Water a plant
-            water_new_plant = np.any(np.all(self._agent_pos == self._new_plants_pos, axis=1))  # Water a new plant
+            water_new_plant = np.any(np.all(self._agent_pos == self._new_plants_pos, axis=1)) if self.add_new_plants else False  # Water a new plant
             if water_plant or water_new_plant:
                 if self._grid[2, self._agent_pos[0], self._agent_pos[1]] > np.min(self.dryness_levels):
                     self.water_plant(self._agent_pos)
@@ -248,7 +248,8 @@ class PlantsWateringEnv(gym.Env):
                 self._draw_obj(plant_type, plant_pos, self._grid[2, plant_pos[0], plant_pos[1]])
         if self.add_new_plants:
             for new_plant in range(self._n_new_plants):
-                self._draw_obj("new_plant", self._new_plants_pos[new_plant])
+                new_plants_pos = self._new_plants_pos[new_plant]
+                self._draw_obj("new_plant", self._new_plants_pos[new_plant], self._grid[2, new_plants_pos[0], new_plants_pos[1]])
 
         if mode == "human":
             pygame.event.pump()
@@ -265,21 +266,28 @@ class PlantsWateringEnv(gym.Env):
         new_pos = ((pos[1] + 0.5) * self._cell_size[0], (pos[0] + 0.5) * self._cell_size[1])
         shift_x, shift_y = 0.5 * self._cell_size[0], 0.5 * self._cell_size[1]
         if obj in ["plant_0", "plant_1"]:
-            if dryness == np.max(self.dryness_levels):
-                color = self._colors["red"]
-            elif dryness == np.min(self.dryness_levels):
-                color = self._colors["green"]
-            else:
-                color = self._colors["brown"]
             # circle or square plants
             if obj == "plant_0":
-                pygame.draw.circle(self._window_surface, color, new_pos, 20)
+                pygame.draw.circle(self._window_surface, self._get_object_color(dryness), new_pos, 20)
             else:
-                pygame.draw.rect(self._window_surface, color, (new_pos[0] - shift_x, new_pos[1] - shift_y, 50, 50), 0)
+                pygame.draw.rect(
+                    self._window_surface,
+                    self._get_object_color(dryness),
+                    (new_pos[0] - shift_x, new_pos[1] - shift_y, 50, 50),
+                    0,
+                )
         elif obj == "agent":
             pygame.draw.rect(self._window_surface, self._colors["black"], (new_pos[0], new_pos[1], 30, 30), 0)
         elif obj == "new_plant":
-            pygame.draw.circle(self._window_surface, self._colors["blue"], new_pos, 20)
+            loc = [[new_pos[0] - 20, new_pos[1] + 20], [new_pos[0], new_pos[1] - 20], [new_pos[0] + 20, new_pos[1] + 20]]
+            pygame.draw.polygon(self._window_surface, self._get_object_color(dryness), loc)
         else:
             raise ValueError("Undefined object type")
-        # pygame.draw.polygon(self._window_surface, (), ((25, 75), (320, 125), (250, 375)))
+
+    def _get_object_color(self, dryness: float) -> str:
+        """Get plant color red, brown or green"""
+        if dryness == np.max(self.dryness_levels):
+            return self._colors["red"]
+        if dryness == np.min(self.dryness_levels):
+            return self._colors["green"]
+        return self._colors["brown"]
