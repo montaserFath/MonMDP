@@ -266,7 +266,7 @@ class MonExperiment(Experiment):
 
         # save Q-table as numpy array
         # if self.buffer is not None:
-        #     self.buffer.save(log_dir=self._log_dir)
+        #     self.buffer.save(log_dir=self._log_dir, seed=self._rng_seed)
         np.save(self._log_dir + "/agent_locations_{}.npy".format(self._rng_seed), np.array(agent_locations, dtype=np.int8))
         self._critic.save(seed=self._rng_seed)
         if self._save_train_log:
@@ -374,7 +374,7 @@ class MonExperiment(Experiment):
         )
         np.save(self._log_dir + "/agent_locations_{}.npy".format(self._rng_seed), np.array(agent_locations, dtype=np.int8))
         # if self.buffer is not None:
-        #     self.buffer.save(log_dir=checkpoint_dir)
+        #     self.buffer.save(log_dir=checkpoint_dir, seed=self._rng_seed)
         self._checkpoint_count += 1
 
     @staticmethod

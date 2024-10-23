@@ -182,6 +182,7 @@ class MonReplayBuffer(ReplayBuffer):
         if log_dir is None:
             raise ValueError("Empty log dir")
         self.buffer = pickle.load(open(log_dir + "/replay_buffer.npy", "rb"))
+        return self.buffer
         # self.buffer = np.load(log_dir + "/replay_buffer.npy")
 
 
@@ -215,11 +216,13 @@ class TorchReplayMemory:
     def get_transition(self):
         return self.transition
 
-    def save(self, log_dir: str):
-        np.save(log_dir + "/replay_buffer.npy", self.memory)
+    def save(self, log_dir: str, seed: int):
+        np.save(log_dir + "/replay_buffer_{}.npy".format(seed), self.memory)
 
-    def load(self, log_dir: str):
-        self.memory = np.load(log_dir + "replay_buffer.npy", allow_pickle=True)[()]
+    def load(self, log_dir: str, seed: int = 1):
+        self.memory = np.load(log_dir + "replay_buffer_{}.npy".format(seed), allow_pickle=True)[()]
+        self.memory = deque([list(i) for i in self.memory])
+        self.buffer_size = len(self.memory)
 
     def process_batch(self, batch, device: str):
         batch = self.transition(*zip(*batch))
