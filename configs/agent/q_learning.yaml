@@ -7,11 +7,15 @@ critic:
   unseen_r_value: 0.0
   kernel_size_0: 3
   kernel_size_1: 2
+  stride_0: 6
+  stride_1: 4
   reward_model:
     r0: 0
     lr: 1e-4 #1.0
     kernel_size_0: 3
     kernel_size_1: 2
+    stride_0: 1
+    stride_1: 1
     device: "cuda:0" #"mps:0"
   device: "cuda:0" #"mps:0"
 

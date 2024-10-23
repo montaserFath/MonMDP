@@ -82,6 +82,8 @@ class CNN(NeuralNetwork):
         lr: float = 0.001,
         kernel_size_0: int = 5,
         kernel_size_1: int = 3,
+        stride_0: int = 1,
+        stride_1: int = 1,
         add_monitor_obs: bool = False,
         output_channels: int = 64,
         device: str = None,
@@ -92,6 +94,8 @@ class CNN(NeuralNetwork):
         :param n_actions: (int) number of actions
         :param kernel_size_0: (int) kernel size for the first convolutional layer
         :param kernel_size_1: (int) kernel size for the second convolutional layer
+        :param stride_0: (int) stride for the first convolutional layer
+        :param stride_1: (int) stride for the second convolutional layer
         :param add_monitor_obs: (bool) add monitor observation
         :param output_channels: (int) number of output channels for the second convolutional layer
         :param lr: (float) learning rate for the optimizer
@@ -106,6 +110,8 @@ class CNN(NeuralNetwork):
         self.features_dim = features_dim
         self.kernel_size_0 = kernel_size_0
         self.kernel_size_1 = kernel_size_1
+        self.stride_0 = stride_0
+        self.stride_1 = stride_1
         self.add_monitor_obs = add_monitor_obs
         self.output_channels = output_channels
         if self.kernel_size_0 >= self._obs_size[1]:
@@ -127,12 +133,13 @@ class CNN(NeuralNetwork):
         return self.model[5:](inter_obs)
 
     def init_network(self):
-        ch_out = self._obs_size[1] - self.kernel_size_0 + 1 - self.kernel_size_1 + 1
-        n_flatten = int(ch_out**2 * self.output_channels) + (1 if self.add_monitor_obs else 0)
+        out_ch_0 = (self._obs_size[1] - self.kernel_size_0) // self.stride_0 + 1
+        out_ch_1 = (out_ch_0 - self.kernel_size_1) // self.stride_1 + 1
+        n_flatten = int(out_ch_1 ** 2 * self.output_channels) + (1 if self.add_monitor_obs else 0)
         self.model = torch.nn.Sequential(
-            torch.nn.Conv2d(self._obs_size[0], 32, self.kernel_size_0),
+            torch.nn.Conv2d(self._obs_size[0], 32, self.kernel_size_0, stride=self.stride_0),
             torch.nn.ReLU(),
-            torch.nn.Conv2d(32, self.output_channels, self.kernel_size_1),
+            torch.nn.Conv2d(32, self.output_channels, self.kernel_size_1, stride=self.stride_1),
             torch.nn.ReLU(),
             torch.nn.Flatten(),
             torch.nn.Linear(n_flatten, self.features_dim),

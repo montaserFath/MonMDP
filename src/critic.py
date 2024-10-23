@@ -318,6 +318,8 @@ class MonQNet(MonQCritic):
             action_space,
             kernel_size_0: int,
             kernel_size_1: int,
+            stride_0: int,
+            stride_1: int,
             device: str,
             q0=0.0,
             gamma=0.99,
@@ -336,6 +338,8 @@ class MonQNet(MonQCritic):
         self._lr = lr
         self._kernel_size_0 = kernel_size_0
         self._kernel_size_1 = kernel_size_1
+        self._stride_0 = stride_0
+        self._stride_1 = stride_1
         self._device = device
         # self.replay_buffer = None
         self._q_network = None
@@ -376,12 +380,18 @@ class MonQCNN(MonQNet):
             action_space,
             kernel_size_0: int,
             kernel_size_1: int,
+            stride_0: int,
+            stride_1: int,
             device: str,
             **kwargs,
     ):
-        super().__init__(env_name, observation_space, action_space, kernel_size_0, kernel_size_1, device, **kwargs)
+        super().__init__(
+            env_name, observation_space, action_space, kernel_size_0, kernel_size_1, stride_0, stride_1, device, **kwargs,
+        )
         self._kernel_size_0 = kernel_size_0
         self._kernel_size_1 = kernel_size_1
+        self._stride_0 = stride_0
+        self._stride_1 = stride_1
         self._device = device
         self._target_network = None
         self._tau = 5e-4
@@ -402,6 +412,8 @@ class MonQCNN(MonQNet):
             self._lr,
             self._kernel_size_0,
             self._kernel_size_1,
+            self._stride_0,
+            self._stride_1,
             device=self._device,
         )
         self._target_network = CNN(
@@ -410,6 +422,8 @@ class MonQCNN(MonQNet):
             self._lr,
             self._kernel_size_0,
             self._kernel_size_1,
+            self._stride_0,
+            self._stride_1,
             device=self._device,
         )
         self._transition = namedtuple("Transition", ("obs", "action", "next_obs", "reward"))
@@ -492,8 +506,12 @@ class MonQCNN(MonQNet):
 
 
 class MonRoomCNN(MonQCNN):
-    def __init__(self, env_name, observation_space, action_space, kernel_size_0, kernel_size_1, device, **kwargs):
-        super().__init__(env_name, observation_space, action_space, kernel_size_0, kernel_size_1, device, **kwargs)
+    def __init__(
+            self, env_name, observation_space, action_space, kernel_size_0, kernel_size_1, stride_0, stride_1, device, **kwargs,
+    ):
+        super().__init__(
+            env_name, observation_space, action_space, kernel_size_0, kernel_size_1, stride_0, stride_1, device, **kwargs,
+        )
 
     def reset(self):
         self._q_network = CNN(
@@ -502,6 +520,8 @@ class MonRoomCNN(MonQCNN):
             self._lr,
             self._kernel_size_0,
             self._kernel_size_1,
+            self._stride_0,
+            self._stride_1,
             add_monitor_obs=True,
             device=self._device,
         )
@@ -511,6 +531,8 @@ class MonRoomCNN(MonQCNN):
             self._lr,
             self._kernel_size_0,
             self._kernel_size_1,
+            self._stride_0,
+            self._stride_1,
             add_monitor_obs=True,
             device=self._device,
         )
