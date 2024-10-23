@@ -1,6 +1,7 @@
 """gym wrappers for MDP & monitor environments"""
 import numpy as np
 import gymnasium as gym
+import pygame
 
 
 class ActiveActionsWrapper(gym.ActionWrapper):
@@ -170,3 +171,83 @@ class WallObs(gym.ObservationWrapper):
 
     def get_n_walls(self):
         return self.n_walls
+
+
+class ObsToImage(gym.ObservationWrapper):
+    """Convert observations to RGB images"""
+    def __init__(self, env):
+        super().__init__(env)
+        self.env = env
+        # self.image_size = image_size
+        self.colors = {
+            "white": (255, 255, 255),
+            "black": (0, 0, 0),
+            "red": (255, 0, 0),
+            "brown": (150, 75, 0),
+            "green": (0, 255, 0),
+            "blue": (0, 0, 255),
+            "gray": (0, 105, 105),
+        }
+        self.frame = None
+        self.cell_size = None
+        self.frame_size = None
+        self.n_raws, self.n_columns = self.env.observation_space.shape[1], self.env.observation_space.shape[2]
+        self.frame_size = (min(16 * self.n_raws, 128), min(16 * self.n_columns, 128))
+        self.observation_space = gym.spaces.Box(0, 255, shape=(3, self.frame_size[0], self.frame_size[1]), dtype=np.uint8)
+
+    def observation(self, obs):
+        self.cell_size = (self.frame_size[0] // self.n_raws, self.frame_size[1] // obs.shape[1])
+
+        self.frame = pygame.Surface(self.frame_size)
+        self.frame.fill(self.colors["white"])
+        self.draw_lines(self.colors["black"])
+
+        # plot plants
+        for i in range(self.n_raws):
+            for j in range(self.n_columns):
+                pos = [(j + 0.5) * self.cell_size[0], (i + 0.5) * self.cell_size[1]]
+                wall_pos = [j * self.cell_size[0], i * self.cell_size[1]]
+                if obs[1, i, j] == 1:  # plant
+                    self.plot_circle(pos, self.get_color(obs[2, i, j]))
+                if obs[1, i, j] == 0.5:  # cactus
+                    self.plot_triangle(pos, self.get_color(obs[2, i, j]))
+                if obs[3, i, j] == 1:  # Wall
+                    self.plot_square(wall_pos, self.colors["black"], self.cell_size[0])
+        # plot agent
+        agent_pos_x = self.cell_size[0] * np.where(obs[0, :, :] == 1)[0][0] + 0.5
+        agent_pos_y = self.cell_size[1] * np.where(obs[0, :, :] == 1)[1][0] + 0.5
+        self.plot_square([agent_pos_x, agent_pos_y], self.colors["blue"])
+        image = pygame.surfarray.array3d(self.frame).swapaxes(0, 1)
+        return image.reshape(3, self.frame_size[0], self.frame_size[1])
+
+    def plot_circle(self, center, color: tuple, radius: int = 5) -> None:
+        """plot a circle given the center, radius, and color """
+        pygame.draw.circle(self.frame, color, center, radius)
+
+    def plot_square(self, center, color: tuple, length: int = 7) -> None:
+        """plot a square given the center, length, and color """
+        pygame.draw.rect(self.frame, color, (center[0], center[1], length, length), 0)
+
+    def plot_triangle(self, center, color: tuple, length: int = 5) -> None:
+        """plot a triangle given the center, length, and color """
+        loc = [
+            [center[0] - length, center[1] + length],
+            [center[0], center[1] - length],
+            [center[0] + length, center[1] + length],
+        ]
+        pygame.draw.polygon(self.frame, color, loc)
+
+    def draw_lines(self, color: tuple, lw: int = 1) -> None:
+        """Draw lines between cells"""
+        cell_x, cell_y = self.cell_size
+        for i in range(1, self.n_raws):  # horizontal lines
+            pygame.draw.line(self.frame, color, (0, i * cell_x), (cell_x**2, i * cell_y), lw)
+        for j in range(1, self.n_columns):  # vertical lines
+            pygame.draw.line(self.frame, color, (j * cell_y, 0), (j * cell_x, cell_y**2), lw)
+
+    def get_color(self, dryness: float) -> tuple:
+        if dryness == 1.0:
+            return self.colors["red"]
+        if dryness == 0.0:
+            return self.colors["green"]
+        return self.colors["brown"]
