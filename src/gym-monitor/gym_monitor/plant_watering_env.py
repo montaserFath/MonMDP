@@ -16,6 +16,7 @@ class PlantsWateringEnv(gym.Env):
         max_episode_steps: int = 1000,
         render_mode: str = None,
         add_new_plants: bool = False,
+        add_more_plants: bool = False,
         **kwargs,
     ):
         self._metadata = {
@@ -30,6 +31,9 @@ class PlantsWateringEnv(gym.Env):
         self.render_mode = render_mode
         self.max_episode_steps = max_episode_steps
         self.add_new_plants = add_new_plants
+        self.add_more_plants = add_more_plants
+        if self.add_more_plants:
+            self._more_plants_values = [i / 8 for i in [1, 2, 3, 5, 6, 7]]
 
         self._n_raws, self._n_columns = grid_size
         self._n_actions = 6  # 0 up, 1 down, 2 right, 3 left, 4 water, 5 do nothing
@@ -39,7 +43,13 @@ class PlantsWateringEnv(gym.Env):
         self._agent_pos = None
         self._plants_pos = None
         self._new_plants_pos = None
-        self._n_new_plants = 3 if self.add_new_plants else 0  # TODO: fix this
+        self._more_plants_pos = None
+        self._n_new_plants = 8 if self.add_new_plants else 0  # TODO: fix this
+        if self.add_more_plants:
+            self._n_more_plants = 4
+            self._n_new_plants = 8
+        else:
+            self._n_more_plants = 0
         self._previous_agent_pos = None
 
         self.action_space = gym.spaces.Discrete(self._n_actions)
@@ -75,8 +85,9 @@ class PlantsWateringEnv(gym.Env):
             self._grid[0, self._agent_pos[0], self._agent_pos[1]] = 1  # move the agent
         elif action == 4:  # Water
             water_plant = np.any(np.all(self._agent_pos == self._plants_pos, axis=1))  # Water a plant
-            water_new_plant = np.any(np.all(self._agent_pos == self._new_plants_pos, axis=1)) if self.add_new_plants else False  # Water a new plant
-            if water_plant or water_new_plant:
+            water_new_plant = np.any(np.all(self._agent_pos == self._new_plants_pos, axis=1)) if (self.add_new_plants or self.add_more_plants) else False  # Water a new plant
+            water_diff_plant = np.any(np.all(self._agent_pos == self._more_plants_pos, axis=1)) if self.add_more_plants else False  # Water a new plant
+            if water_plant or water_new_plant or water_diff_plant:
                 if self._grid[2, self._agent_pos[0], self._agent_pos[1]] > np.min(self.dryness_levels):
                     self.water_plant(self._agent_pos)
 
@@ -105,8 +116,6 @@ class PlantsWateringEnv(gym.Env):
         self._grid[0, self._agent_pos[0], self._agent_pos[1]] = 1  # agent position
         # Plants location half & half
         self._grid[1, self._plants_pos[:, 0], self._plants_pos[:, 1]] = 1.0
-        # self._grid[1, self._plants_pos[: self.n_plants // 2, 0], self._plants_pos[: self.n_plants // 2, 1]] = 0.2
-        # self._grid[1, self._plants_pos[self.n_plants // 2:, 0], self._plants_pos[self.n_plants // 2:, 1]] = 0.4
 
         # Plants dryness
         self._grid[2, self._plants_pos[:, 0], self._plants_pos[:, 1]] = 1
@@ -114,6 +123,15 @@ class PlantsWateringEnv(gym.Env):
         if self.add_new_plants:
             self._grid[1, self._new_plants_pos[:, 0], self._new_plants_pos[:, 1]] = 0.5  # New Plants
             self._grid[2, self._new_plants_pos[:, 0], self._new_plants_pos[:, 1]] = 1.0  # New Plants are always dry
+
+        if self.add_more_plants:
+            self._grid[1, self._new_plants_pos[:, 0], self._new_plants_pos[:, 1]] = 0.5  # New Plants
+            self._grid[2, self._new_plants_pos[:, 0], self._new_plants_pos[:, 1]] = 1.0  # New Plants are always dry
+
+            self._grid[1, self._more_plants_pos[:, 0], self._more_plants_pos[:, 1]] = np.random.choice(
+                self._more_plants_values, self._n_more_plants,
+            )
+            self._grid[2, self._more_plants_pos[:, 0], self._more_plants_pos[:, 1]] = 1.0  # more Plants are always dry
         self._previous_agent_pos = self._agent_pos
         return self._grid, {
             "agent_pos": self._agent_pos,
@@ -153,8 +171,9 @@ class PlantsWateringEnv(gym.Env):
                 if self._grid[2, self._agent_pos[0], self._agent_pos[1]] > np.min(self.dryness_levels):
                     return 1.0  # Water a dry plant
                 return -1.0  # Water a full watered plan
-            if self.add_new_plants:
-                if np.any(np.all(self._agent_pos == self._new_plants_pos, axis=1)):  # Water a new plant
+            if self.add_new_plants or self.add_more_plants:
+                pos = self._new_plants_pos if self.add_new_plants else np.concatenate((self._new_plants_pos, self._more_plants_pos), 0)
+                if np.any(np.all(self._agent_pos == pos, axis=1)):  # Water a new plant
                     return -1.0
             return -0.2  # Water an empty cell
         return 0.0
@@ -174,6 +193,20 @@ class PlantsWateringEnv(gym.Env):
 
             self._new_plants_pos = new_plants[np.random.choice(new_plants.shape[0], self._n_new_plants, replace=False)]
             self._plants_pos = plants_comb[np.random.choice(plants_comb.shape[0], self.n_plants, replace=False)]
+        elif self.add_more_plants:
+            monitor_comb = np.squeeze(np.meshgrid(range(self._n_raws), range(self._n_columns // 2))).T.reshape(-1, 2)
+            un_monitor_comb = np.squeeze(np.meshgrid(range(self._n_raws), range(self._n_columns // 2, self._n_columns))).T.reshape(-1, 2)
+
+            mon_pos = monitor_comb[np.random.choice(monitor_comb.shape[0], self.n_plants // 2 + self._n_new_plants // 2, replace=False)]
+            un_mon_pos = un_monitor_comb[np.random.choice(un_monitor_comb.shape[0], self.n_plants // 2 + self._n_new_plants // 2 + self._n_more_plants, replace=False)]
+
+            plant_indx = self.n_plants // 2
+            new_plant_indx = self.n_plants // 2 + self._n_new_plants // 2
+            self._plants_pos = np.concatenate((mon_pos[:plant_indx], un_mon_pos[:plant_indx]), 0)
+            self._new_plants_pos = np.concatenate((mon_pos[plant_indx: new_plant_indx], un_mon_pos[plant_indx: new_plant_indx]), 0)
+
+            self._more_plants_pos = un_mon_pos[new_plant_indx:]
+
         else:
             self._plants_pos = pos[1:]
         # Agent starting position
@@ -195,6 +228,8 @@ class PlantsWateringEnv(gym.Env):
         info["agent_pos"] = self.get_agent_pos()
         info["grid"] = self.get_grid()
         info["plants_pos"] = self.get_plants_pos()
+        info["new_plants_pos"] = self.get_new_plants_pos()
+        info["more_plants_pos"] = self.get_more_plants_pos()
         info["previous_agent_pos"] = self._previous_agent_pos
         return info
 
@@ -203,15 +238,19 @@ class PlantsWateringEnv(gym.Env):
         return self._grid.copy()
 
     def get_new_plants_pos(self):
-        """Get the current grid"""
+        """Get cactus position inside the grid"""
         return self._new_plants_pos
+
+    def get_more_plants_pos(self):
+        """Get cactus position inside the grid"""
+        return self._more_plants_pos
 
     def get_agent_pos(self):
         """Get the current agent position"""
         return self._agent_pos
 
     def get_plants_pos(self):
-        """Get plants position"""
+        """Get plants position inside the grid"""
         return self._plants_pos
 
     def _draw_lines(self):
@@ -249,7 +288,16 @@ class PlantsWateringEnv(gym.Env):
         if self.add_new_plants:
             for new_plant in range(self._n_new_plants):
                 new_plants_pos = self._new_plants_pos[new_plant]
-                self._draw_obj("new_plant", self._new_plants_pos[new_plant], self._grid[2, new_plants_pos[0], new_plants_pos[1]])
+                self._draw_obj("new_plant", new_plants_pos, self._grid[2, new_plants_pos[0], new_plants_pos[1]])
+
+        if self.add_more_plants:
+            for new_plant in range(self._n_new_plants):
+                new_plants_pos = self._new_plants_pos[new_plant]
+                self._draw_obj("new_plant", new_plants_pos, self._grid[2, new_plants_pos[0], new_plants_pos[1]])
+
+            for more_plant in range(self._n_more_plants):
+                more_plants_pos = self._more_plants_pos[more_plant]
+                self._draw_obj("more_plant", more_plants_pos, self._grid[2, more_plants_pos[0], more_plants_pos[1]])
 
         if mode == "human":
             pygame.event.pump()
@@ -277,7 +325,10 @@ class PlantsWateringEnv(gym.Env):
                     0,
                 )
         elif obj == "agent":
-            pygame.draw.rect(self._window_surface, self._colors["black"], (new_pos[0], new_pos[1], 30, 30), 0)
+            pygame.draw.rect(self._window_surface, self._colors["blue"], (new_pos[0], new_pos[1], 30, 30), 0)
+        elif obj == "more_plant":
+            loc = [[new_pos[0] + 20, new_pos[1] - 20], [new_pos[0] - 20, new_pos[1]], [new_pos[0] + 20, new_pos[1] + 20]]
+            pygame.draw.polygon(self._window_surface, self._get_object_color(dryness), loc)
         elif obj == "new_plant":
             loc = [[new_pos[0] - 20, new_pos[1] + 20], [new_pos[0], new_pos[1] - 20], [new_pos[0] + 20, new_pos[1] + 20]]
             pygame.draw.polygon(self._window_surface, self._get_object_color(dryness), loc)
