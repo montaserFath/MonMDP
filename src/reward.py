@@ -104,6 +104,8 @@ class RewardNet(Reward):
             action_space,
             kernel_size_0: int,
             kernel_size_1: int,
+            stride_0: int,
+            stride_1: int,
             lr: float = 0.01,
             device: str = None,
             **kwargs,
@@ -113,9 +115,11 @@ class RewardNet(Reward):
         self._lr = lr
         self._kernel_size_0 = kernel_size_0
         self._kernel_size_1 = kernel_size_1
+        self._stride_0 = stride_0
+        self._stride_1 = stride_1
         self._device = device
         self._network = CNN(
-            self._obs_size, self._n_actions, self._lr, self._kernel_size_0, self._kernel_size_1, device=self._device,
+            self._obs_size, self._n_actions, self._lr, self._kernel_size_0, self._kernel_size_1, self._stride_0, self._stride_1, device=self._device,
         )
         self._network.init_network()
         # self._reward_optimizer = torch.optim.RMSprop(
