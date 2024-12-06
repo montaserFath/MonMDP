@@ -10,7 +10,7 @@ from omegaconf import DictConfig, OmegaConf
 from src.actor import MonEpsilonGreedyOneAction
 from src.critic import MonQCNN, MonRoomCNN
 from src.experiment import MonExperiment
-from src.wrappers.env_wrappers import WallObs, WindowViewObs
+from src.wrappers.env_wrappers import WallObs, WindowViewObs, ObsToImage, MultiChannel
 from src.wrappers.monitor_wrappers import BinaryMonitor, RoomMonitor
 
 EVAL = False
@@ -34,7 +34,7 @@ def run_monitor(cfg: DictConfig) -> None:
     q_lr, reward_lr, eps = cfg.agent.critic.lr, cfg.agent.critic.reward_model.lr, cfg.agent.actor.init_eps
     dry, window_size = cfg.environment.plants_dryness_prob, cfg.environment.window_size
     # eps = eps if cfg.agent.actor.init_eps == cfg.agent.actor.min_eps else "decay"
-    train_dir = "general_models/Plants/" + "/" + str(cfg.agent.critic.strategy) + "/6_6/dry_{}/".format(dry)
+    train_dir = "general_models/Plants/" + "/" + str(cfg.agent.critic.strategy) + "/9_9_channel/dry_{}/".format(dry)
     agent_start_pos = None if cfg.monitor.id == "RoomMonitor" else cfg.environment.agent_start_pos
     if cfg.monitor.id == "RoomMonitor":
         train_dir += "room/"
@@ -50,9 +50,11 @@ def run_monitor(cfg: DictConfig) -> None:
         agent_start_pos=agent_start_pos,
         max_episode_steps=cfg.environment.max_episode_steps,
         add_new_plants=cfg.environment.add_new_plants,
+        add_more_plants=cfg.environment.add_more_plants,
     )
     env = WallObs(env, grid_size=cfg.environment.grid_size, n_walls=cfg.environment.n_walls)
     env = WindowViewObs(env, window_size=cfg.environment.window_size)
+    env = MultiChannel(env)
 
     if cfg.monitor.id == "RoomMonitor":
         env = RoomMonitor(env, full_monitor=False, **cfg.monitor)

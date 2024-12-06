@@ -44,7 +44,7 @@ class PlantsWateringEnv(gym.Env):
         self._plants_pos = None
         self._new_plants_pos = None
         self._more_plants_pos = None
-        self._n_new_plants = 8 if self.add_new_plants else 0  # TODO: fix this
+        self._n_new_plants = 4 if self.add_new_plants else 0  # TODO: fix this
         if self.add_more_plants:
             self._n_more_plants = 4
             self._n_new_plants = 8
@@ -74,6 +74,23 @@ class PlantsWateringEnv(gym.Env):
             "green": (0, 255, 0),
             "blue": (0, 0, 255),
         }
+
+    def transit(self, obs, action):
+        """one-step transition to the env"""
+        next_obs = self._grid.copy()
+        agent_pos = self._agent_pos.copy()
+        if action in np.arange(4):
+            next_obs[0, agent_pos[0], agent_pos[1]] = 0  # reset
+            agent_pos = self.move(agent_pos, action)
+            next_obs[0, agent_pos[0], agent_pos[1]] = 1  # move the agent
+        elif action == 4:  # Water
+            water_plant = np.any(np.all(agent_pos == self._plants_pos, axis=1))  # Water a plant
+            water_new_plant = np.any(np.all(agent_pos == self._new_plants_pos, axis=1)) if (self.add_new_plants or self.add_more_plants) else False  # Water a new plant
+            water_diff_plant = np.any(np.all(agent_pos == self._more_plants_pos, axis=1)) if self.add_more_plants else False  # Water a new plant
+            if water_plant or water_new_plant or water_diff_plant:
+                if next_obs[2, agent_pos[0], agent_pos[1]] > np.min(self.dryness_levels):
+                    next_obs[2, agent_pos[0], agent_pos[1]] -= self.dry_difference
+        return next_obs
 
     def step(self, action: int):
         """step function"""

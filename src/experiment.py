@@ -373,7 +373,7 @@ class MonExperiment(Experiment):
             self._log_dir + "/evaluation_joint_reward_{}.npy".format(self._rng_seed), eval_joint_reward,
         )
         np.save(self._log_dir + "/agent_locations_{}.npy".format(self._rng_seed), np.array(agent_locations, dtype=np.int8))
-        # if self.buffer is not None:
+        # if self.buffer is not None and self._checkpoint_count < 4:
         #     self.buffer.save(log_dir=checkpoint_dir, seed=self._rng_seed)
         self._checkpoint_count += 1
 
