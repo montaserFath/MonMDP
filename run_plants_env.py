@@ -34,7 +34,7 @@ def run_monitor(cfg: DictConfig) -> None:
     q_lr, reward_lr, eps = cfg.agent.critic.lr, cfg.agent.critic.reward_model.lr, cfg.agent.actor.init_eps
     dry, window_size = cfg.environment.plants_dryness_prob, cfg.environment.window_size
     # eps = eps if cfg.agent.actor.init_eps == cfg.agent.actor.min_eps else "decay"
-    train_dir = "general_models/Plants/" + "/" + str(cfg.agent.critic.strategy) + "/9_9_channel/dry_{}/".format(dry)
+    train_dir = "general_models/Plants/" + "/" + str(cfg.agent.critic.strategy) + "/10_10_channel/dry_{}/".format(dry)
     agent_start_pos = None if cfg.monitor.id == "RoomMonitor" else cfg.environment.agent_start_pos
     if cfg.monitor.id == "RoomMonitor":
         train_dir += "room/"

@@ -36,7 +36,7 @@ class Critic(ABC):
         return
 
     @abstractmethod
-    def optimize_policy_model(self, batch: dict, update_target: bool = False, monitor_state: bool = False):
+    def optimize_policy_model(self, batch: dict, update_target: bool = False, monitor_state: bool = False, rewards = None):
         return
 
 
@@ -439,13 +439,19 @@ class MonQCNN(MonQNet):
         return q_state[action]
 
     # optimize the Q-network once
-    def optimize_policy_model(self, batch: dict, update_target: bool = False, monitor_state: bool = False):
-        reward_loss = self._r_model.optimize_reward_model(batch)
-        combined_action = batch["mdp_action"] + self._action_space["mdp"].n * batch["mon_action"]
-        with torch.no_grad():
-            mdp_rewards = self._r_model._network(batch["mdp_obs"]).gather(1, batch["mdp_action"])
+    def optimize_policy_model(self, batch: dict, update_target: bool = False, monitor_state: bool = False, rewards = None):
+        if rewards is None:
+            reward_loss = self._r_model.optimize_reward_model(batch)
+            with torch.no_grad():
+                mdp_rewards = self._r_model._network(batch["mdp_obs"]).gather(1, batch["mdp_action"])
+        else:
+            mdp_rewards = rewards.gather(1, batch["mdp_action"])
+            reward_loss = 0
         combined_reward = mdp_rewards + batch["mon_reward"]
-        q_values = self._q_network.forward(batch["mdp_obs"], batch["mon_obs"] if monitor_state else None).gather(1, combined_action)
+        combined_action = batch["mdp_action"] + self._action_space["mdp"].n * batch["mon_action"]
+        q_values = self._q_network.forward(batch["mdp_obs"], batch["mon_obs"] if monitor_state else None).gather(
+            1, combined_action,
+        )
         next_q_values = torch.zeros(batch["mdp_obs"].shape[0], device=self._device)
         with torch.no_grad():
             next_q_values[batch["non_final_mask"]] = (
@@ -548,8 +554,8 @@ class MonRoomCNN(MonQCNN):
             return q_state
         return q_state[action]
 
-    def optimize_policy_model(self, batch: dict, update_target: bool = False, monitor_state: bool = False):
-        return super().optimize_policy_model(batch, update_target, monitor_state)
+    def optimize_policy_model(self, batch: dict, update_target: bool = False, monitor_state: bool = False, rewards = None):
+        return super().optimize_policy_model(batch, update_target, monitor_state, rewards)
 
     def save(self, seed: int = 1, file_name: str = None):
         super().save(seed=seed, file_name=file_name)

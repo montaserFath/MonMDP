@@ -46,7 +46,7 @@ class PlantsWateringEnv(gym.Env):
         self._more_plants_pos = None
         self._n_new_plants = 4 if self.add_new_plants else 0  # TODO: fix this
         if self.add_more_plants:
-            self._n_more_plants = 4
+            self._n_more_plants = 0
             self._n_new_plants = 8
         else:
             self._n_more_plants = 0
