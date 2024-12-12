@@ -46,7 +46,7 @@ class PlantsWateringEnv(gym.Env):
         self._more_plants_pos = None
         self._n_new_plants = 4 if self.add_new_plants else 0  # TODO: fix this
         if self.add_more_plants:
-            self._n_more_plants = 0
+            self._n_more_plants = 4
             self._n_new_plants = 8
         else:
             self._n_more_plants = 0
@@ -138,12 +138,12 @@ class PlantsWateringEnv(gym.Env):
         self._grid[2, self._plants_pos[:, 0], self._plants_pos[:, 1]] = 1
 
         if self.add_new_plants:
-            self._grid[1, self._new_plants_pos[:, 0], self._new_plants_pos[:, 1]] = 0.5  # New Plants
-            self._grid[2, self._new_plants_pos[:, 0], self._new_plants_pos[:, 1]] = 1.0  # New Plants are always dry
+            self._grid[1, self._new_plants_pos[:, 0], self._new_plants_pos[:, 1]] = 0.5  # Cacti
+            self._grid[2, self._new_plants_pos[:, 0], self._new_plants_pos[:, 1]] = 1.0  # Cacti are always dry
 
         if self.add_more_plants:
-            self._grid[1, self._new_plants_pos[:, 0], self._new_plants_pos[:, 1]] = 0.5  # New Plants
-            self._grid[2, self._new_plants_pos[:, 0], self._new_plants_pos[:, 1]] = 1.0  # New Plants are always dry
+            self._grid[1, self._new_plants_pos[:, 0], self._new_plants_pos[:, 1]] = 0.5  # Cacti
+            self._grid[2, self._new_plants_pos[:, 0], self._new_plants_pos[:, 1]] = 1.0  # Cacti are always dry
 
             self._grid[1, self._more_plants_pos[:, 0], self._more_plants_pos[:, 1]] = np.random.choice(
                 self._more_plants_values, self._n_more_plants,
@@ -189,7 +189,8 @@ class PlantsWateringEnv(gym.Env):
                     return 1.0  # Water a dry plant
                 return -1.0  # Water a full watered plan
             if self.add_new_plants or self.add_more_plants:
-                pos = self._new_plants_pos if self.add_new_plants else np.concatenate((self._new_plants_pos, self._more_plants_pos), 0)
+                tmp_pos = np.concatenate((self._new_plants_pos, self._more_plants_pos), 0)
+                pos = self._new_plants_pos if self.add_new_plants else tmp_pos
                 if np.any(np.all(self._agent_pos == pos, axis=1)):  # Water a new plant
                     return -1.0
             return -0.2  # Water an empty cell
@@ -211,18 +212,21 @@ class PlantsWateringEnv(gym.Env):
             self._new_plants_pos = new_plants[np.random.choice(new_plants.shape[0], self._n_new_plants, replace=False)]
             self._plants_pos = plants_comb[np.random.choice(plants_comb.shape[0], self.n_plants, replace=False)]
         elif self.add_more_plants:
+            half_plant = self.n_plants // 2 + self._n_new_plants // 2
             monitor_comb = np.squeeze(np.meshgrid(range(self._n_raws), range(self._n_columns // 2))).T.reshape(-1, 2)
-            un_monitor_comb = np.squeeze(np.meshgrid(range(self._n_raws), range(self._n_columns // 2, self._n_columns))).T.reshape(-1, 2)
+            tmp_indx = range(self._n_columns // 2, self._n_columns)
+            un_monitor_comb = np.squeeze(np.meshgrid(range(self._n_raws), tmp_indx)).T.reshape(-1, 2)
 
-            mon_pos = monitor_comb[np.random.choice(monitor_comb.shape[0], self.n_plants // 2 + self._n_new_plants // 2, replace=False)]
-            un_mon_pos = un_monitor_comb[np.random.choice(un_monitor_comb.shape[0], self.n_plants // 2 + self._n_new_plants // 2 + self._n_more_plants, replace=False)]
+            mon_pos = monitor_comb[np.random.choice(monitor_comb.shape[0], half_plant, replace=False)]
+            un_mon_pos = un_monitor_comb[np.random.choice(
+                un_monitor_comb.shape[0], half_plant + self._n_more_plants, replace=False,
+            )]
 
             plant_indx = self.n_plants // 2
-            new_plant_indx = self.n_plants // 2 + self._n_new_plants // 2
             self._plants_pos = np.concatenate((mon_pos[:plant_indx], un_mon_pos[:plant_indx]), 0)
-            self._new_plants_pos = np.concatenate((mon_pos[plant_indx: new_plant_indx], un_mon_pos[plant_indx: new_plant_indx]), 0)
+            self._new_plants_pos = np.concatenate((mon_pos[plant_indx: half_plant], un_mon_pos[plant_indx: half_plant]), 0)
 
-            self._more_plants_pos = un_mon_pos[new_plant_indx:]
+            self._more_plants_pos = un_mon_pos[half_plant:]
 
         else:
             self._plants_pos = pos[1:]

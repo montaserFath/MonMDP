@@ -268,9 +268,11 @@ class MultiChannel(gym.ObservationWrapper):
             for j in range(obs[1].shape[1]):
                 value = obs[1, i, j]
                 if value == 1.0:  # plant
-                    new_obs[:, i, j] = np.array([1, 1, 0]) / 2 if self.normalize_obs else 1
+                    div = 2 if self.normalize_obs else 1
+                    new_obs[:, i, j] = np.array([1, 1, 0]) / div
                 elif value == 0.5:  # cactus
-                    new_obs[:, i, j] = np.array([0, 1, 1]) / 2 if self.normalize_obs else 1
+                    div = 2 if self.normalize_obs else 1
+                    new_obs[:, i, j] = np.array([0, 1, 1]) / div
                 elif value == 0.125:  # different
                     new_obs[:, i, j] = np.array([0, 0, 1])
                 elif value == 0.25:  # different
@@ -278,9 +280,11 @@ class MultiChannel(gym.ObservationWrapper):
                 elif value == 0.375:  # different
                     new_obs[:, i, j] = np.array([1, 0, 0])
                 elif value == 0.625:  # different
-                    new_obs[:, i, j] = np.array([1, 0, 1]) / 2 if self.normalize_obs else 1
+                    div = 2 if self.normalize_obs else 1
+                    new_obs[:, i, j] = np.array([1, 0, 1]) / div
                 elif value == 0.875:  # different
-                    new_obs[:, i, j] = np.array([1, 1, 1]) / 3 if self.normalize_obs else 1
+                    div = 3 if self.normalize_obs else 1
+                    new_obs[:, i, j] = np.array([1, 1, 1]) / div
                 else:
                     continue
         return np.concatenate(
