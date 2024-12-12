@@ -54,7 +54,7 @@ def run_monitor(cfg: DictConfig) -> None:
     )
     env = WallObs(env, grid_size=cfg.environment.grid_size, n_walls=cfg.environment.n_walls)
     env = WindowViewObs(env, window_size=cfg.environment.window_size)
-    env = MultiChannel(env)
+    env = MultiChannel(env, normalize_obs=True)
 
     if cfg.monitor.id == "RoomMonitor":
         env = RoomMonitor(env, full_monitor=False, **cfg.monitor)

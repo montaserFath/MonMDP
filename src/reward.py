@@ -1,7 +1,7 @@
 """Predictive Reward Model"""
 from abc import ABC, abstractmethod
 import numpy as np
-from src.network import CNN
+from src.network import CNN, NeuralNetwork
 import torch
 
 
@@ -108,6 +108,7 @@ class RewardNet(Reward):
             stride_1: int,
             lr: float = 0.01,
             device: str = None,
+            flatten: bool = False,
             **kwargs,
     ):
         self._obs_size = observation_space.shape
@@ -118,9 +119,20 @@ class RewardNet(Reward):
         self._stride_0 = stride_0
         self._stride_1 = stride_1
         self._device = device
-        self._network = CNN(
-            self._obs_size, self._n_actions, self._lr, self._kernel_size_0, self._kernel_size_1, self._stride_0, self._stride_1, device=self._device,
-        )
+        self._flatten = flatten
+        if self._flatten:
+            self._network = NeuralNetwork((self._obs_size[0],), self._n_actions, self._lr, device=self._device)
+        else:
+            self._network = CNN(
+                self._obs_size,
+                self._n_actions,
+                self._lr,
+                self._kernel_size_0,
+                self._kernel_size_1,
+                self._stride_0,
+                self._stride_1,
+                device=self._device,
+            )
         self._network.init_network()
         # self._reward_optimizer = torch.optim.RMSprop(
         #     self._network.model.parameters(), lr=self._lr, weight_decay=0.95, eps=1e-5,
@@ -129,12 +141,14 @@ class RewardNet(Reward):
         self._reward_loss_fun = torch.nn.MSELoss()
         self._reward_loss = []
 
-    def __call__(self, state, action):
+    def __call__(self, state, action = None):
         return self.inference(state, action)
 
     def optimize_reward_model(self, batch: dict):
         real_reward_idx = batch["real_reward_idx"]
         mdp_obs = batch["mdp_obs"][real_reward_idx]
+        if self._flatten:
+            mdp_obs = mdp_obs[:, :, mdp_obs.shape[-1] // 2, mdp_obs.shape[-1] // 2]
         mdp_action = batch["mdp_action"][real_reward_idx]
         target_reward = batch["mdp_reward"][real_reward_idx]
         expected_reward = self._network(mdp_obs).gather(1, mdp_action)
@@ -147,9 +161,18 @@ class RewardNet(Reward):
         return loss.item()
 
     def inference(self, state: np.ndarray, actions: np.ndarray = None) -> torch.Tensor:
-        state_tensor = torch.from_numpy(state).float().to(self._device)
+        if self._flatten:
+            size = state.shape[-1] // 2
+            if isinstance(state, np.ndarray):
+                state_tensor = torch.from_numpy(state[:, :, size, size]).float().to(self._device)
+            else:
+                state_tensor = state[:, :, size, size]
+        else:
+            state_tensor = torch.from_numpy(state).float().to(self._device)
         if actions is None:
-            return self._network.forward(state_tensor)
+            with torch.no_grad():
+                # return self._network.forward(state_tensor)
+                return self._network(state_tensor)
         actions_tensor = torch.from_numpy(actions).float().to(self._device)
         return self._network.forward(state_tensor).gather(1, actions_tensor)
 

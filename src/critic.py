@@ -443,7 +443,8 @@ class MonQCNN(MonQNet):
         if rewards is None:
             reward_loss = self._r_model.optimize_reward_model(batch)
             with torch.no_grad():
-                mdp_rewards = self._r_model._network(batch["mdp_obs"]).gather(1, batch["mdp_action"])
+                # mdp_rewards = self._r_model._network(batch["mdp_obs"]).gather(1, batch["mdp_action"])
+                mdp_rewards = self._r_model(batch["mdp_obs"]).gather(1, batch["mdp_action"])
         else:
             mdp_rewards = rewards.gather(1, batch["mdp_action"])
             reward_loss = 0
