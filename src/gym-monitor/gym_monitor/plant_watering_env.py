@@ -1,3 +1,5 @@
+from typing import Optional
+
 import gymnasium as gym
 import random
 import numpy as np
@@ -6,6 +8,12 @@ import pygame
 
 
 class PlantsWateringEnv(gym.Env):
+    metadata = {
+        "render_modes": ["human", "rgb_array", "ansi"],
+        "render_fps": 4,
+        "torch": True,
+        "jax": True,
+    }
     def __init__(
         self,
         grid_size: (int, int),
@@ -14,15 +22,12 @@ class PlantsWateringEnv(gym.Env):
         dry_difference: float = 0.5,
         agent_start_pos: [int, int] = None,
         max_episode_steps: int = 1000,
-        render_mode: str = None,
+        render_mode: Optional[str] = None,
         add_new_plants: bool = False,
         add_more_plants: bool = False,
         **kwargs,
     ):
-        self._metadata = {
-            "render_modes": ["human", "rgb_array", "ansi"],
-            "render_fps": 4,
-        }
+
         self.n_plants = n_plants
         self.plants_dryness_prob = plants_dryness_prob
         self.dry_difference = dry_difference
@@ -342,7 +347,7 @@ class PlantsWateringEnv(gym.Env):
         if mode == "human":
             pygame.event.pump()
             pygame.display.update()
-            self._clock.tick(self._metadata["render_fps"])
+            self._clock.tick(self.metadata["render_fps"])
         elif mode == "rgb_array":
             return np.transpose(np.array(pygame.surfarray.pixels3d(self._window_surface)), axes=(1, 0, 2))
         else:
