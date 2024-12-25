@@ -11,10 +11,10 @@ environment:
   dry_difference: 0.5
   agent_start_pos: [0, 0]
   max_episode_steps: 100
-  n_walls: 6
+  n_walls: 5
   window_size: 11
   add_new_plants: False
-  add_more_plants: True
+  add_more_plants: False
 
 wandb:
   mode: offline

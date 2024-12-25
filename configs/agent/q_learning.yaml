@@ -5,15 +5,15 @@ critic:
   lr: 1e-4 # 1.0
   strategy: reward_model
   unseen_r_value: 0.0
-  kernel_size_0: 3
-  kernel_size_1: 2
+  kernel_size_0: 5
+  kernel_size_1: 3
   stride_0: 1
   stride_1: 1
   reward_model:
     r0: 0
     lr: 1e-4 #1.0
-    kernel_size_0: 3
-    kernel_size_1: 2
+    kernel_size_0: 5
+    kernel_size_1: 3
     stride_0: 1
     stride_1: 1
     flatten: True
