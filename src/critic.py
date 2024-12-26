@@ -347,7 +347,7 @@ class MonQNet(MonQCritic):
         self.optimizer = None
         self._transition = None
         self._strategy = strategy
-        env_size = "3_3" if env_name.split("/")[1].split("-")[-1] == "v0" else "9_9"  # TODO change this
+        env_size = "3_3" if env_name.split("/")[1].split("-")[-1] == "v0" else "10_10"  # TODO change this
         self._dir_name = "models/{}/{}/{}/".format(env_size, env_name, self._strategy) if dir_name is None else dir_name
         self._observation_space = observation_space
         self._action_space = action_space
@@ -440,25 +440,43 @@ class MonQCNN(MonQNet):
 
     # optimize the Q-network once
     def optimize_policy_model(self, batch: dict, update_target: bool = False, monitor_state: bool = False, rewards = None):
+        real_idx = batch["real_reward_idx"]
         if rewards is None:
-            reward_loss = self._r_model.optimize_reward_model(batch)
-            with torch.no_grad():
-                # mdp_rewards = self._r_model._network(batch["mdp_obs"]).gather(1, batch["mdp_action"])
-                mdp_rewards = self._r_model(batch["mdp_obs"]).gather(1, batch["mdp_action"])
+            if self._strategy == "reward_model":
+                reward_loss = self._r_model.optimize_reward_model(batch)
+                with torch.no_grad():
+                    # mdp_rewards = self._r_model._network(batch["mdp_obs"]).gather(1, batch["mdp_action"])
+                    mdp_rewards = self._r_model(batch["mdp_obs"]).gather(1, batch["mdp_action"])
+            elif self._strategy == "zero_reward":
+                mdp_rewards = self._unseen_r_value * torch.ones_like(batch["mon_reward"], dtype=torch.float, device=self._device)
+                mdp_rewards[real_idx] = batch["mon_reward"][real_idx]
+                reward_loss = 0
+            elif self._strategy == "ignore":
+                reward_loss = 0
+                mdp_rewards = batch["mon_reward"][real_idx]
+            else:
+                raise NotImplementedError
         else:
             mdp_rewards = rewards.gather(1, batch["mdp_action"])
             reward_loss = 0
-        combined_reward = mdp_rewards + batch["mon_reward"]
-        combined_action = batch["mdp_action"] + self._action_space["mdp"].n * batch["mon_action"]
-        q_values = self._q_network.forward(batch["mdp_obs"], batch["mon_obs"] if monitor_state else None).gather(
-            1, combined_action,
-        )
-        next_q_values = torch.zeros(batch["mdp_obs"].shape[0], device=self._device)
+        mon_reward = batch["mon_reward"][real_idx] if self._strategy == "ignore" else batch["mon_reward"]
+        combined_reward = mdp_rewards + mon_reward
+        if self._strategy == "ignore":
+            combined_action = batch["mdp_action"][real_idx] + self._action_space["mdp"].n * batch["mon_action"][real_idx]
+        else:
+            combined_action = batch["mdp_action"] + self._action_space["mdp"].n * batch["mon_action"]
+
+        mdp_obs = batch["mdp_obs"][real_idx] if self._strategy == "ignore" else batch["mdp_obs"]
+        mon_obs = batch["mon_obs"][real_idx] if self._strategy == "ignore" else batch["mon_obs"]
+        q_values = self._q_network.forward(mdp_obs, mon_obs if monitor_state else None).gather(1, combined_action)
+        next_q_values = torch.zeros(mdp_obs.shape[0], device=self._device)
+
+        non_final = batch["non_final_mask"][real_idx] if self._strategy == "ignore" else batch["non_final_mask"]
+        non_mdp = batch["non_final_next_states"][real_idx] if self._strategy == "ignore" else batch["non_final_next_states"]
+        non_mon = batch["non_final_next_monitor_states"][real_idx] if self._strategy == "ignore" else batch["non_final_next_monitor_states"]
         with torch.no_grad():
-            next_q_values[batch["non_final_mask"]] = (
-                self._target_network.forward(batch["non_final_next_states"],
-                                             batch["non_final_next_monitor_states"] if monitor_state else None).max(
-                    1).values
+            next_q_values[non_final] = (
+                self._target_network.forward(non_mdp, non_mon if monitor_state else None).max(1).values
             )
         expected_q_values = (self._gamma * next_q_values.unsqueeze(1)) + combined_reward
         q_loss = self.q_loss_fun(q_values, expected_q_values)
@@ -485,7 +503,8 @@ class MonQCNN(MonQNet):
         os.makedirs(file_dir, exist_ok=True)
         self._q_network.save(log_dir=file_dir + "/q_network_{}".format(seed))
         # self._target_network.save(log_dir=file_dir + "/target_network_{}".format(seed))
-        self._r_model.save(seed=seed, file_name=file_dir)
+        if self._strategy == "reward_model":
+            self._r_model.save(seed=seed, file_name=file_dir)
 
         np.save(file_dir + "/q_network_loss_{}".format(seed), self.get_current_loss())
 
@@ -499,8 +518,14 @@ class MonQCNN(MonQNet):
         if not np.isnan(reward["mdp"]):
             if self._strategy == "reward_model":
                 self._r_model.update(state["mdp"], action["mdp"], reward["mdp"])
+        else:
+            if self._strategy == "zero_reward":
+                reward["mdp"] = self._unseen_r_value
+            elif self._strategy == "ignore":
+                return np.nan, np.nan
             else:
                 raise NotImplementedError
+
 
     def report(self):
         NotImplemented
