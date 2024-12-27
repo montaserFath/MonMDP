@@ -448,19 +448,19 @@ class MonQCNN(MonQNet):
                     # mdp_rewards = self._r_model._network(batch["mdp_obs"]).gather(1, batch["mdp_action"])
                     mdp_rewards = self._r_model(batch["mdp_obs"]).gather(1, batch["mdp_action"])
             elif self._strategy == "zero_reward":
-                mdp_rewards = self._unseen_r_value * torch.ones_like(batch["mon_reward"], dtype=torch.float, device=self._device)
-                mdp_rewards[real_idx] = batch["mon_reward"][real_idx]
+                mdp_rewards = self._unseen_r_value * torch.ones_like(batch["mdp_reward"], dtype=torch.float, device=self._device)
+                mdp_rewards[real_idx] = batch["mdp_reward"][real_idx]
                 reward_loss = 0
             elif self._strategy == "ignore":
                 reward_loss = 0
-                mdp_rewards = batch["mon_reward"][real_idx]
+                mdp_rewards = batch["mdp_reward"][real_idx]
             else:
                 raise NotImplementedError
         else:
             mdp_rewards = rewards.gather(1, batch["mdp_action"])
             reward_loss = 0
-        mon_reward = batch["mon_reward"][real_idx] if self._strategy == "ignore" else batch["mon_reward"]
-        combined_reward = mdp_rewards + mon_reward
+        mon_rewards = batch["mon_reward"][real_idx] if self._strategy == "ignore" else batch["mon_reward"]
+        combined_reward = mdp_rewards + mon_rewards
         if self._strategy == "ignore":
             combined_action = batch["mdp_action"][real_idx] + self._action_space["mdp"].n * batch["mon_action"][real_idx]
         else:
