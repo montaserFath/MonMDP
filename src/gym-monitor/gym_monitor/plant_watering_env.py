@@ -14,18 +14,19 @@ class PlantsWateringEnv(gym.Env):
         "torch": True,
         "jax": True,
     }
+
     def __init__(
-        self,
-        grid_size: (int, int),
-        n_plants: int,
-        plants_dryness_prob: float,
-        dry_difference: float = 0.5,
-        agent_start_pos: [int, int] = None,
-        max_episode_steps: int = 1000,
-        render_mode: Optional[str] = None,
-        add_new_plants: bool = False,
-        add_more_plants: bool = False,
-        **kwargs,
+            self,
+            grid_size: (int, int),
+            n_plants: int,
+            plants_dryness_prob: float,
+            dry_difference: float = 0.5,
+            agent_start_pos: [int, int] = None,
+            max_episode_steps: int = 1000,
+            render_mode: Optional[str] = None,
+            add_new_plants: bool = False,
+            add_more_plants: bool = False,
+            **kwargs,
     ):
 
         self.n_plants = n_plants
@@ -38,6 +39,8 @@ class PlantsWateringEnv(gym.Env):
         self.add_new_plants = add_new_plants
         self.add_more_plants = add_more_plants
         if self.add_more_plants:
+            if self.add_new_plants:
+                raise ValueError("Can not use add_new_plants and add_more_plants together")
             self._more_plants_values = [i / 8 for i in [1, 2, 3, 5, 6, 7]]
 
         self._n_raws, self._n_columns = grid_size
@@ -207,8 +210,9 @@ class PlantsWateringEnv(gym.Env):
                     return 1.0  # Water a dry plant
                 return -1.0  # Water a full watered plan
             if self.add_new_plants or self.add_more_plants:
-                tmp_pos = np.concatenate((self._new_plants_pos, self._more_plants_pos), 0)
-                pos = self._new_plants_pos if self.add_new_plants else tmp_pos
+                pos = self._new_plants_pos if self.add_new_plants else np.concatenate(
+                    (self._new_plants_pos, self._more_plants_pos), 0,
+                )
                 if np.any(np.all(self._agent_pos == pos, axis=1)):  # Water a new plant
                     return -1.0
             return -0.2  # Water an empty cell
@@ -221,36 +225,31 @@ class PlantsWateringEnv(gym.Env):
     def reset_agent_plants_pos(self):
         """Reset the agent and plants position in the grid to the initial position."""
         pos = self._combinations[np.random.choice(self._combinations.shape[0], self.n_plants + 1, replace=False)]
+
+        monitor_comb = np.squeeze(np.meshgrid(range(self._n_raws), range(self._n_columns // 2))).T.reshape(-1, 2)
+        tmp_ind = range(self._n_columns // 2, self._n_columns)
+        un_monitor_comb = np.squeeze(np.meshgrid(range(self._n_raws), tmp_ind)).T.reshape(-1, 2)
         if self.add_new_plants:
-            new_plants = np.squeeze(np.meshgrid(range(self._n_raws), range(3, 6))).T.reshape(-1, 2)
-            plants_comb_0 = np.squeeze(np.meshgrid(range(self._n_raws), range(3))).T.reshape(-1, 2)
-            plants_comb_1 = np.squeeze(np.meshgrid(range(self._n_raws), range(6, self._n_columns))).T.reshape(-1, 2)
-            plants_comb = np.concatenate((plants_comb_0, plants_comb_1), 0)
+            un_mon_obj = self.n_plants // 2 + self._n_new_plants
+        if self.add_more_plants:
+            un_mon_obj = self.n_plants // 2 + self._n_new_plants // 2 + self._n_more_plants
 
-            self._new_plants_pos = new_plants[np.random.choice(new_plants.shape[0], self._n_new_plants, replace=False)]
-            self._plants_pos = plants_comb[np.random.choice(plants_comb.shape[0], self.n_plants, replace=False)]
+        if self.add_new_plants:
+            mon_pos = monitor_comb[np.random.choice(monitor_comb.shape[0], self.n_plants // 2, replace=False)]
+            plants_un_mon = un_monitor_comb[np.random.choice(un_monitor_comb.shape[0], un_mon_obj, replace=False)]
+
+            self._plants_pos = np.concatenate((mon_pos, plants_un_mon[:self.n_plants // 2]), 0)
+            self._new_plants_pos = plants_un_mon[self.n_plants // 2:]
         elif self.add_more_plants:
-            half_plant = self.n_plants // 2 + self._n_new_plants // 2
-            monitor_comb = np.squeeze(np.meshgrid(range(self._n_raws), range(self._n_columns // 2))).T.reshape(-1, 2)
-            tmp_indx = range(self._n_columns // 2, self._n_columns)
-            un_monitor_comb = np.squeeze(np.meshgrid(range(self._n_raws), tmp_indx)).T.reshape(-1, 2)
-
-            mon_pos = monitor_comb[np.random.choice(monitor_comb.shape[0], half_plant, replace=False)]
-            un_mon_pos = un_monitor_comb[
-                np.random.choice(
-                    un_monitor_comb.shape[0],
-                    half_plant + self._n_more_plants,
-                    replace=False,
-                )
-            ]
-
-            plant_indx = self.n_plants // 2
-            self._plants_pos = np.concatenate((mon_pos[:plant_indx], un_mon_pos[:plant_indx]), 0)
+            un_mon_pos = un_monitor_comb[np.random.choice(un_monitor_comb.shape[0], un_mon_obj, replace=False)]
+            half_plant_cacti = self.n_plants // 2 + self._n_new_plants // 2
+            mon_pos = monitor_comb[np.random.choice(monitor_comb.shape[0], half_plant_cacti, replace=False)]
+            self._plants_pos = np.concatenate((mon_pos[:self.n_plants // 2], un_mon_pos[:self.n_plants // 2]), 0)
             self._new_plants_pos = np.concatenate(
-                (mon_pos[plant_indx:half_plant], un_mon_pos[plant_indx:half_plant]), 0
+                (mon_pos[self.n_plants // 2: half_plant_cacti], un_mon_pos[self.n_plants // 2: half_plant_cacti]), 0
             )
 
-            self._more_plants_pos = un_mon_pos[half_plant:]
+            self._more_plants_pos = un_mon_pos[half_plant_cacti:]
 
         else:
             self._plants_pos = pos[1:]
@@ -304,10 +303,10 @@ class PlantsWateringEnv(gym.Env):
         cell_x, cell_y = self._cell_size
         # horizontal lines
         for i in range(1, self._n_raws):
-            pygame.draw.line(self._window_surface, self._colors["black"], (0, i * cell_x), (cell_x**2, i * cell_y), 3)
+            pygame.draw.line(self._window_surface, self._colors["black"], (0, i * cell_x), (cell_x ** 2, i * cell_y), 3)
         # vertical lines
         for j in range(1, self._n_columns):
-            pygame.draw.line(self._window_surface, self._colors["black"], (j * cell_y, 0), (j * cell_x, cell_y**2), 3)
+            pygame.draw.line(self._window_surface, self._colors["black"], (j * cell_y, 0), (j * cell_x, cell_y ** 2), 3)
 
     def _render_gui(self, mode):
         """render gui"""
