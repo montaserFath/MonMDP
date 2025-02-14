@@ -34,11 +34,12 @@ def run_monitor(cfg: DictConfig) -> None:
     q_lr, reward_lr, eps = cfg.agent.critic.lr, cfg.agent.critic.reward_model.lr, cfg.agent.actor.init_eps
     dry, window_size = cfg.environment.plants_dryness_prob, cfg.environment.window_size
     # eps = eps if cfg.agent.actor.init_eps == cfg.agent.actor.min_eps else "decay"
+    eps_decay = cfg.agent.actor.eps_decay
     train_dir = "general_models/Plants/" + "/" + str(cfg.agent.critic.strategy) + "/10_10_channel/dry_{}/".format(dry)
     agent_start_pos = None if cfg.monitor.id == "RoomMonitor" else cfg.environment.agent_start_pos
     if cfg.monitor.id == "RoomMonitor":
-        train_dir += "room/"
-    train_dir += "/window_{}/q_lr_{}/reward_lr_{}/".format(window_size, q_lr, reward_lr)
+        train_dir += "3_room/"
+    train_dir += "/window_{}/eps_decay_{}/q_lr_{}/reward_lr_{}/".format(window_size, eps_decay, q_lr, reward_lr)
     os.makedirs(train_dir, exist_ok=True)
 
     env = gym.make(
