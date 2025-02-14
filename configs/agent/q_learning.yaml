@@ -23,4 +23,4 @@ critic:
 actor:
   init_eps: 1.0
   min_eps: 0.1
-  eps_decay: 1e-7
+  eps_decay: 1e-4
