@@ -157,7 +157,8 @@ class MonExperiment(Experiment):
                 # eval_time = time.time()
                 # perform/save checkpoint
                 self.checkpoint(joint_reward, eval_joint_reward, agent_locations)
-
+                joint_reward = {}
+                agent_locations = []
                 self._actor.eval()
                 (
                     ep_return_true,
@@ -267,11 +268,21 @@ class MonExperiment(Experiment):
         # save Q-table as numpy array
         # if self.buffer is not None:
         #     self.buffer.save(log_dir=self._log_dir, seed=self._rng_seed)
-        np.save(self._log_dir + "/agent_locations_{}.npy".format(self._rng_seed), np.array(agent_locations, dtype=np.int8))
+        # np.save(self._log_dir + "/agent_locations_{}.npy".format(self._rng_seed), np.array(agent_locations, dtype=np.int8))
+        temp_agent_location = np.load(self._log_dir + "/agent_locations_{}.npy".format(self._rng_seed))
+        np.save(self._log_dir + "/agent_locations_{}.npy".format(self._rng_seed), np.concatenate(
+            (temp_agent_location, agent_locations), 0, dtype=np.int8,
+        ))
+        agent_locations = []
         self._critic.save(seed=self._rng_seed)
         if self._save_train_log:
             # np.save(self._log_dir + "/visit_table_{}.npy".format(self._rng_seed), self._visit_table)
-            np.save(self._log_dir + "/training_joint_reward_{}.npy".format(self._rng_seed), joint_reward)
+            # np.save(self._log_dir + "/training_joint_reward_{}.npy".format(self._rng_seed), joint_reward)
+            tmp_joint_reward = np.load(
+                self._log_dir + "/training_joint_reward_{}.npy".format(self._rng_seed), allow_pickle=True,
+            )[()]
+            tmp_joint_reward.update(joint_reward)
+            np.save(self._log_dir + "/training_joint_reward_{}.npy".format(self._rng_seed), tmp_joint_reward)
             np.save(
                 self._log_dir + "/evaluation_joint_reward_{}.npy".format(self._rng_seed),
                 eval_joint_reward,
@@ -368,11 +379,24 @@ class MonExperiment(Experiment):
         self._critic.save(seed=self._rng_seed)  # save critic
         # np.save(checkpoint_dir + "/visit_table_{}.npy".format(self._rng_seed), self._visit_table)
         # np.save(self._log_dir + "/visit_table_{}.npy".format(self._rng_seed), self._visit_table)
-        np.save(self._log_dir + "/training_joint_reward_{}.npy".format(self._rng_seed), joint_reward)
+        if self._checkpoint_count == 0:
+            np.save(self._log_dir + "/training_joint_reward_{}.npy".format(self._rng_seed), joint_reward)
+            np.save(self._log_dir + "/agent_locations_{}.npy".format(self._rng_seed),
+                    np.array(agent_locations, dtype=np.int8))
+        else:
+            tmp_joint_reward = np.load(
+                self._log_dir + "/training_joint_reward_{}.npy".format(self._rng_seed), allow_pickle=True,
+            )[()]
+            tmp_joint_reward.update(joint_reward)
+            np.save(self._log_dir + "/training_joint_reward_{}.npy".format(self._rng_seed), tmp_joint_reward)
+            temp_agent_location = np.load(self._log_dir + "/agent_locations_{}.npy".format(self._rng_seed))
+            np.save(self._log_dir + "/agent_locations_{}.npy".format(self._rng_seed), np.concatenate(
+                (temp_agent_location, agent_locations), 0, dtype=np.int8,
+            ))
         np.save(
             self._log_dir + "/evaluation_joint_reward_{}.npy".format(self._rng_seed), eval_joint_reward,
         )
-        np.save(self._log_dir + "/agent_locations_{}.npy".format(self._rng_seed), np.array(agent_locations, dtype=np.int8))
+
         # if self.buffer is not None and self._checkpoint_count < 4:
         #     self.buffer.save(log_dir=checkpoint_dir, seed=self._rng_seed)
         self._checkpoint_count += 1
