@@ -1,4 +1,5 @@
 """Plotting functions for the training/testing, heatmaps for the q-tables, policy actions, and final trajectories"""
+import numpy as np
 import colorsys
 import seaborn as sns
 
@@ -14,3 +15,23 @@ def set_blind_colors() -> (list, list):
     light_colors = [colorsys.hls_to_rgb(h, light_lightness[i], 1) for i, h in enumerate(light_hues)]
     sns.palplot(light_colors)
     return light_colors, dark_colors
+
+
+def discount_episode_reward(reward: dict, gamma: float = 0.99, length: int = 5000) -> (np.ndarray, np.ndarray):
+    """Calculate each episode discount reward and number of timesteps"""
+    discount = [gamma**i for i in range(length)]
+    discount_reward, length = np.zeros(len(reward)), np.zeros(len(reward))
+    for i, key in enumerate(reward.keys()):
+        length[i] = len(reward[key])
+        discount_reward[i] = np.sum(np.array(reward[key]) * np.array(discount[: len(reward[key])]))
+    return discount_reward, length
+
+
+def sum_ep_timesteps(ep_timesteps: np.ndarray) -> np.ndarray:
+    """add number of timesteps for each episode"""
+    sum_timesteps = np.zeros(len(ep_timesteps))
+    last_length = 0
+    for i, timestep in enumerate(ep_timesteps):
+        sum_timesteps[i] = last_length + timestep
+        last_length = sum_timesteps[i]
+    return sum_timesteps
