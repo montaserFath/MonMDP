@@ -2,15 +2,12 @@
 import gymnasium as gym
 import os
 import hydra
-from src.utils import dict_to_id
-
-import wandb
-from omegaconf import DictConfig, OmegaConf
+from omegaconf import DictConfig
 
 from src.actor import MonEpsilonGreedyOneAction
 from src.critic import MonQCNN, MonRoomCNN
 from src.experiment import MonExperiment
-from src.wrappers.env_wrappers import WallObs, WindowViewObs, ObsToImage, MultiChannel
+from src.wrappers.env_wrappers import WallObs, WindowViewObs, MultiChannel
 from src.wrappers.monitor_wrappers import BinaryMonitor, RoomMonitor
 
 EVAL = False
@@ -20,16 +17,6 @@ LOG_DIR = "models/9_9/Plants/reward_model/env_0.0/eps_1.0/q_lr_1.0/reward_lr_1.0
 @hydra.main(version_base=None, config_path="configs", config_name="default")
 def run_monitor(cfg: DictConfig) -> None:
     """Run env"""
-    # wandb.init(
-    #     group="gym_monitor/Plants-Watering-v1" + "\\" + dict_to_id(cfg.monitor),
-    #     config=OmegaConf.to_container(
-    #         cfg,
-    #         resolve=True,
-    #         throw_on_missing=True,
-    #     ),
-    #     settings=wandb.Settings(start_method="thread"),
-    #     **cfg.wandb,
-    # )
 
     q_lr, reward_lr, eps = cfg.agent.critic.lr, cfg.agent.critic.reward_model.lr, cfg.agent.actor.init_eps
     dry, window_size = cfg.environment.plants_dryness_prob, cfg.environment.window_size
@@ -60,17 +47,30 @@ def run_monitor(cfg: DictConfig) -> None:
     if cfg.monitor.id == "RoomMonitor":
         env = RoomMonitor(env, full_monitor=False, **cfg.monitor)
         critic = MonRoomCNN(
-            cfg.environment.id, env.observation_space, env.action_space, dir_name=train_dir, **cfg.agent.critic,
+            cfg.environment.id,
+            env.observation_space,
+            env.action_space,
+            dir_name=train_dir,
+            **cfg.agent.critic,
         )
     else:
         env = BinaryMonitor(env, full_monitor=False, **cfg.monitor)
         critic = MonQCNN(
-            cfg.environment.id, env.observation_space, env.action_space, dir_name=train_dir, **cfg.agent.critic,
+            cfg.environment.id,
+            env.observation_space,
+            env.action_space,
+            dir_name=train_dir,
+            **cfg.agent.critic,
         )
 
     actor = MonEpsilonGreedyOneAction(critic, train=not EVAL, **cfg.agent.actor)
     experiment = MonExperiment(
-        env, actor, critic, log_dir=LOG_DIR if EVAL else train_dir, replay_buffer=True, **cfg.experiment,
+        env,
+        actor,
+        critic,
+        log_dir=LOG_DIR if EVAL else train_dir,
+        replay_buffer=True,
+        **cfg.experiment,
     )
     experiment.train()
 

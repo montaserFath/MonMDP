@@ -99,17 +99,17 @@ class RDict(Reward):
 
 class RewardNet(Reward):
     def __init__(
-            self,
-            observation_space,
-            action_space,
-            kernel_size_0: int,
-            kernel_size_1: int,
-            stride_0: int,
-            stride_1: int,
-            lr: float = 0.01,
-            device: str = None,
-            flatten: bool = False,
-            **kwargs,
+        self,
+        observation_space,
+        action_space,
+        kernel_size_0: int,
+        kernel_size_1: int,
+        stride_0: int,
+        stride_1: int,
+        lr: float = 0.01,
+        device: str = None,
+        flatten: bool = False,
+        **kwargs,
     ):
         self._obs_size = observation_space.shape
         self._n_actions = action_space.n
@@ -141,7 +141,7 @@ class RewardNet(Reward):
         self._reward_loss_fun = torch.nn.MSELoss()
         self._reward_loss = []
 
-    def __call__(self, state, action = None):
+    def __call__(self, state, action=None):
         return self.inference(state, action)
 
     def optimize_reward_model(self, batch: dict):

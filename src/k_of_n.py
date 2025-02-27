@@ -27,8 +27,11 @@ def load_replay_buffer(buffer_dir: str) -> list:
 def load_reward_models(model_dir: str, n_models: int, device: str) -> list:
     trained_models = []
     for r in range(n_models):
-        trained_models.append(torch.load(
-            model_dir + "/ensemble_reward_models/reward_model_{}".format(r), map_location=torch.device(device)))
+        trained_models.append(
+            torch.load(
+                model_dir + "/ensemble_reward_models/reward_model_{}".format(r), map_location=torch.device(device)
+            )
+        )
     return trained_models
 
 
@@ -67,19 +70,24 @@ def prepare_critic(critic_dir: str, device: str):
     channel_env = MultiChannel(window_env, normalize_obs=True)
     env = RoomMonitor(channel_env, full_monitor=False, monitor_cost=0.0, monitor_column_ind=5)
 
-    critic = MonRoomCNN(env_id, env.observation_space, env.action_space, dir_name=critic_dir, on_policy=False,
-                        q0=0,
-                        gamma=0.99,
-                        lr=1e-4,
-                        strategy="reward_model",
-                        unseen_r_value=0.0,
-                        kernel_size_0=5,
-                        kernel_size_1=3,
-                        stride_0=1,
-                        stride_1=1,
-                        device=device,
-                        reward_model=reward_prams,
-                        )
+    critic = MonRoomCNN(
+        env_id,
+        env.observation_space,
+        env.action_space,
+        dir_name=critic_dir,
+        on_policy=False,
+        q0=0,
+        gamma=0.99,
+        lr=1e-4,
+        strategy="reward_model",
+        unseen_r_value=0.0,
+        kernel_size_0=5,
+        kernel_size_1=3,
+        stride_0=1,
+        stride_1=1,
+        device=device,
+        reward_model=reward_prams,
+    )
     critic.reset()
     return critic
 
@@ -99,7 +107,15 @@ def evaluate_obs(obs: torch.tensor, models: list, device: str, n_mdp_actions: in
 
 
 def optimize_k_of_n(
-        critic, buffers: list, reward_models: list, k: int, n: int, n_iterations: int, batch_size: int, device: str, seed: int,
+    critic,
+    buffers: list,
+    reward_models: list,
+    k: int,
+    n: int,
+    n_iterations: int,
+    batch_size: int,
+    device: str,
+    seed: int,
 ):
     center_indx = 5
     update_target_freq = 5
@@ -119,7 +135,10 @@ def optimize_k_of_n(
         policy_values = torch.sum(torch.sum(n_rewards * policy, 2), 1)
         k_rewards = torch.mean(n_rewards[sort_and_k_least(policy_values, k)], 0)
         _, _ = critic.optimize_policy_model(
-            sampled_batch, update_target=itr % update_target_freq, monitor_state=True, rewards=k_rewards,
+            sampled_batch,
+            update_target=itr % update_target_freq,
+            monitor_state=True,
+            rewards=k_rewards,
         )
         if itr % 1e4 == 0:
             critic.save(seed)

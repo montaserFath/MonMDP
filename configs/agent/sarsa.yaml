@@ -1,15 +1,26 @@
 critic:
   on_policy: True
-  q0: -10
-  gamma: 1.0
-  lr: 1.0
-  unseen_r_value: 0.0
+  q0: 0
+  gamma: 0.99
+  lr: 1e-4 # 1.0
   strategy: reward_model
+  unseen_r_value: 0.0
+  kernel_size_0: 5
+  kernel_size_1: 3
+  stride_0: 1
+  stride_1: 1
   reward_model:
     r0: 0
-    lr: 1.
+    lr: 1e-4 #1.0
+    kernel_size_0: 5
+    kernel_size_1: 3
+    stride_0: 1
+    stride_1: 1
+    flatten: True
+    device: "cuda:0" #"mps:0"
+  device: "cuda:0" #"mps:0"
 
 actor:
   init_eps: 1.0
-  min_eps: 0.0
-  eps_decay: 4.5e-6
+  min_eps: 0.1
+  eps_decay: 1e-4

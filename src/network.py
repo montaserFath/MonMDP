@@ -122,7 +122,7 @@ class CNN(NeuralNetwork):
 
         self.init_network()
 
-    def forward(self, obs, monitor_obs = None) -> torch.Tensor:
+    def forward(self, obs, monitor_obs=None) -> torch.Tensor:
         if isinstance(obs, np.ndarray):
             obs = torch.tensor(obs, dtype=torch.float, device=self._device).unsqueeze(0)
         if monitor_obs is None:
@@ -135,7 +135,7 @@ class CNN(NeuralNetwork):
     def init_network(self):
         out_ch_0 = (self._obs_size[1] - self.kernel_size_0) // self.stride_0 + 1
         out_ch_1 = (out_ch_0 - self.kernel_size_1) // self.stride_1 + 1
-        n_flatten = int(out_ch_1 ** 2 * self.output_channels) + (1 if self.add_monitor_obs else 0)
+        n_flatten = int(out_ch_1**2 * self.output_channels) + (1 if self.add_monitor_obs else 0)
         self.model = torch.nn.Sequential(
             torch.nn.Conv2d(self._obs_size[0], 32, self.kernel_size_0, stride=self.stride_0),
             torch.nn.ReLU(),

@@ -60,7 +60,12 @@ class EpsilonGreedy(Actor):
 
     # pylint: disable=too-many-arguments
     def __init__(
-            self, critic, init_eps: float = 1.0, min_eps: float = 0.1, eps_decay: float = 0.0001, train: bool = True,
+        self,
+        critic,
+        init_eps: float = 1.0,
+        min_eps: float = 0.1,
+        eps_decay: float = 0.0001,
+        train: bool = True,
     ):
         self._critic = critic
         self._eps = LinearEpsilonDecay(init_eps, min_eps, eps_decay)

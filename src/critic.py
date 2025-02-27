@@ -36,7 +36,9 @@ class Critic(ABC):
         return
 
     @abstractmethod
-    def optimize_policy_model(self, batch: dict, update_target: bool = False, monitor_state: bool = False, rewards = None):
+    def optimize_policy_model(
+        self, batch: dict, update_target: bool = False, monitor_state: bool = False, rewards=None
+    ):
         return
 
 
@@ -75,16 +77,16 @@ class QTable(QCritic):
     """Q-Table for critic in MDP"""
 
     def __init__(
-            self,
-            observation_space,
-            action_space,
-            dir_name: str = None,
-            q0: float = 0.0,
-            gamma: float = 0.99,
-            lr: float = 0.01,
-            on_policy: bool = False,
-            env_name: str = None,
-            **kwargs,
+        self,
+        observation_space,
+        action_space,
+        dir_name: str = None,
+        q0: float = 0.0,
+        gamma: float = 0.99,
+        lr: float = 0.01,
+        on_policy: bool = False,
+        env_name: str = None,
+        **kwargs,
     ):
         QCritic.__init__(self, q0, gamma, lr, on_policy)
         self._n_states = observation_space.n
@@ -169,15 +171,15 @@ class MonQCritic(Critic):
     """Dictionary Q for the critic in Monitored MDP"""
 
     def __init__(
-            self,
-            env_name: str,
-            q0=0.0,
-            gamma=0.99,
-            lr=0.01,
-            on_policy=False,
-            strategy: str = "reward_model",
-            unseen_r_value: float = 0.0,
-            **kwargs,
+        self,
+        env_name: str,
+        q0=0.0,
+        gamma=0.99,
+        lr=0.01,
+        on_policy=False,
+        strategy: str = "reward_model",
+        unseen_r_value: float = 0.0,
+        **kwargs,
     ):
         self._env_name = env_name
         self._q0 = q0
@@ -258,23 +260,23 @@ class MonQCritic(Critic):
 
 class MonQNet(MonQCritic):
     def __init__(
-            self,
-            env_name: str,
-            observation_space,
-            action_space,
-            kernel_size_0: int,
-            kernel_size_1: int,
-            stride_0: int,
-            stride_1: int,
-            device: str,
-            q0=0.0,
-            gamma=0.99,
-            lr=0.01,
-            on_policy=False,
-            strategy: str = "reward_model",
-            unseen_r_value: float = 0.0,
-            dir_name: str = None,
-            **kwargs,
+        self,
+        env_name: str,
+        observation_space,
+        action_space,
+        kernel_size_0: int,
+        kernel_size_1: int,
+        stride_0: int,
+        stride_1: int,
+        device: str,
+        q0=0.0,
+        gamma=0.99,
+        lr=0.01,
+        on_policy=False,
+        strategy: str = "reward_model",
+        unseen_r_value: float = 0.0,
+        dir_name: str = None,
+        **kwargs,
     ):
         MonQCritic.__init__(self, env_name, q0, gamma, lr, on_policy, strategy=strategy, unseen_r_value=unseen_r_value)
         self._n_actions = action_space["mdp"].n
@@ -320,19 +322,27 @@ class MonQNet(MonQCritic):
 
 class MonQCNN(MonQNet):
     def __init__(
-            self,
-            env_name: str,
-            observation_space,
-            action_space,
-            kernel_size_0: int,
-            kernel_size_1: int,
-            stride_0: int,
-            stride_1: int,
-            device: str,
-            **kwargs,
+        self,
+        env_name: str,
+        observation_space,
+        action_space,
+        kernel_size_0: int,
+        kernel_size_1: int,
+        stride_0: int,
+        stride_1: int,
+        device: str,
+        **kwargs,
     ):
         super().__init__(
-            env_name, observation_space, action_space, kernel_size_0, kernel_size_1, stride_0, stride_1, device, **kwargs,
+            env_name,
+            observation_space,
+            action_space,
+            kernel_size_0,
+            kernel_size_1,
+            stride_0,
+            stride_1,
+            device,
+            **kwargs,
         )
         self._kernel_size_0 = kernel_size_0
         self._kernel_size_1 = kernel_size_1
@@ -385,7 +395,9 @@ class MonQCNN(MonQNet):
         return q_state[action]
 
     # optimize the Q-network once
-    def optimize_policy_model(self, batch: dict, update_target: bool = False, monitor_state: bool = False, rewards = None):
+    def optimize_policy_model(
+        self, batch: dict, update_target: bool = False, monitor_state: bool = False, rewards=None
+    ):
         real_idx = batch["real_reward_idx"]
         if rewards is None:
             if self._strategy == "reward_model":
@@ -394,7 +406,9 @@ class MonQCNN(MonQNet):
                     # mdp_rewards = self._r_model._network(batch["mdp_obs"]).gather(1, batch["mdp_action"])
                     mdp_rewards = self._r_model(batch["mdp_obs"]).gather(1, batch["mdp_action"])
             elif self._strategy == "zero_reward":
-                mdp_rewards = self._unseen_r_value * torch.ones_like(batch["mdp_reward"], dtype=torch.float, device=self._device)
+                mdp_rewards = self._unseen_r_value * torch.ones_like(
+                    batch["mdp_reward"], dtype=torch.float, device=self._device
+                )
                 mdp_rewards[real_idx] = batch["mdp_reward"][real_idx]
                 reward_loss = 0
             elif self._strategy == "ignore":
@@ -408,7 +422,9 @@ class MonQCNN(MonQNet):
         mon_rewards = batch["mon_reward"][real_idx] if self._strategy == "ignore" else batch["mon_reward"]
         combined_reward = mdp_rewards + mon_rewards
         if self._strategy == "ignore":
-            combined_action = batch["mdp_action"][real_idx] + self._action_space["mdp"].n * batch["mon_action"][real_idx]
+            combined_action = (
+                batch["mdp_action"][real_idx] + self._action_space["mdp"].n * batch["mon_action"][real_idx]
+            )
         else:
             combined_action = batch["mdp_action"] + self._action_space["mdp"].n * batch["mon_action"]
 
@@ -418,8 +434,14 @@ class MonQCNN(MonQNet):
         next_q_values = torch.zeros(mdp_obs.shape[0], device=self._device)
 
         non_final = batch["non_final_mask"][real_idx] if self._strategy == "ignore" else batch["non_final_mask"]
-        non_mdp = batch["non_final_next_states"][real_idx] if self._strategy == "ignore" else batch["non_final_next_states"]
-        non_mon = batch["non_final_next_monitor_states"][real_idx] if self._strategy == "ignore" else batch["non_final_next_monitor_states"]
+        non_mdp = (
+            batch["non_final_next_states"][real_idx] if self._strategy == "ignore" else batch["non_final_next_states"]
+        )
+        non_mon = (
+            batch["non_final_next_monitor_states"][real_idx]
+            if self._strategy == "ignore"
+            else batch["non_final_next_monitor_states"]
+        )
         with torch.no_grad():
             next_q_values[non_final] = (
                 self._target_network.forward(non_mdp, non_mon if monitor_state else None).max(1).values
@@ -438,7 +460,7 @@ class MonQCNN(MonQNet):
             policy_net_state_dict = self._q_network.model.state_dict()
             for key in policy_net_state_dict:
                 target_net_state_dict[key] = policy_net_state_dict[key] * self._tau + target_net_state_dict[key] * (
-                        1 - self._tau
+                    1 - self._tau
                 )
             self._target_network.model.load_state_dict(target_net_state_dict)
 
@@ -472,7 +494,6 @@ class MonQCNN(MonQNet):
             else:
                 raise NotImplementedError
 
-
     def report(self):
         NotImplemented
 
@@ -485,10 +506,27 @@ class MonQCNN(MonQNet):
 
 class MonRoomCNN(MonQCNN):
     def __init__(
-            self, env_name, observation_space, action_space, kernel_size_0, kernel_size_1, stride_0, stride_1, device, **kwargs,
+        self,
+        env_name,
+        observation_space,
+        action_space,
+        kernel_size_0,
+        kernel_size_1,
+        stride_0,
+        stride_1,
+        device,
+        **kwargs,
     ):
         super().__init__(
-            env_name, observation_space, action_space, kernel_size_0, kernel_size_1, stride_0, stride_1, device, **kwargs,
+            env_name,
+            observation_space,
+            action_space,
+            kernel_size_0,
+            kernel_size_1,
+            stride_0,
+            stride_1,
+            device,
+            **kwargs,
         )
 
     def reset(self):
@@ -526,7 +564,9 @@ class MonRoomCNN(MonQCNN):
             return q_state
         return q_state[action]
 
-    def optimize_policy_model(self, batch: dict, update_target: bool = False, monitor_state: bool = False, rewards = None):
+    def optimize_policy_model(
+        self, batch: dict, update_target: bool = False, monitor_state: bool = False, rewards=None
+    ):
         return super().optimize_policy_model(batch, update_target, monitor_state, rewards)
 
     def save(self, seed: int = 1, file_name: str = None):

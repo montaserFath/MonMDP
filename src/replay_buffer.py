@@ -87,19 +87,27 @@ class OldReplayBuffer:
 
 class MonReplayBuffer(ReplayBuffer):
     def __init__(
-            self,
-            buffer_size: int,
-            observation_space: gym.spaces.Space,
-            action_space: gym.spaces.Space,
-            device: Union[torch.device, str] = "auto",
-            n_envs: int = 1,
-            optimize_memory_usage: bool = False,
-            handle_timeout_termination: bool = True,
+        self,
+        buffer_size: int,
+        observation_space: gym.spaces.Space,
+        action_space: gym.spaces.Space,
+        device: Union[torch.device, str] = "auto",
+        n_envs: int = 1,
+        optimize_memory_usage: bool = False,
+        handle_timeout_termination: bool = True,
     ):
         """
         Replay buffer for Monitor MDP
         """
-        super().__init__(buffer_size, observation_space, action_space, device, n_envs, optimize_memory_usage, handle_timeout_termination)
+        super().__init__(
+            buffer_size,
+            observation_space,
+            action_space,
+            device,
+            n_envs,
+            optimize_memory_usage,
+            handle_timeout_termination,
+        )
         self.mdp_obs_size = observation_space["mdp"].shape
         self.mdp_n_actions = action_space["mdp"].n
         self.buffer_size = buffer_size
@@ -130,7 +138,9 @@ class MonReplayBuffer(ReplayBuffer):
     # TODO: Add different sampling methods priority
     def sample(self, batch_size: int, env: Optional[VecNormalize] = None) -> ReplayBufferSamples:
         if self.full:
-            batch_inds = (np.random.randint(1, self.buffer_size, size=batch_size) + self.buffer_current_size) % self.buffer_size
+            batch_inds = (
+                np.random.randint(1, self.buffer_size, size=batch_size) + self.buffer_current_size
+            ) % self.buffer_size
         else:
             batch_inds = np.random.randint(0, self.buffer_current_size, size=batch_size)
 
@@ -139,7 +149,7 @@ class MonReplayBuffer(ReplayBuffer):
             self.actions[batch_inds],
             {"mdp": self.mdp_next_observations[batch_inds], "monitor": self.mon_next_observations[batch_inds]},
             (self.dones[batch_inds] * (1 - self.timeouts[batch_inds])).reshape(-1, 1),
-            {"mdp": self.rewards[batch_inds, 0], "monitor": self.rewards[batch_inds, 1]}
+            {"mdp": self.rewards[batch_inds, 0], "monitor": self.rewards[batch_inds, 1]},
         )
         return ReplayBufferSamples(*tuple(map(self.to_torch, data)))
 
@@ -157,7 +167,9 @@ class MonReplayBuffer(ReplayBuffer):
         self.rewards[self.buffer_current_size] = [reward["mdp"], reward["monitor"]]
         self.dones[self.buffer_current_size] = done
         if self.handle_timeout_termination:
-            self.timeouts[self.buffer_current_size] = np.array([info.get("TimeLimit.truncated", False) for info in infos])
+            self.timeouts[self.buffer_current_size] = np.array(
+                [info.get("TimeLimit.truncated", False) for info in infos]
+            )
 
         self.buffer_current_size += 1
         if self.buffer_current_size == self.buffer_size:
@@ -187,7 +199,6 @@ class MonReplayBuffer(ReplayBuffer):
 
 
 class TorchReplayMemory:
-
     def __init__(self, max_size: int, device: str = None):
         self.max_size = max_size
         self.device = device
@@ -232,15 +243,21 @@ class TorchReplayMemory:
         real_reward_idx = [i for i, x in enumerate(real_reward_mask) if x]
         non_final_mask = torch.tensor(tuple(map(lambda s: s["mdp"] is not None, batch.next_obs)), dtype=torch.bool)
         non_final_next_states = torch.tensor(
-            np.array([s["mdp"] for s in batch.next_obs if s["mdp"] is not None]), device=device, dtype=torch.float,
+            np.array([s["mdp"] for s in batch.next_obs if s["mdp"] is not None]),
+            device=device,
+            dtype=torch.float,
         )
 
         non_final_next_monitor_states = torch.tensor(
-            np.array([s["monitor"] for s in batch.next_obs if s["monitor"] is not None]), device=device, dtype=torch.float,
+            np.array([s["monitor"] for s in batch.next_obs if s["monitor"] is not None]),
+            device=device,
+            dtype=torch.float,
         )
 
         mdp_obs = torch.tensor(np.array([state["mdp"] for state in batch.obs]), device=device, dtype=torch.float)
-        mon_obs = torch.tensor(np.array([state["monitor"] for state in batch.obs]).astype(np.float32), device=device, dtype=torch.float)
+        mon_obs = torch.tensor(
+            np.array([state["monitor"] for state in batch.obs]).astype(np.float32), device=device, dtype=torch.float
+        )
 
         mdp_reward = torch.tensor(np.array([r["mdp"] for r in batch.reward]), device=device, dtype=torch.float)
         mon_reward = torch.tensor(np.array([r["monitor"] for r in batch.reward]), device=device, dtype=torch.float)

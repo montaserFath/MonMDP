@@ -4,7 +4,6 @@ import time
 import os
 import gymnasium as gym
 import numpy as np
-import wandb
 from src.actor import Actor
 from src.critic import Critic
 from src.utils import set_rng_seed, cantor_pairing
@@ -42,7 +41,6 @@ class Experiment:
         self._rng_seed = rng_seed
         self._log_dir = log_dir
         self._save_train_log = save_log
-        self._visit_table = None
         self._checkpoint_count = 0
         self._start_train_timestep = start_train_timestep  # start training after reaching number of timesteps
         self._batch_size = batch_size  # mini batch size number of sample per batch
@@ -64,7 +62,6 @@ class Experiment:
                 self._actor.eval()
                 episode_return = self.test()
                 self._actor.train()
-                # wandb.log({"test/environment_reward": episode_return.mean()}, step=episode, commit=False)
 
             ep_seed = cantor_pairing(self._rng_seed, episode)
             obs, _ = self._env.reset(seed=ep_seed)
@@ -89,14 +86,10 @@ class Experiment:
             joint_reward[episode_timesteps] = ep_joint_reward
             total_timesteps += episode_timesteps
             episode += 1
-            # wandb.log(
-            #     {"train/environment_reward": episode_return, "train/loss_mdp": episode_loss}, step=episode, commit=True
-            # )
         if self._save_train_log:
             np.save(self._log_dir + "/training_joint_reward_{}.npy".format(self._rng_seed), joint_reward)
         # save Q-table as numpy array
         self._critic.save(seed=self._rng_seed)
-        # wandb.finish()
         self._env.close()
 
     def test(self, render: bool = False) -> dict:
@@ -127,17 +120,6 @@ class Experiment:
 
 class MonExperiment(Experiment):
     """Run experiments for training and testing in Monitor MDP env"""
-
-    def reset_visit_table(self):
-        if isinstance(self._env.observation_space["mdp"], gym.spaces.Discrete):
-            mdp_obs_n = self._env.observation_space["mdp"].n
-        else:
-            mdp_obs_n = 81  # fix this
-        mdp_action_n = self._env.action_space["mdp"].n
-        mon_obs_n, mon_action_n = self._env.observation_space["monitor"].n, self._env.action_space["monitor"].n
-        self._visit_table = np.zeros((mdp_obs_n * mon_obs_n, mdp_action_n * mon_action_n))
-        isinstance(self._env.observation_space["mdp"], gym.spaces.Discrete)
-
     def train(self, checkpoint: bool = True):
         """Train an algorithm in Monitor MDP env, logs and save results"""
         # start_time = time.time()
@@ -151,7 +133,6 @@ class MonExperiment(Experiment):
         total_timesteps = 0
         episode = 0
         # reset visit table
-        # self.reset_visit_table()
         while total_timesteps < self._training_timesteps:
             if total_timesteps > self._testing_frequency * self._checkpoint_count:
                 # eval_time = time.time()
@@ -178,8 +159,6 @@ class MonExperiment(Experiment):
                     "environment_reward": episode_return_true,
                     "received_reward": episode_return_proxy,
                     "monitor_reward": episode_return_cost,
-                    # "monitor_action": np.mean(ep_monitor_action),
-                    # "number_of_timesteps": np.mean(ep_length),
                     "joint_reward": episode_return_true + episode_return_cost,
                 }
                 self.log_save_logs(train=False, logs=logs, episode=episode, save_logs=True)
@@ -199,19 +178,13 @@ class MonExperiment(Experiment):
             next_action = None
             agent_location_ep = []
             ep_joint_reward = []
-            # agent_pos, grid_size = (0, 0), (9, 9)  # TODO bug if (3, 3) fix this
             current_device = self._critic.get_device()
             while True:
                 episode_timesteps += 1
                 agent_location_ep.append(self._env.get_agent_pos())
                 action = self._actor(obs) if next_action is None else next_action
-                # self._visit_table[
-                #     self.get_obs_from_agent_pos(self, grid_size, agent_pos), get_action_ind(action)
-                # ] += 1  # fix for stateMonMDP
 
                 next_obs, reward, term, trunc, info = self._env.step(action)
-                # agent_pos = info["agent_pos"]
-                # grid_size = info["grid"].shape
                 if self.buffer is not None:
                     self.buffer.push(obs, action, {"mdp": None, "monitor": None} if term else next_obs, reward)
 
@@ -246,7 +219,9 @@ class MonExperiment(Experiment):
                 for epoch in range(self._n_itr_episode):
                     batch = self.buffer.process_batch(self.buffer.sample(self._batch_size), device=current_device)
                     step_loss_mdp, r_model_loss = self._critic.optimize_policy_model(
-                        batch, epoch % self._update_target_freq == 0, monitor_state=isinstance(self._critic, MonRoomCNN),
+                        batch,
+                        epoch % self._update_target_freq == 0,
+                        monitor_state=isinstance(self._critic, MonRoomCNN),
                     )
                     episode_reward_model_loss += r_model_loss
                 # self._time_file.write("Training time for episode {} = {}\n".format(episode, time.time() - train_timer))
@@ -270,16 +245,21 @@ class MonExperiment(Experiment):
         #     self.buffer.save(log_dir=self._log_dir, seed=self._rng_seed)
         # np.save(self._log_dir + "/agent_locations_{}.npy".format(self._rng_seed), np.array(agent_locations, dtype=np.int8))
         temp_agent_location = np.load(self._log_dir + "/agent_locations_{}.npy".format(self._rng_seed))
-        np.save(self._log_dir + "/agent_locations_{}.npy".format(self._rng_seed), np.concatenate(
-            (temp_agent_location, agent_locations), 0, dtype=np.int8,
-        ))
+        np.save(
+            self._log_dir + "/agent_locations_{}.npy".format(self._rng_seed),
+            np.concatenate(
+                (temp_agent_location, agent_locations),
+                0,
+                dtype=np.int8,
+            ),
+        )
         agent_locations = []
         self._critic.save(seed=self._rng_seed)
         if self._save_train_log:
-            # np.save(self._log_dir + "/visit_table_{}.npy".format(self._rng_seed), self._visit_table)
             # np.save(self._log_dir + "/training_joint_reward_{}.npy".format(self._rng_seed), joint_reward)
             tmp_joint_reward = np.load(
-                self._log_dir + "/training_joint_reward_{}.npy".format(self._rng_seed), allow_pickle=True,
+                self._log_dir + "/training_joint_reward_{}.npy".format(self._rng_seed),
+                allow_pickle=True,
             )[()]
             tmp_joint_reward.update(joint_reward)
             np.save(self._log_dir + "/training_joint_reward_{}.npy".format(self._rng_seed), tmp_joint_reward)
@@ -287,7 +267,6 @@ class MonExperiment(Experiment):
                 self._log_dir + "/evaluation_joint_reward_{}.npy".format(self._rng_seed),
                 eval_joint_reward,
             )
-        # wandb.finish()
         self._env.close()
         # self._time_file.write("Experiment time = {}".format(time.time() - start_time))
         # self._time_file.close()
@@ -377,24 +356,31 @@ class MonExperiment(Experiment):
         os.makedirs(checkpoint_dir, exist_ok=True)
         self._critic.save(file_name="checkpoints_{}/".format(self._checkpoint_count), seed=self._rng_seed)
         self._critic.save(seed=self._rng_seed)  # save critic
-        # np.save(checkpoint_dir + "/visit_table_{}.npy".format(self._rng_seed), self._visit_table)
-        # np.save(self._log_dir + "/visit_table_{}.npy".format(self._rng_seed), self._visit_table)
         if self._checkpoint_count == 0:
             np.save(self._log_dir + "/training_joint_reward_{}.npy".format(self._rng_seed), joint_reward)
-            np.save(self._log_dir + "/agent_locations_{}.npy".format(self._rng_seed),
-                    np.array(agent_locations, dtype=np.int8))
+            np.save(
+                self._log_dir + "/agent_locations_{}.npy".format(self._rng_seed),
+                np.array(agent_locations, dtype=np.int8),
+            )
         else:
             tmp_joint_reward = np.load(
-                self._log_dir + "/training_joint_reward_{}.npy".format(self._rng_seed), allow_pickle=True,
+                self._log_dir + "/training_joint_reward_{}.npy".format(self._rng_seed),
+                allow_pickle=True,
             )[()]
             tmp_joint_reward.update(joint_reward)
             np.save(self._log_dir + "/training_joint_reward_{}.npy".format(self._rng_seed), tmp_joint_reward)
             temp_agent_location = np.load(self._log_dir + "/agent_locations_{}.npy".format(self._rng_seed))
-            np.save(self._log_dir + "/agent_locations_{}.npy".format(self._rng_seed), np.concatenate(
-                (temp_agent_location, agent_locations), 0, dtype=np.int8,
-            ))
+            np.save(
+                self._log_dir + "/agent_locations_{}.npy".format(self._rng_seed),
+                np.concatenate(
+                    (temp_agent_location, agent_locations),
+                    0,
+                    dtype=np.int8,
+                ),
+            )
         np.save(
-            self._log_dir + "/evaluation_joint_reward_{}.npy".format(self._rng_seed), eval_joint_reward,
+            self._log_dir + "/evaluation_joint_reward_{}.npy".format(self._rng_seed),
+            eval_joint_reward,
         )
 
         # if self.buffer is not None and self._checkpoint_count < 4:
@@ -408,6 +394,5 @@ class MonExperiment(Experiment):
     def log_save_logs(self, train: bool, logs: dict, episode: int, save_logs: bool) -> None:
         """log and save logs to wand"""
         for key, value in logs.items():
-            # wandb.log({"{}/{}".format("train" if train else "test", key): value}, step=episode, commit=True)
             if save_logs:
                 np.save(self._log_dir + "/{}_{}.npy".format(key, self._rng_seed), value)

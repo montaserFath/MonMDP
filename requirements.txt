@@ -3,7 +3,6 @@ miniworld
 pprintpp
 opencv-python
 box2d-py
-wandb~=0.15.0
 numpy~=1.26.0
 tqdm~=4.65.0
 hydra-core
