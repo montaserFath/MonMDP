@@ -35,3 +35,15 @@ def sum_ep_timesteps(ep_timesteps: np.ndarray) -> np.ndarray:
         sum_timesteps[i] = last_length + timestep
         last_length = sum_timesteps[i]
     return sum_timesteps
+
+
+def ind_to_action(action_ind: int, n_mdp_actions: int = 4) -> (int, int):
+    """Transform integer index to MDP and Monitor actions"""
+    mon_action, mdp_action = action_ind // n_mdp_actions, action_ind % n_mdp_actions
+    return mdp_action, mon_action
+
+
+def get_action_ind(action: dict, n_mdp_actions: int = 4) -> int:
+    """convert a dictionary of MDP and Monitor actions to an index"""
+    mdp_action, mon_action = action["mdp"], action["monitor"]
+    return mon_action * n_mdp_actions + mdp_action

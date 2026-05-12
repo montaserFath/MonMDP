@@ -156,4 +156,4 @@ def train_k_of_n(k: int, n: int, n_iterations: int, batch_size: int, device: str
 if __name__ == "__main__":
     for k in [1, 5, 10]:
         for seed in range(10):
-            train_k_of_n(k, 10, int(5e4), BATCH_SIZE, device="mps:0", seed=seed + 20)
+            train_k_of_n(k, 10, int(5e4), BATCH_SIZE, device="mps:0", seed=seed)

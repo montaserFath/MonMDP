@@ -11,8 +11,8 @@ def load_replay_buffer(grid_size: (int, int), window_size: int, dryness: float, 
     r_lr = 0.0001
 
     main_dir = (
-        f"../general_models/Plants/reward_model/{grid_size[0]}_{grid_size[1]}_channel/dry_{dryness}/room/"
-        + f"window_{window_size}/q_lr_{q_lr}/reward_lr_{r_lr}"
+        f"../general_models/Plants/reward_model/{grid_size[0]}_{grid_size[1]}_channel/dry_{dryness}/3_room/"
+        + f"window_{window_size}/eps_decay_1e-07/q_lr_{q_lr}/reward_lr_{r_lr}"
     )
     replay_buffer = TorchReplayMemory(int(1e6))
     replay_buffer.load(main_dir + "/checkpoints_3/", seed)

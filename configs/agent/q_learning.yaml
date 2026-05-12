@@ -16,7 +16,7 @@ critic:
     kernel_size_1: 3
     stride_0: 1
     stride_1: 1
-    flatten: True
+    # flatten: True
     device: "cuda:0" #"mps:0"
   device: "cuda:0" #"mps:0"
 
