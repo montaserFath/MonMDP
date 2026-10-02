@@ -17,7 +17,8 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from src.plasticity import dormant_units_proportion, effective_rank, percent_active_parameters, weight_norm, get_relu_features  # noqa: E402
+from src.plasticity import (dormant_units_by_tau, effective_rank, get_relu_features, gradient_norm,  # noqa: E402
+                            percent_active_parameters, srank, unit_sign_entropy, weight_norm)
 
 
 class MnistCNN(nn.Module):
@@ -58,16 +59,24 @@ def evaluate(model, loader, device) -> tuple:
     return loss / n, 100 * correct / n
 
 
-def plasticity_metrics(model, probe) -> dict:
-    dormant, per_layer = dormant_units_proportion(model, probe)
+def plasticity_metrics(model, probe, probe_y, taus=(0.0, 0.025, 0.1)) -> dict:
+    """`dormant_pct` / `dormant_pct_layer{i}` are always tau=0.025 (kept for backward compatibility)."""
+    by_tau = dormant_units_by_tau(model, probe, tuple(sorted(set(taus) | {0.025})))
+    dormant, per_layer = by_tau[0.025]
     last_hidden = get_relu_features(model, probe)[-1]
+    sign_entropy, sign_entropy_layers = unit_sign_entropy(model, probe)
     metrics = {
         "dormant_pct": dormant,
         "active_params_pct": percent_active_parameters(model, 1e-3),
         "effective_rank": effective_rank(last_hidden),
+        "srank": srank(last_hidden),
+        "unit_sign_entropy": sign_entropy,
+        "grad_norm": gradient_norm(model, probe, probe_y),
         "weight_norm": weight_norm(model),
     }
+    metrics.update({f"dormant_pct_tau_{tau:g}": by_tau[tau][0] for tau in taus})
     metrics.update({f"dormant_pct_layer{i}": v for i, v in enumerate(per_layer)})
+    metrics.update({f"unit_sign_entropy_layer{i}": v for i, v in enumerate(sign_entropy_layers)})
     return metrics
 
 
@@ -100,6 +109,7 @@ def main():
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--data_dir", default="data")
     parser.add_argument("--out_dir", default="results/mnist")
+    parser.add_argument("--taus", type=float, nargs="+", default=[0.0, 0.025, 0.1], help="dormant thresholds to log")
     args = parser.parse_args()
 
     torch.manual_seed(args.seed)
@@ -120,6 +130,7 @@ def main():
     test_loader = torch.utils.data.DataLoader(test_set, batch_size=1000)
     # Fixed probe batch (from the test set) for plasticity metrics
     probe = torch.stack([test_set[i][0] for i in range(1024)]).to(device)
+    probe_y = torch.tensor([test_set[i][1] for i in range(1024)]).to(device)
 
     model = MnistCNN().to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=args.lr)
@@ -130,7 +141,7 @@ def main():
         train_loss, train_acc = evaluate(model, train_eval_loader, device)
         test_loss, test_acc = evaluate(model, test_loader, device)
         row = {"epoch": epoch, "train_loss": train_loss, "train_acc": train_acc,
-               "test_loss": test_loss, "test_acc": test_acc, **plasticity_metrics(model, probe)}
+               "test_loss": test_loss, "test_acc": test_acc, **plasticity_metrics(model, probe, probe_y, tuple(args.taus))}
         rows.append(row)
         print(" | ".join(f"{k}={v:.4f}" if isinstance(v, float) else f"{k}={v}" for k, v in row.items()
                          if not k.startswith("dormant_pct_layer")), flush=True)
