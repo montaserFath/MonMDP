@@ -15,4 +15,5 @@ omegaconf~=2.3.0
 matplotlib~=3.8.0
 seaborn~=0.13.1
 scipy~=1.11.2
-torch
+torchtorchvision
+pandas
