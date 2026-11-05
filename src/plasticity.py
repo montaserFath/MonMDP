@@ -71,11 +71,31 @@ def dormant_units_proportion(model: nn.Module, x: torch.Tensor, tau: float = 0.0
     return dormant_units_by_tau(model, x, (tau,))[tau]
 
 
-def srank(features: torch.Tensor, delta: float = 0.01) -> int:
+def _singular_values(features: torch.Tensor) -> torch.Tensor:
+    """Singular values of an (N, D) feature matrix; NaN-filled if the SVD fails.
+
+    All-zero (dead) columns are dropped first: they change nothing but made the CPU SVD return NaN on
+    highly degenerate matrices (e.g. 99% dormant layers). Retries in float64 if the result is not finite.
+    """
+    f = features.flatten(1).float().cpu()  # svd is not implemented on MPS
+    f = f[:, f.abs().sum(0) > 0]
+    if f.numel() == 0:
+        return torch.zeros(1)
+    s = torch.linalg.svdvals(f)
+    if not torch.isfinite(s).all():
+        s = torch.linalg.svdvals(f.double()).float()
+    return s if torch.isfinite(s).all() else torch.full_like(s, float("nan"))
+
+
+def srank(features: torch.Tensor, delta: float = 0.01) -> float:
     """Stable rank of Kumar et al. (2021): smallest k whose top-k singular values hold >= (1 - delta)
-    of the total singular-value sum of the (N, D) feature matrix."""
-    s = torch.linalg.svdvals(features.flatten(1).float().cpu())  # svd is not implemented on MPS
-    cum = torch.cumsum(s, 0) / s.sum().clamp_min(1e-12)
+    of the total singular-value sum of the (N, D) feature matrix. 0 for an all-zero matrix, NaN if the SVD fails."""
+    s = _singular_values(features)
+    if torch.isnan(s).any():
+        return float("nan")
+    if s.sum() == 0:
+        return 0
+    cum = torch.cumsum(s, 0) / s.sum()
     return int((cum < 1 - delta).sum().item()) + 1
 
 
@@ -122,8 +142,11 @@ def percent_active_parameters(model: nn.Module, threshold: float = 1e-3) -> floa
 
 def effective_rank(features: torch.Tensor, eps: float = 1e-12) -> float:
     """Entropy-based effective rank (Roy & Vetterli 2007) of a (N, D) feature matrix."""
-    features = features.flatten(1).float().cpu()  # svd is not implemented on MPS
-    s = torch.linalg.svdvals(features)
+    s = _singular_values(features)
+    if torch.isnan(s).any():
+        return float("nan")
+    if s.sum() == 0:
+        return 0.0  # all-zero features
     p = s / (s.sum() + eps)
     return torch.exp(-(p * torch.log(p + eps)).sum()).item()
 
