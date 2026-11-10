@@ -149,7 +149,7 @@ class MonExperiment(Experiment):
                     ep_length,
                     ep_discount_reward,
                     _,
-                ) = self.test(save_results=True)
+                ) = self._test_paused(save_results=True)
                 eval_joint_reward.update({episode: ep_discount_reward})
                 episode_return_true = ep_return_true.mean()
                 episode_return_proxy = np.nanmean(ep_return_proxy)
@@ -270,6 +270,17 @@ class MonExperiment(Experiment):
         self._env.close()
         # self._time_file.write("Experiment time = {}".format(time.time() - start_time))
         # self._time_file.close()
+
+    def _test_paused(self, **kwargs):
+        """Evaluate without advancing a non-stationary reward schedule (no-op for a stationary env)."""
+        set_paused = getattr(self._env, "set_schedule_paused", None)
+        if set_paused is not None:
+            set_paused(True)
+        try:
+            return self.test(**kwargs)
+        finally:
+            if set_paused is not None:
+                set_paused(False)
 
     def test(self, render: bool = False, seed: int = 1, save_results: bool = False):
         """Evaluate an algorithm in Monitor MDP env, logs and save results"""
