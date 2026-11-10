@@ -2,13 +2,14 @@
 import gymnasium as gym
 import os
 import hydra
-from omegaconf import DictConfig
+from omegaconf import DictConfig, OmegaConf
 
 from src.actor import MonEpsilonGreedyOneAction
 from src.critic import MonQCNN, MonRoomCNN
 from src.experiment import MonExperiment
 from src.wrappers.env_wrappers import WallObs, WindowViewObs, MultiChannel
 from src.wrappers.monitor_wrappers import BinaryMonitor, RoomMonitor
+from src.wrappers.nonstationary_wrappers import RewardSchedule
 
 EVAL = False
 LOG_DIR = "models/9_9/Plants/reward_model/env_0.0/eps_1.0/q_lr_1.0/reward_lr_1.0/"
@@ -61,6 +62,17 @@ def run_monitor(cfg: DictConfig) -> None:
             env.action_space,
             dir_name=train_dir,
             **cfg.agent.critic,
+        )
+
+    ns_cfg = cfg.get("nonstationary")
+    if ns_cfg is not None and ns_cfg.enabled:  # change the reward every `period_timesteps` env steps
+        env = RewardSchedule(
+            env,
+            tables=OmegaConf.to_container(ns_cfg.tables, resolve=True),
+            period_timesteps=ns_cfg.period_timesteps,
+            order=ns_cfg.order,
+            vary_monitor_cost=ns_cfg.vary_monitor_cost,
+            seed=ns_cfg.seed,
         )
 
     actor = MonEpsilonGreedyOneAction(critic, train=not EVAL, **cfg.agent.actor)
