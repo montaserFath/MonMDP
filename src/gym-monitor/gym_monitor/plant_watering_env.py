@@ -6,6 +6,15 @@ import numpy as np
 import torch
 import pygame
 
+# water a dry plant / a fully watered plant / a cactus or "more plant" / an empty cell
+DEFAULT_REWARD_TABLE = {
+    "dry_plant": 1.0,
+    "half_dry_plant": 1.0,
+    "wet_plant": -1.0,
+    "new_plant": -1.0,
+    "empty_cell": -0.2,
+}
+
 
 class PlantsWateringEnv(gym.Env):
     metadata = {
@@ -38,6 +47,8 @@ class PlantsWateringEnv(gym.Env):
         self.max_episode_steps = max_episode_steps
         self.add_new_plants = add_new_plants
         self.add_more_plants = add_more_plants
+        # Reward values (changed through `set_new_reward_function`); defaults = the original stationary rewards
+        self.reward_table = dict(DEFAULT_REWARD_TABLE)
         if self.add_more_plants:
             if self.add_new_plants:
                 raise ValueError("Can not use add_new_plants and add_more_plants together")
@@ -204,19 +215,34 @@ class PlantsWateringEnv(gym.Env):
 
     def reward(self, action: int) -> float:
         """Get the timestep environment reward"""
+        table = self.reward_table
         if action == 4:  # Water
             if np.any(np.all(self._agent_pos == self._plants_pos, axis=1)):  # Water a plant
-                if self._grid[2, self._agent_pos[0], self._agent_pos[1]] > np.min(self.dryness_levels):
-                    return 1.0  # Water a dry plant
-                return -1.0  # Water a full watered plan
+                dryness = self._grid[2, self._agent_pos[0], self._agent_pos[1]]
+                if dryness > np.min(self.dryness_levels):
+                    if dryness >= np.max(self.dryness_levels) - 1e-9:
+                        return table["dry_plant"]  # Water a dry plant
+                    return table["half_dry_plant"]  # Water a half dry plant
+                return table["wet_plant"]  # Water a full watered plan
             if self.add_new_plants or self.add_more_plants:
                 pos = self._new_plants_pos if self.add_new_plants else np.concatenate(
                     (self._new_plants_pos, self._more_plants_pos), 0,
                 )
-                if np.any(np.all(self._agent_pos == pos, axis=1)):  # Water a new plant
-                    return -1.0
-            return -0.2  # Water an empty cell
+                if np.any(np.all(self._agent_pos == pos, axis=1)):  # Water a cactus / "more plant"
+                    return table["new_plant"]
+            return table["empty_cell"]  # Water an empty cell
         return 0.0
+
+    def set_new_reward_function(self, reward_table: Optional[dict] = None) -> None:
+        """Change the reward values mid-run (hook for non-stationary experiments).
+        Only the given keys are updated; unknown keys raise KeyError. Applies from the next step and does not
+        reset the episode.
+        """
+        if reward_table is not None:
+            unknown = set(reward_table) - set(self.reward_table)
+            if unknown:
+                raise KeyError(f"Unknown reward_table keys: {sorted(unknown)}")
+            self.reward_table = {**self.reward_table, **reward_table}
 
     def water_plant(self, plant_pos: list):
         """Water a plant by reducing the amount of dryness by dry_difference"""

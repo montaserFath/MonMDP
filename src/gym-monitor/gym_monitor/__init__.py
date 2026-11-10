@@ -1,1 +1,1 @@
-from gym_monitor.treasure_hunt import TreasureHunt
+from gym_monitor.plant_watering_env import PlantsWateringEnv
