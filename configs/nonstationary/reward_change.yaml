@@ -1,0 +1,31 @@
+# @package nonstationary
+# Change the reward every `period_timesteps` env steps (no episode notion). Use with: +nonstationary=reward_change
+# Each table: reward for watering a dry plant / half-dry plant / an empty cell (floor) / a wet plant, plus the monitor
+# reward. Rules: dry >= half_dry > 0 > empty_cell > wet and empty_cell <= monitor <= 0.
+# Table 1 is the original (stationary) env reward.
+enabled: True
+period_timesteps: 2000
+order: cycle            # cycle | random
+vary_monitor_cost: False  # False: monitor cost stays fixed (monitor.monitor_cost, 0.2); True: follow the `monitor` column
+seed: 0                 # seed of the schedule's own RNG (order: random)
+tables:
+  - {dry_plant: 1.00, half_dry_plant: 1.00, empty_cell: -0.20, wet_plant: -1.00, monitor: -0.20}
+  - {dry_plant: 1.00, half_dry_plant: 0.50, empty_cell: -0.20, wet_plant: -1.00, monitor: -0.20}
+  - {dry_plant: 0.50, half_dry_plant: 0.50, empty_cell: -0.10, wet_plant: -0.50, monitor: -0.10}
+  - {dry_plant: 0.75, half_dry_plant: 0.10, empty_cell: -0.15, wet_plant: -0.75, monitor: -0.05}
+  - {dry_plant: 0.90, half_dry_plant: 0.35, empty_cell: -0.10, wet_plant: -0.45, monitor: -0.10}
+  - {dry_plant: 1.00, half_dry_plant: 0.20, empty_cell: -0.20, wet_plant: -1.00, monitor: -0.10}
+  - {dry_plant: 1.00, half_dry_plant: 0.80, empty_cell: -0.20, wet_plant: -1.00, monitor: -0.20}
+  - {dry_plant: 0.60, half_dry_plant: 0.60, empty_cell: -0.30, wet_plant: -0.90, monitor: -0.15}
+  - {dry_plant: 0.40, half_dry_plant: 0.15, empty_cell: -0.05, wet_plant: -0.80, monitor: -0.02}
+  - {dry_plant: 0.80, half_dry_plant: 0.40, empty_cell: -0.40, wet_plant: -0.60, monitor: -0.40}
+  - {dry_plant: 1.00, half_dry_plant: 0.50, empty_cell: -0.50, wet_plant: -0.60, monitor: -0.25}
+  - {dry_plant: 0.30, half_dry_plant: 0.10, empty_cell: -0.02, wet_plant: -0.30, monitor: -0.01}
+  - {dry_plant: 0.70, half_dry_plant: 0.70, empty_cell: -0.10, wet_plant: -0.90, monitor: -0.10}
+  - {dry_plant: 1.00, half_dry_plant: 0.05, empty_cell: -0.10, wet_plant: -0.50, monitor: -0.05}
+  - {dry_plant: 0.25, half_dry_plant: 0.20, empty_cell: -0.05, wet_plant: -0.25, monitor: -0.05}
+  - {dry_plant: 0.85, half_dry_plant: 0.45, empty_cell: -0.25, wet_plant: -0.95, monitor: -0.25}
+  - {dry_plant: 0.55, half_dry_plant: 0.10, empty_cell: -0.35, wet_plant: -0.70, monitor: -0.10}
+  - {dry_plant: 0.95, half_dry_plant: 0.60, empty_cell: -0.05, wet_plant: -0.15, monitor: -0.05}
+  - {dry_plant: 0.45, half_dry_plant: 0.45, empty_cell: -0.15, wet_plant: -0.40, monitor: -0.15}
+  - {dry_plant: 1.00, half_dry_plant: 0.30, empty_cell: -0.10, wet_plant: -0.80, monitor: -0.10}
