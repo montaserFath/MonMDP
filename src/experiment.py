@@ -9,6 +9,7 @@ from src.critic import Critic
 from src.utils import set_rng_seed, cantor_pairing
 from src.replay_buffer import TorchReplayMemory
 from src.critic import MonRoomCNN
+from src.online_errors import OnlineErrorLogger
 
 
 class Experiment:
@@ -31,8 +32,13 @@ class Experiment:
         batch_size: int = 128,
         n_itr_episode: int = 5000,
         update_target_freq: int = 1000,
+        error_log_frequency: int = 0,
+        error_log_samples: int = 2048,
     ):
         self._env = env
+        # log reward-model error and TD error every `error_log_frequency` env steps (0 = off), see src/online_errors.py
+        self._error_log_frequency = int(error_log_frequency)
+        self._error_log_samples = int(error_log_samples)
         self._actor = actor
         self._critic = critic
         self._training_timesteps = training_timesteps
@@ -132,6 +138,11 @@ class MonExperiment(Experiment):
         eval_count = 0
         total_timesteps = 0
         episode = 0
+        error_logger = None
+        if self._error_log_frequency > 0 and self.buffer is not None:
+            error_logger = OnlineErrorLogger(
+                self._log_dir, self._rng_seed, self._error_log_frequency, self._error_log_samples
+            )
         # reset visit table
         while total_timesteps < self._training_timesteps:
             if total_timesteps > self._testing_frequency * self._checkpoint_count:
@@ -152,7 +163,8 @@ class MonExperiment(Experiment):
                 ) = self._test_paused(save_results=True)
                 eval_joint_reward.update({episode: ep_discount_reward})
                 episode_return_true = ep_return_true.mean()
-                episode_return_proxy = np.nanmean(ep_return_proxy)
+                # NaN when no reward was observed in any evaluation episode (nanmean of nothing would warn)
+                episode_return_proxy = np.nan if np.isnan(ep_return_proxy).all() else np.nanmean(ep_return_proxy)
                 episode_return_cost = ep_return_cost.mean()
                 self._actor.train()
                 logs = {
@@ -181,7 +193,7 @@ class MonExperiment(Experiment):
             current_device = self._critic.get_device()
             while True:
                 episode_timesteps += 1
-                agent_location_ep.append(self._env.get_agent_pos())
+                agent_location_ep.append(self._env.unwrapped.get_agent_pos())
                 action = self._actor(obs) if next_action is None else next_action
 
                 next_obs, reward, term, trunc, info = self._env.step(action)
@@ -228,6 +240,8 @@ class MonExperiment(Experiment):
             agent_locations.append(agent_location_ep)
             joint_reward.update({episode: ep_joint_reward})
             total_timesteps += episode_timesteps
+            if error_logger is not None:
+                error_logger.maybe_log(total_timesteps, episode, self.buffer, self._critic, self._env)
             logs = {
                 "environment_reward": episode_return_true,
                 "received_reward": episode_return_proxy,
@@ -306,7 +320,7 @@ class MonExperiment(Experiment):
                 #     ep_states.append([obs["mdp"].item(), obs["monitor"]])
                 if render:
                     self._env.render()
-                episode_agent_locations.append(self._env.get_agent_pos())
+                episode_agent_locations.append(self._env.unwrapped.get_agent_pos())
                 action = self._actor(obs)
                 # ep_actions.append([action["mdp"], action["monitor"]])
                 # if action["monitor"] == 1:

@@ -466,6 +466,50 @@ class MonQCNN(MonQNet):
 
         return q_loss.item(), reward_loss
 
+    def td_error(self, batch: dict, monitor_state: bool = False, rewards=None) -> dict:
+        """Per-transition TD error  r + gamma * max_a' Q_target(s', a') - Q(s, a)  of a processed batch.
+
+        Forms the target exactly as `optimize_policy_model` does (same strategy, reward model, target network), but
+        nothing is trained or updated. Returns {"td", "q", "rows"}: the TD error and Q(s, a) of the taken action, both
+        (n,), and the batch rows they refer to (all rows, except with the 'ignore' strategy, which drops transitions
+        whose reward was not observed).
+        """
+        real_idx = batch["real_reward_idx"]
+        ignore = self._strategy == "ignore"
+
+        def sel(tensor):
+            return tensor[real_idx] if ignore else tensor
+
+        with torch.no_grad():
+            if rewards is not None:
+                mdp_rewards = rewards.gather(1, batch["mdp_action"])
+            elif self._strategy == "reward_model":
+                mdp_rewards = self._r_model(batch["mdp_obs"]).gather(1, batch["mdp_action"])
+            elif self._strategy == "zero_reward":
+                mdp_rewards = self._unseen_r_value * torch.ones_like(
+                    batch["mdp_reward"], dtype=torch.float, device=self._device
+                )
+                mdp_rewards[real_idx] = batch["mdp_reward"][real_idx]
+            elif ignore:
+                mdp_rewards = batch["mdp_reward"][real_idx]
+            else:
+                raise NotImplementedError
+            combined_reward = mdp_rewards + sel(batch["mon_reward"])
+            combined_action = sel(batch["mdp_action"]) + self._action_space["mdp"].n * sel(batch["mon_action"])
+
+            mdp_obs, mon_obs = sel(batch["mdp_obs"]), sel(batch["mon_obs"])
+            q_values = self._q_network.forward(mdp_obs, mon_obs if monitor_state else None).gather(1, combined_action)
+            next_q_values = torch.zeros(mdp_obs.shape[0], device=self._device)
+            non_mon = sel(batch["non_final_next_monitor_states"])
+            next_q_values[sel(batch["non_final_mask"])] = (
+                self._target_network.forward(
+                    sel(batch["non_final_next_states"]), non_mon if monitor_state else None
+                ).max(1).values
+            )
+            expected_q_values = self._gamma * next_q_values.unsqueeze(1) + combined_reward
+        rows = torch.as_tensor(real_idx, dtype=torch.long) if ignore else torch.arange(mdp_obs.shape[0])
+        return {"td": (expected_q_values - q_values).squeeze(1), "q": q_values.squeeze(1), "rows": rows}
+
     def save(self, seed: int = 1, file_name: str = None):
         file_dir = self._dir_name if file_name is None else self._dir_name + "/" + file_name
         os.makedirs(file_dir, exist_ok=True)
