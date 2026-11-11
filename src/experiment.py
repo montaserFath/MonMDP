@@ -34,6 +34,7 @@ class Experiment:
         update_target_freq: int = 1000,
         error_log_frequency: int = 0,
         error_log_samples: int = 2048,
+        replay_obs_dtype: str = "float16",
     ):
         self._env = env
         # log reward-model error and TD error every `error_log_frequency` env steps (0 = off), see src/online_errors.py
@@ -52,7 +53,11 @@ class Experiment:
         self._batch_size = batch_size  # mini batch size number of sample per batch
         self._n_itr_episode = n_itr_episode  # number of iteration to update the Q-network per episode
         self._update_target_freq = update_target_freq  # update the target network every episode
-        self.buffer = TorchReplayMemory(max_size=int(replay_buffer_size)) if replay_buffer else None
+        # observation windows are stored in `replay_obs_dtype` (None / "float64": as the env returns them)
+        obs_dtype = None if replay_obs_dtype in (None, "none", "float64") else replay_obs_dtype
+        self.buffer = (
+            TorchReplayMemory(max_size=int(replay_buffer_size), obs_dtype=obs_dtype) if replay_buffer else None
+        )
         # self._time_file = open(self._log_dir + "/time_{}.txt".format(self._rng_seed), "w")
 
     def train(self):

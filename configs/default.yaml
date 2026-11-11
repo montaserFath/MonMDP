@@ -34,6 +34,7 @@ experiment:
   save_log: True
   error_log_frequency: 0   # env steps between reward-error / TD-error logs (src/online_errors.py); 0 = off
   error_log_samples: 2048  # transitions sampled from the replay buffer per log
+  replay_obs_dtype: float16  # dtype the replay buffer stores observation windows in (exact for 0, 0.5, 1; ~4x less memory than float64). null = float64
 
 hydra:
   sweeper:

@@ -199,15 +199,44 @@ class MonReplayBuffer(ReplayBuffer):
 
 
 class TorchReplayMemory:
-    def __init__(self, max_size: int, device: str = None):
+    """Replay memory of (obs, action, next_obs, reward) transitions.
+
+    obs_dtype: store the observation windows (obs["mdp"], next_obs["mdp"]) in this dtype, e.g. "float16", instead of
+    the env's float64 (None keeps them as they are). `process_batch` casts the windows to float32 anyway, so this only
+    changes what is kept in memory; float16 is exact for the values 0, 0.5 and 1 and rounds others (e.g. 1/3) by about
+    1e-4. A window that would change by more than `obs_tolerance` (e.g. an overflow) raises instead of being stored.
+    """
+
+    def __init__(self, max_size: int, device: str = None, obs_dtype=None, obs_tolerance: float = 1e-3):
         self.max_size = max_size
         self.device = device
+        self.obs_dtype = None if obs_dtype is None else np.dtype(obs_dtype)
+        self.obs_tolerance = obs_tolerance
+        self._last_source = self._last_cast = None
         self.buffer_size = 0
         self.memory = deque([], maxlen=self.max_size)
         self.transition = namedtuple("Transition", ("obs", "action", "next_obs", "reward"))
 
+    def _cast_obs(self, obs: dict) -> dict:
+        """obs dict -> dict whose 'mdp' window is stored in obs_dtype. A window is cast once: the training loop reuses
+        next_obs as the next step's obs, so the cast array is shared by both transitions and stored once."""
+        window = obs["mdp"]
+        if window is None:  # terminal next state
+            return obs
+        if window is not self._last_source:
+            with np.errstate(over="ignore", invalid="ignore"):  # an overflow / NaN is caught by the check below
+                cast = np.asarray(window).astype(self.obs_dtype)
+                error = np.abs(cast.astype(np.float64) - window).max()
+            if not error <= self.obs_tolerance:  # also rejects NaN
+                raise ValueError(f"observation window does not fit in {self.obs_dtype} (tolerance {self.obs_tolerance})")
+            self._last_source, self._last_cast = window, cast
+        return {**obs, "mdp": self._last_cast}
+
     def push(self, *args):
         """Save a transition"""
+        if self.obs_dtype is not None:
+            obs, action, next_obs, reward = args
+            args = (self._cast_obs(obs), action, self._cast_obs(next_obs), reward)
         self.memory.append(self.transition(*args))
         self.buffer_size += 1
 
