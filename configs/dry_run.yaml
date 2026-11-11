@@ -8,12 +8,13 @@ defaults:
   - override monitor: binary   # overrides must come last in the defaults list
 
 experiment:
-  training_timesteps: 6000
+  training_timesteps: 60000
   start_train_timestep: 1000   # the real default (1e5) would never start training in 6k steps
   testing_frequency: 2000      # evaluation + checkpoint every 2k steps
   testing_episodes: 2
   error_log_frequency: 500     # reward-error and TD-error logs (src/online_errors.py)
   error_log_samples: 256
+  replay_buffer_size: 20000    # sliding window = 10 reward tables at the 2000-step period (default 1e6 keeps ~500 old tables)
 
 agent:
   critic:
