@@ -290,6 +290,13 @@ class TorchReplayMemory:
 
         mdp_reward = torch.tensor(np.array([r["mdp"] for r in batch.reward]), device=device, dtype=torch.float)
         mon_reward = torch.tensor(np.array([r["monitor"] for r in batch.reward]), device=device, dtype=torch.float)
+        # logging only, never used for training: the env's true reward (NaN if the transition was stored without it)
+        # and the number of reward changes at the time of the transition (-1 for a stationary env)
+        true_reward = torch.tensor(
+            np.array([r.get("true", np.nan) for r in batch.reward]), device=device, dtype=torch.float
+        )
+        change_idx = torch.tensor(np.array([r.get("change_idx", -1) for r in batch.reward]), device=device,
+                                  dtype=torch.float)
 
         mdp_action = torch.tensor(np.array([a["mdp"] for a in batch.action]), device=device)
         mon_action = torch.tensor(np.array([a["monitor"] for a in batch.action]), device=device)
@@ -304,5 +311,7 @@ class TorchReplayMemory:
             "mon_reward": mon_reward.unsqueeze(1),
             "mdp_action": mdp_action.unsqueeze(1),
             "mon_action": mon_action.unsqueeze(1),
+            "true_reward": true_reward.unsqueeze(1),  # logging only
+            "change_idx": change_idx.unsqueeze(1),  # logging only
         }
         return process_batch

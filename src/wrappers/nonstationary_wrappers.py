@@ -94,4 +94,4 @@ class RewardSchedule(gymnasium.Wrapper):
                 self._apply(self._next_idx())
             self._steps += 1
         obs, reward, terminated, truncated, info = self.env.step(action)
-        return obs, reward, terminated, truncated, info | {"task_idx": self.task_idx}
+        return obs, reward, terminated, truncated, info | {"task_idx": self.task_idx, "n_changes": self.n_changes}
