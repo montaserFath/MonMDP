@@ -1,0 +1,31 @@
+# Short local dry run: binary monitor + non-stationary reward, 6k env steps, CPU, one seed.
+#   python run_plants_env.py --config-name dry_run
+# Anything can still be overridden, e.g.  nonstationary.period_timesteps=1000  nonstationary.vary_monitor_cost=true
+defaults:
+  - default
+  - nonstationary: reward_change
+  - _self_
+  - override monitor: binary   # overrides must come last in the defaults list
+
+experiment:
+  training_timesteps: 6000
+  start_train_timestep: 1000   # the real default (1e5) would never start training in 6k steps
+  testing_frequency: 2000      # evaluation + checkpoint every 2k steps
+  testing_episodes: 2
+  error_log_frequency: 500     # reward-error and TD-error logs (src/online_errors.py)
+  error_log_samples: 256
+
+agent:
+  critic:
+    device: cpu
+    reward_model:
+      device: cpu
+      flatten: True            # centre-pixel reward model; without it training crashes (reward.py)
+
+# The script writes to a path relative to the working directory (general_models/Plants/...), which holds the real
+# results. Switch into a fresh run dir so a dry run can never overwrite them: outputs/dry_run/<timestamp>/
+hydra:
+  job:
+    chdir: True
+  run:
+    dir: outputs/dry_run/${now:%Y-%m-%d_%H-%M-%S}
