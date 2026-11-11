@@ -3,9 +3,15 @@
 Every `frequency` env steps a batch of `n_samples` transitions is drawn from the replay buffer (the states the agent
 actually trains on) and two CSVs are appended to the experiment's log dir:
 
-  online_reward_error_<seed>.csv  one row per (timestep, object, dryness, action)
-      reward model prediction vs the env's own reward function (the oracle) for the *current* reward table, for all 6
-      actions of every sampled state. Columns: n, true_mean, pred_mean, bias (pred - true), mae, mse.
+  online_reward_error_<seed>.csv  one row per (timestep, source, object, dryness, action[, observed, current_table])
+      reward model prediction vs the true reward. Columns: n, true_mean, pred_mean, bias (pred - true), mae, mse.
+      source = "oracle": the env's own reward function under the *current* reward table, for all 6 actions of every
+          sampled state (observed and current_table are empty).
+      source = "buffer": the true reward the env gave for the action that was actually taken in each sampled
+          transition (stored next to the proxy reward, never used for training), for that action only.
+          observed: True if the agent saw that reward, False if it was hidden (NaN) - the Mon-MDP generalisation
+          split. current_table: True if the transition was collected under the reward table that is active now, False
+          if under an earlier one (then `true` is that earlier table's reward; always True for a stationary env).
   online_td_error_<seed>.csv      one row per (timestep, object, dryness, mdp_action, monitor_action, terminal)
       TD error r + gamma * max Q_target(s', .) - Q(s, a) as the critic forms it for training (reward-model reward).
       Columns: n, td_mean (signed), td_abs_mean, td_sq_mean, q_mean.
@@ -28,7 +34,8 @@ from src.critic import MonRoomCNN
 from src.reward_error import ACTION_NAMES, decode_state, env_reward
 
 META = ["timestep", "episode", "task_idx", "seed"]
-REWARD_FIELDS = META + ["object", "dryness", "action", "n", "true_mean", "pred_mean", "bias", "mae", "mse"]
+REWARD_FIELDS = META + ["source", "object", "dryness", "action", "observed", "current_table", "n", "true_mean",
+                        "pred_mean", "bias", "mae", "mse"]
 TD_FIELDS = META + ["object", "dryness", "mdp_action", "monitor_action", "terminal", "n", "td_mean", "td_abs_mean",
                     "td_sq_mean", "q_mean"]
 
@@ -111,10 +118,35 @@ class OnlineErrorLogger:
         for i, (kind, dryness) in enumerate(objects):
             mask = inverse == i
             for a, name in enumerate(ACTION_NAMES):
-                e = err[mask, a]
-                rows.append({**meta, "object": kind, "dryness": dryness, "action": name, "n": int(mask.sum()),
-                             "true_mean": float(true[mask, a].mean()), "pred_mean": float(pred[mask, a].mean()),
-                             "bias": float(e.mean()), "mae": float(np.abs(e).mean()), "mse": float((e ** 2).mean())})
+                rows.append({**meta, "source": "oracle", "object": kind, "dryness": dryness, "action": name,
+                             **self._stats(pred[mask, a], true[mask, a])})
+        return rows + self.buffer_reward_rows(batch, objects, inverse, pred, env, meta)
+
+    @staticmethod
+    def _stats(pred: np.ndarray, true: np.ndarray) -> dict:
+        err = pred - true
+        return {"n": len(err), "true_mean": float(true.mean()), "pred_mean": float(pred.mean()),
+                "bias": float(err.mean()), "mae": float(np.abs(err).mean()), "mse": float((err ** 2).mean())}
+
+    def buffer_reward_rows(self, batch, objects, inverse, pred, env, meta) -> list:
+        """Error against the true reward stored with each sampled transition, for the action that was taken, split by
+        whether the agent observed that reward and whether it was collected under the reward table active now."""
+        true = batch["true_reward"].squeeze(1).cpu().numpy()
+        keep = ~np.isnan(true)  # transitions stored without a true reward (older code) are skipped
+        if not keep.any():
+            return []
+        action = batch["mdp_action"].squeeze(1).cpu().numpy().astype(int)
+        observed = ~np.isnan(batch["mdp_reward"].squeeze(1).cpu().numpy())
+        current = batch["change_idx"].squeeze(1).cpu().numpy() == getattr(env, "n_changes", -1)
+        predicted = pred[np.arange(len(pred)), action]  # the model's output for the action that was taken
+        keys = np.stack([inverse, action, observed.astype(int), current.astype(int)], axis=1)
+        rows = []
+        for key in np.unique(keys[keep], axis=0):
+            mask = (keys == key).all(1) & keep
+            kind, dryness = objects[key[0]]
+            rows.append({**meta, "source": "buffer", "object": kind, "dryness": dryness, "action": ACTION_NAMES[key[1]],
+                         "observed": bool(key[2]), "current_table": bool(key[3]),
+                         **self._stats(predicted[mask], true[mask])})
         return rows
 
     # ------------------------------------------------------------------ TD error
@@ -140,6 +172,11 @@ class OnlineErrorLogger:
     @staticmethod
     def _append(path: str, fields: list, rows: list) -> None:
         new_file = not os.path.exists(path)
+        if not new_file:  # never mix column layouts in one file (e.g. a CSV written by an older version)
+            with open(path, newline="") as f:
+                header = next(csv.reader(f), [])
+            if header != fields:
+                raise ValueError(f"{path} has columns {header}, expected {fields}: move or delete the old file")
         with open(path, "a", newline="") as f:
             writer = csv.DictWriter(f, fieldnames=fields)
             if new_file:

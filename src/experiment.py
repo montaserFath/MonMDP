@@ -203,7 +203,11 @@ class MonExperiment(Experiment):
 
                 next_obs, reward, term, trunc, info = self._env.step(action)
                 if self.buffer is not None:
-                    self.buffer.push(obs, action, {"mdp": None, "monitor": None} if term else next_obs, reward)
+                    # `true` (the env's real reward, also where it is hidden from the agent) and `change_idx` (number
+                    # of reward changes so far) are kept for logging only (src/online_errors.py): the critic and the
+                    # reward model never read them.
+                    stored_reward = {**reward, "true": info["mdp_reward"], "change_idx": info.get("n_changes", -1)}
+                    self.buffer.push(obs, action, {"mdp": None, "monitor": None} if term else next_obs, stored_reward)
 
                 if action["monitor"] == 1:
                     episode_monitor_action_count += 1
