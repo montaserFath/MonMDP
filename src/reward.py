@@ -146,6 +146,10 @@ class RewardNet(Reward):
 
     def optimize_reward_model(self, batch: dict):
         real_reward_idx = batch["real_reward_idx"]
+        if len(real_reward_idx) == 0:
+            # No observed reward in this batch (the monitor was never queried): there is nothing to fit. MSELoss over
+            # zero rows is 0/0 = NaN, and the optimizer step would still move the weights through Adam's momentum.
+            return 0.0
         mdp_obs = batch["mdp_obs"][real_reward_idx]
         if self._flatten:
             mdp_obs = mdp_obs[:, :, mdp_obs.shape[-1] // 2, mdp_obs.shape[-1] // 2]
