@@ -32,6 +32,8 @@ experiment:
   n_itr_episode: 50
   update_target_freq: 5
   save_log: True
+  error_log_frequency: 0   # env steps between reward-error / TD-error logs (src/online_errors.py); 0 = off
+  error_log_samples: 2048  # transitions sampled from the replay buffer per log
 
 hydra:
   sweeper:
