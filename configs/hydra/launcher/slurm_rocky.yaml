@@ -1,0 +1,25 @@
+# @package hydra.launcher
+# CPU-only Slurm launcher for the rocky cluster, sized for 50M env steps per job (one job per seed).
+#   python run_plants_env.py -m hydra/launcher=slurm_rocky +nonstationary=reward_change \
+#       experiment.training_timesteps=5e7 agent.critic.device=cpu agent.critic.reward_model.device=cpu
+#
+# Memory estimate (default replay_buffer_size=1e6, replay_obs_dtype=float16, 11x11x6 window):
+#   replay buffer   ~1e6 transitions x ~3 KB (float16 window + python dicts/namedtuple)   ~3 GB
+#   training logs   checkpoint() reloads training_joint_reward (100 floats per episode);
+#                   at 50M steps = 500k episodes ~1.7 GB, ~2x while re-saving        ~3.5 GB
+#   torch, CNNs, python, agent_locations (int8)                                        ~1.5 GB
+#   peak ~8 GB -> request 12 GB for headroom
+_target_: hydra_plugins.hydra_submitit_launcher.submitit_launcher.SlurmLauncher
+submitit_folder: ${hydra.sweep.dir}/.submitit/%j
+name: ${hydra.job.name}
+partition: gpubase_bynode_b5   # 7-day limit; no GPU requested
+timeout_min: 10080
+nodes: 1
+tasks_per_node: 1
+cpus_per_task: 2
+gpus_per_node: 0
+mem_gb: 12
+array_parallelism: 10
+setup:
+  - source /scratch/montaser/miniforge3/bin/activate mmdp
+  - export OMP_NUM_THREADS=2 MKL_NUM_THREADS=2
