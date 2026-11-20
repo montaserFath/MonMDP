@@ -28,6 +28,14 @@ def run_monitor(cfg: DictConfig) -> None:
     if cfg.monitor.id == "RoomMonitor":
         train_dir += "3_room/"
     train_dir += "/window_{}/eps_decay_{}/q_lr_{}/reward_lr_{}/".format(window_size, eps_decay, q_lr, reward_lr)
+    ns_cfg = cfg.get("nonstationary")
+    if ns_cfg is not None and ns_cfg.enabled:  # keep non-stationary runs apart from the stationary baseline
+        # every setting that changes between runs goes in the path, or two runs with the same seed overwrite each other
+        if not isinstance(ns_cfg.vary_monitor_cost, bool):  # e.g. `F` in YAML is the string "F", which is truthy
+            raise ValueError(f"nonstationary.vary_monitor_cost must be true/false, got {ns_cfg.vary_monitor_cost!r}")
+        train_dir += "nonstationary/period_{}_{}_varymon_{}/".format(
+            ns_cfg.period_timesteps, ns_cfg.order, ns_cfg.vary_monitor_cost
+        )
     os.makedirs(train_dir, exist_ok=True)
 
     env = gym.make(
@@ -64,7 +72,6 @@ def run_monitor(cfg: DictConfig) -> None:
             **cfg.agent.critic,
         )
 
-    ns_cfg = cfg.get("nonstationary")
     if ns_cfg is not None and ns_cfg.enabled:  # change the reward every `period_timesteps` env steps
         env = RewardSchedule(
             env,
