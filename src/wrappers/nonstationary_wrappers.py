@@ -52,6 +52,8 @@ class RewardSchedule(gymnasium.Wrapper):
             raise ValueError("order must be 'cycle' or 'random'")
         if period_timesteps < 1:
             raise ValueError("period_timesteps must be >= 1")
+        if not isinstance(vary_monitor_cost, (bool, np.bool_)):  # a string like "F" would silently count as True
+            raise ValueError(f"vary_monitor_cost must be a bool, got {vary_monitor_cost!r}")
         self.tables = [{k: float(v) for k, v in t.items()} for t in tables]
         if not self.tables:
             raise ValueError("tables is empty")
