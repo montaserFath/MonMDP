@@ -36,6 +36,10 @@ def run_monitor(cfg: DictConfig) -> None:
         train_dir += "nonstationary/period_{}_{}_varymon_{}/".format(
             ns_cfg.period_timesteps, ns_cfg.order, ns_cfg.vary_monitor_cost
         )
+    # replay size / training interval differ between experiments (e.g. scaled to the reward-change period): keep apart
+    buffer_size, train_every = int(float(cfg.experiment.replay_buffer_size)), int(cfg.experiment.train_every_episodes)
+    if (buffer_size, train_every) != (1_000_000, 20):
+        train_dir += "buf_{}_every_{}/".format(buffer_size, train_every)
     os.makedirs(train_dir, exist_ok=True)
 
     env = gym.make(

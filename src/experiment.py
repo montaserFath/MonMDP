@@ -35,6 +35,7 @@ class Experiment:
         error_log_frequency: int = 0,
         error_log_samples: int = 2048,
         replay_obs_dtype: str = "float16",
+        train_every_episodes: int = 20,
     ):
         self._env = env
         # log reward-model error and TD error every `error_log_frequency` env steps (0 = off), see src/online_errors.py
@@ -52,6 +53,7 @@ class Experiment:
         self._start_train_timestep = start_train_timestep  # start training after reaching number of timesteps
         self._batch_size = batch_size  # mini batch size number of sample per batch
         self._n_itr_episode = n_itr_episode  # number of iteration to update the Q-network per episode
+        self._train_every_episodes = int(train_every_episodes)  # run the n_itr_episode updates every this many episodes
         self._update_target_freq = update_target_freq  # update the target network every episode
         # observation windows are stored in `replay_obs_dtype` (None / "float64": as the env returns them)
         obs_dtype = None if replay_obs_dtype in (None, "none", "float64") else replay_obs_dtype
@@ -140,6 +142,8 @@ class MonExperiment(Experiment):
         agent_locations = []
         joint_reward = {}
         eval_joint_reward = {}
+        # one entry per training episode, saved whole (overwritten) at every checkpoint and at the end
+        episode_stats = {k: [] for k in ("monitor_actions", "env_return", "monitor_return", "task_idx", "n_changes")}
         eval_count = 0
         total_timesteps = 0
         episode = 0
@@ -154,6 +158,7 @@ class MonExperiment(Experiment):
                 # eval_time = time.time()
                 # perform/save checkpoint
                 self.checkpoint(joint_reward, eval_joint_reward, agent_locations)
+                self.save_episode_stats(episode_stats)
                 joint_reward = {}
                 agent_locations = []
                 self._actor.eval()
@@ -235,7 +240,7 @@ class MonExperiment(Experiment):
 
                 obs = next_obs
             # Update Q-network and reward network
-            if self.buffer.buffer_size > self._start_train_timestep and episode % 20 == 0:
+            if self.buffer.buffer_size > self._start_train_timestep and episode % self._train_every_episodes == 0:
                 # train_timer = time.time()
                 for epoch in range(self._n_itr_episode):
                     batch = self.buffer.process_batch(self.buffer.sample(self._batch_size), device=current_device)
@@ -248,6 +253,12 @@ class MonExperiment(Experiment):
                 # self._time_file.write("Training time for episode {} = {}\n".format(episode, time.time() - train_timer))
             agent_locations.append(agent_location_ep)
             joint_reward.update({episode: ep_joint_reward})
+            episode_stats["monitor_actions"].append(episode_monitor_action_count)
+            episode_stats["env_return"].append(episode_return_true)
+            episode_stats["monitor_return"].append(episode_return_cost)
+            # reward table active at the end of the episode (-1: stationary env); n_changes counts table switches
+            episode_stats["task_idx"].append(info.get("task_idx", -1))
+            episode_stats["n_changes"].append(info.get("n_changes", -1))
             total_timesteps += episode_timesteps
             if error_logger is not None:
                 error_logger.maybe_log(total_timesteps, episode, self.buffer, self._critic, self._env)
@@ -256,7 +267,7 @@ class MonExperiment(Experiment):
                 "received_reward": episode_return_proxy,
                 "monitor_reward": episode_return_cost,
                 "episode_reward_model_loss": episode_reward_model_loss,
-                # "monitor_action": episode_monitor_action_count,
+                "monitor_action": episode_monitor_action_count,
                 # "number_of_timesteps": episode_timesteps,
                 "joint_reward": episode_return_true + episode_return_cost,
             }
@@ -277,6 +288,7 @@ class MonExperiment(Experiment):
             ),
         )
         agent_locations = []
+        self.save_episode_stats(episode_stats)
         self._critic.save(seed=self._rng_seed)
         if self._save_train_log:
             # np.save(self._log_dir + "/training_joint_reward_{}.npy".format(self._rng_seed), joint_reward)
@@ -382,6 +394,14 @@ class MonExperiment(Experiment):
             np.array([]),
             np.array(episode_discount_reward),
             trajectories,
+        )
+
+    def save_episode_stats(self, episode_stats: dict) -> None:
+        """training_episode_stats_<seed>.npz: per training episode, monitor_actions (count of monitor-on steps),
+        env_return (true env reward), monitor_return (summed monitor reward = -cost), task_idx, n_changes"""
+        np.savez(
+            self._log_dir + "/training_episode_stats_{}.npz".format(self._rng_seed),
+            **{k: np.asarray(v) for k, v in episode_stats.items()},
         )
 
     def checkpoint(self, joint_reward, eval_joint_reward, agent_locations):
